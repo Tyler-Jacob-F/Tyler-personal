@@ -19,7 +19,9 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production
+    # No `environment:` here on purpose: a job inside a GitHub environment presents an OIDC
+    # subject of repo:<owner>/<repo>:environment:<name>, and the deploy role in
+    # infra/lib/account-stack.ts trusts only repo:<owner>/<repo>:ref:refs/heads/main.
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
