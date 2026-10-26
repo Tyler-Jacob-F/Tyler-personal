@@ -95,8 +95,10 @@ Each is one PR.
 - [x] **Deploy workflow.** On merge to `main`: build web, `cdk deploy --all
 --require-approval never`, double-sync to S3 (no-cache on root files, immutable on
       `assets/*`), CloudFront invalidation.
-- [ ] **Gate check.** Change the page text, merge, confirm live at the domain. Record the
-      date in this file.
+- [x] **Gate check.** Change the page text, merge, confirm live at the domain. Record the
+      date in this file. **Gate true: Oct 26, 2026.** First deploy failed on the OIDC
+      trust (GitHub's subject now carries numeric IDs); fixed, redeployed, confirmed in a
+      browser at the apex, `www`, and a deep route.
 
 ## Ask versus decide
 
