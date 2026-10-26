@@ -208,7 +208,10 @@ exports[`AccountStack > matches the snapshot 1`] = `
                   "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
                 },
                 "StringLike": {
-                  "token.actions.githubusercontent.com:sub": "repo:Tyler-Jacob-F/Tyler-personal:ref:refs/heads/main",
+                  "token.actions.githubusercontent.com:sub": [
+                    "repo:Tyler-Jacob-F@94389834/Tyler-personal@1434551882:ref:refs/heads/main",
+                    "repo:Tyler-Jacob-F/Tyler-personal:ref:refs/heads/main",
+                  ],
                 },
               },
               "Effect": "Allow",
@@ -256,7 +259,10 @@ exports[`AccountStack > matches the snapshot 1`] = `
                   "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
                 },
                 "StringLike": {
-                  "token.actions.githubusercontent.com:sub": "repo:Tyler-Jacob-F/Tyler-personal:pull_request",
+                  "token.actions.githubusercontent.com:sub": [
+                    "repo:Tyler-Jacob-F@94389834/Tyler-personal@1434551882:pull_request",
+                    "repo:Tyler-Jacob-F/Tyler-personal:pull_request",
+                  ],
                 },
               },
               "Effect": "Allow",

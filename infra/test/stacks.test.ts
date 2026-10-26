@@ -15,12 +15,15 @@ describe('AccountStack', () => {
     expect(template.toJSON()).toMatchSnapshot();
   });
 
-  it('trusts GitHub only for this repository', () => {
+  it('trusts GitHub only for this repository, by name and by numeric ID', () => {
+    const { owner, repo, ownerId, repoId, deployBranch } = config.github;
     const subs = JSON.stringify(template.findResources('AWS::IAM::Role'));
-    expect(subs).toContain(`repo:${config.github.owner}/${config.github.repo}:pull_request`);
+    expect(subs).toContain(`repo:${owner}@${ownerId}/${repo}@${repoId}:pull_request`);
+    expect(subs).toContain(`repo:${owner}/${repo}:pull_request`);
     expect(subs).toContain(
-      `repo:${config.github.owner}/${config.github.repo}:ref:refs/heads/${config.github.deployBranch}`,
+      `repo:${owner}@${ownerId}/${repo}@${repoId}:ref:refs/heads/${deployBranch}`,
     );
+    expect(subs).toContain(`repo:${owner}/${repo}:ref:refs/heads/${deployBranch}`);
     expect(subs).not.toContain('repo:*');
   });
 

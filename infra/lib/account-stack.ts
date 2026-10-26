@@ -12,16 +12,23 @@ export class AccountStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const { owner, repo, deployBranch } = config.github;
+    const { owner, repo, ownerId, repoId, deployBranch } = config.github;
     const provider = new iam.OpenIdConnectProvider(this, 'GitHubOidc', {
       url: 'https://token.actions.githubusercontent.com',
       clientIds: ['sts.amazonaws.com'],
     });
 
-    const trust = (sub: string) =>
+    // GitHub's OIDC subject carries numeric IDs alongside the names
+    // (repo:<owner>@<ownerId>/<repo>@<repoId>:...). Accept that form and the older
+    // name-only form, both pinned to this exact repository.
+    const subjects = (suffix: string) => [
+      `repo:${owner}@${ownerId}/${repo}@${repoId}:${suffix}`,
+      `repo:${owner}/${repo}:${suffix}`,
+    ];
+    const trust = (suffix: string) =>
       new iam.WebIdentityPrincipal(provider.openIdConnectProviderArn, {
         StringEquals: { 'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com' },
-        StringLike: { 'token.actions.githubusercontent.com:sub': sub },
+        StringLike: { 'token.actions.githubusercontent.com:sub': subjects(suffix) },
       });
 
     const cdkRoleArn = (kind: string) =>
@@ -33,7 +40,7 @@ export class AccountStack extends cdk.Stack {
     // Pull requests: read-only. Enough for `cdk diff`, nothing more.
     const prRole = new iam.Role(this, 'GitHubPullRequestRole', {
       roleName: `${config.stackPrefix}-GitHubPullRequest`,
-      assumedBy: trust(`repo:${owner}/${repo}:pull_request`),
+      assumedBy: trust('pull_request'),
       maxSessionDuration: cdk.Duration.hours(1),
     });
     prRole.addToPolicy(
@@ -43,7 +50,7 @@ export class AccountStack extends cdk.Stack {
     // Merges to the deploy branch: assume the CDK bootstrap roles, publish the SPA.
     const deployRole = new iam.Role(this, 'GitHubDeployRole', {
       roleName: `${config.stackPrefix}-GitHubDeploy`,
-      assumedBy: trust(`repo:${owner}/${repo}:ref:refs/heads/${deployBranch}`),
+      assumedBy: trust(`ref:refs/heads/${deployBranch}`),
       maxSessionDuration: cdk.Duration.hours(1),
     });
     deployRole.addToPolicy(
