@@ -12,7 +12,12 @@ describe('migration runner', () => {
     const pg = await freshPglite();
     const runner = pgliteRunner(pg);
     const files = await readMigrationFiles(migrationsDir);
-    const names = ['0001_spine.sql', '0002_admin_member.sql', '0003_version_authored_at.sql'];
+    const names = [
+      '0001_spine.sql',
+      '0002_admin_member.sql',
+      '0003_version_authored_at.sql',
+      '0004_import_chili_lineage.sql',
+    ];
     expect(files.map((f) => f.name)).toEqual(names);
 
     const first = await migrate(runner, files);
