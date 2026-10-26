@@ -1,0 +1,31 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/source-sans-3';
+
+/*
+ * Single token source. Semantic names only; components never use raw palette classes.
+ * Values below are Tailwind's neutral ramp. Identity
+ * (primary color, typefaces, radius, dark palette) is decided in Phase 4; see
+ * docs/DESIGN.md "Yours to decide".
+ */
+@theme {
+  --font-sans: 'Source Sans 3 Variable', ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--color-neutral-50);
+  --color-foreground: var(--color-neutral-900);
+  --color-muted: var(--color-neutral-100);
+  --color-muted-foreground: var(--color-neutral-500);
+  --color-border: var(--color-neutral-200);
+  --color-input: var(--color-neutral-200);
+  --color-disabled: var(--color-neutral-300);
+
+  --radius-control: 0.375rem;
+  --radius-card: 0.75rem;
+}
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+@layer base {
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+}
