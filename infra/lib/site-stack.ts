@@ -13,8 +13,13 @@ import { config } from './config.js';
  * Function, TLS from ACM, DNS in the Route 53 zone the domain was registered with.
  * CI uploads the built SPA after `cdk deploy`; see .github/workflows/deploy.yml.
  */
+export interface SiteStackProps extends cdk.StackProps {
+  /** Hostname of the HTTP API; CloudFront forwards /api/* there unchanged. */
+  apiDomainName: string;
+}
+
 export class SiteStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: SiteStackProps) {
     super(scope, id, props);
 
     const { domainName } = config;
@@ -69,6 +74,21 @@ function handler(event) {
         functionAssociations: [
           { function: spaRewrite, eventType: cloudfront.FunctionEventType.VIEWER_REQUEST },
         ],
+      },
+      additionalBehaviors: {
+        // One origin for browsers: the API rides the same domain, so no CORS. Nothing is
+        // cached and every viewer header except Host (the Authorization bearer included)
+        // reaches API Gateway.
+        '/api/*': {
+          origin: new origins.HttpOrigin(props.apiDomainName, {
+            protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+          }),
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          compress: true,
+        },
       },
     });
 

@@ -387,6 +387,1117 @@ exports[`AccountStack > matches the snapshot 1`] = `
 }
 `;
 
+exports[`ApiStack > matches the snapshot 1`] = `
+{
+  "Outputs": {
+    "ApiEndpoint": {
+      "Value": {
+        "Fn::GetAtt": [
+          "HttpApiF5A9A8A7",
+          "ApiEndpoint",
+        ],
+      },
+    },
+  },
+  "Parameters": {
+    "BootstrapVersion": {
+      "Default": "/cdk-bootstrap/hnb659fds/version",
+      "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]",
+      "Type": "AWS::SSM::Parameter::Value<String>",
+    },
+  },
+  "Resources": {
+    "DocumentsFunctionF5D11372": {
+      "DependsOn": [
+        "DocumentsFunctionServiceRoleDefaultPolicy6D0CB52D",
+        "DocumentsFunctionServiceRole1A0C30B4",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
+          "S3Key": "fdc076e0c18a9bf4a32e63a9fb9c5c6a6e7dc90efe1d55f4445c1e053026a43d.zip",
+        },
+        "Description": "The Keep: /api/documents",
+        "Environment": {
+          "Variables": {
+            "DB_CLUSTER_ARN": {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:",
+                  {
+                    "Ref": "AWS::Partition",
+                  },
+                  ":rds:us-east-1:697941679713:cluster:",
+                  {
+                    "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                  },
+                ],
+              ],
+            },
+            "DB_NAME": "thekeep",
+            "DB_SECRET_ARN": {
+              "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+            },
+            "NODE_OPTIONS": "--enable-source-maps",
+          },
+        },
+        "Handler": "index.handler",
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "DocumentsFunctionLogs285B5317",
+          },
+        },
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionServiceRole1A0C30B4",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 30,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "DocumentsFunctionLogs285B5317": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "RetentionInDays": 30,
+      },
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Delete",
+    },
+    "DocumentsFunctionServiceRole1A0C30B4": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "DocumentsFunctionServiceRoleDefaultPolicy6D0CB52D": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "rds-data:BatchExecuteStatement",
+                "rds-data:BeginTransaction",
+                "rds-data:CommitTransaction",
+                "rds-data:ExecuteStatement",
+                "rds-data:RollbackTransaction",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":rds:us-east-1:697941679713:cluster:",
+                    {
+                      "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                    },
+                  ],
+                ],
+              },
+            },
+            {
+              "Action": [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "DocumentsFunctionServiceRoleDefaultPolicy6D0CB52D",
+        "Roles": [
+          {
+            "Ref": "DocumentsFunctionServiceRole1A0C30B4",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "HttpApiCognitoAuthorizer935FA0F6": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizerType": "JWT",
+        "IdentitySource": [
+          "$request.header.Authorization",
+        ],
+        "JwtConfiguration": {
+          "Audience": [
+            {
+              "Fn::ImportValue": "Auth:ExportsOutputRefUserPoolWebEB3796DDCEF786A8",
+            },
+          ],
+          "Issuer": {
+            "Fn::Join": [
+              "",
+              [
+                "https://cognito-idp.us-east-1.amazonaws.com/",
+                {
+                  "Fn::ImportValue": "Auth:ExportsOutputRefUserPool6BA7E5F296FD7236",
+                },
+              ],
+            ],
+          },
+        },
+        "Name": "CognitoAuthorizer",
+      },
+      "Type": "AWS::ApiGatewayV2::Authorizer",
+    },
+    "HttpApiDELETEapidocumentsid7190CDC3": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "HttpApiCognitoAuthorizer935FA0F6",
+        },
+        "RouteKey": "DELETE /api/documents/{id}",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapidocumentsidDocumentsFunctionapidocumentsidEC19578A",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiDELETEapidocumentsidDocumentsFunctionapidocumentsidPermission5FF46446": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/documents/{id}",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiDefaultStage3EEB07D6": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AutoDeploy": true,
+        "StageName": "$default",
+      },
+      "Type": "AWS::ApiGatewayV2::Stage",
+    },
+    "HttpApiF5A9A8A7": {
+      "Properties": {
+        "Description": "The Keep API (tylerfuqua.com/api)",
+        "Name": "TheKeepApi",
+        "ProtocolType": "HTTP",
+      },
+      "Type": "AWS::ApiGatewayV2::Api",
+    },
+    "HttpApiGETapidocumentsDocumentsFunctionapidocumentsAEBC805D": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapidocumentsDocumentsFunctionapidocumentsPermissionE67B5342": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/documents",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiGETapidocumentsF17B9C08": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "HttpApiCognitoAuthorizer935FA0F6",
+        },
+        "RouteKey": "GET /api/documents",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapidocumentsDocumentsFunctionapidocumentsAEBC805D",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapidocumentsid70505B69": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "HttpApiCognitoAuthorizer935FA0F6",
+        },
+        "RouteKey": "GET /api/documents/{id}",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapidocumentsidDocumentsFunctionapidocumentsidEC19578A",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapidocumentsidDocumentsFunctionapidocumentsidEC19578A": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapidocumentsidDocumentsFunctionapidocumentsidPermissionE2A8E4C4": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/documents/{id}",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiGETapidocumentsiddiff0CAB2E4A": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "HttpApiCognitoAuthorizer935FA0F6",
+        },
+        "RouteKey": "GET /api/documents/{id}/diff",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapidocumentsiddiffVersionsFunctionapidocumentsiddiff1E89BBAE",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapidocumentsiddiffVersionsFunctionapidocumentsiddiff1E89BBAE": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "VersionsFunction6B40A6D6",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapidocumentsiddiffVersionsFunctionapidocumentsiddiffPermissionC705D9AB": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "VersionsFunction6B40A6D6",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/documents/{id}/diff",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiGETapidocumentsidversionsD8986749": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "HttpApiCognitoAuthorizer935FA0F6",
+        },
+        "RouteKey": "GET /api/documents/{id}/versions",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapidocumentsidversionsVersionsFunctionapidocumentsidversions1B5F4E5D",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapidocumentsidversionsVersionsFunctionapidocumentsidversions1B5F4E5D": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "VersionsFunction6B40A6D6",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapidocumentsidversionsVersionsFunctionapidocumentsidversionsPermission37420D0E": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "VersionsFunction6B40A6D6",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/documents/{id}/versions",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiGETapidocumentsidversionsnumber449C1380": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "HttpApiCognitoAuthorizer935FA0F6",
+        },
+        "RouteKey": "GET /api/documents/{id}/versions/{number}",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapidocumentsidversionsnumberVersionsFunctionapidocumentsidversionsnumber96D5948B",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapidocumentsidversionsnumberVersionsFunctionapidocumentsidversionsnumber96D5948B": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "VersionsFunction6B40A6D6",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapidocumentsidversionsnumberVersionsFunctionapidocumentsidversionsnumberPermissionF024C566": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "VersionsFunction6B40A6D6",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/documents/{id}/versions/{number}",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiGETapimeD14B6D1C": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "HttpApiCognitoAuthorizer935FA0F6",
+        },
+        "RouteKey": "GET /api/me",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapimeMeFunctionapime680A29EC",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapimeMeFunctionapime680A29EC": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "MeFunction4482FBE1",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapimeMeFunctionapimePermission6044228E": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "MeFunction4482FBE1",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/me",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiPOSTapidocumentsDA78BBFA": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "HttpApiCognitoAuthorizer935FA0F6",
+        },
+        "RouteKey": "POST /api/documents",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapidocumentsDocumentsFunctionapidocumentsAEBC805D",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiPOSTapidocumentsDocumentsFunctionapidocumentsPermission7CF23BB1": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/documents",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiPOSTapidocumentsidversions8E1AABCC": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "HttpApiCognitoAuthorizer935FA0F6",
+        },
+        "RouteKey": "POST /api/documents/{id}/versions",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapidocumentsidversionsVersionsFunctionapidocumentsidversions1B5F4E5D",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiPOSTapidocumentsidversionsVersionsFunctionapidocumentsidversionsPermissionB3D93C46": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "VersionsFunction6B40A6D6",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/documents/{id}/versions",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "MeFunction4482FBE1": {
+      "DependsOn": [
+        "MeFunctionServiceRoleDefaultPolicy316F73BE",
+        "MeFunctionServiceRole93625EC7",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
+          "S3Key": "323b71b8be289b28b542ab4b8b09c109ff9bcc27e19fb53d7910683bded012b4.zip",
+        },
+        "Description": "The Keep: GET /api/me",
+        "Environment": {
+          "Variables": {
+            "DB_CLUSTER_ARN": {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:",
+                  {
+                    "Ref": "AWS::Partition",
+                  },
+                  ":rds:us-east-1:697941679713:cluster:",
+                  {
+                    "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                  },
+                ],
+              ],
+            },
+            "DB_NAME": "thekeep",
+            "DB_SECRET_ARN": {
+              "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+            },
+            "NODE_OPTIONS": "--enable-source-maps",
+          },
+        },
+        "Handler": "index.handler",
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "MeFunctionLogs5E80E207",
+          },
+        },
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "MeFunctionServiceRole93625EC7",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 30,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "MeFunctionLogs5E80E207": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "RetentionInDays": 30,
+      },
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Delete",
+    },
+    "MeFunctionServiceRole93625EC7": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "MeFunctionServiceRoleDefaultPolicy316F73BE": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "rds-data:BatchExecuteStatement",
+                "rds-data:BeginTransaction",
+                "rds-data:CommitTransaction",
+                "rds-data:ExecuteStatement",
+                "rds-data:RollbackTransaction",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":rds:us-east-1:697941679713:cluster:",
+                    {
+                      "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                    },
+                  ],
+                ],
+              },
+            },
+            {
+              "Action": [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "MeFunctionServiceRoleDefaultPolicy316F73BE",
+        "Roles": [
+          {
+            "Ref": "MeFunctionServiceRole93625EC7",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "VersionsFunction6B40A6D6": {
+      "DependsOn": [
+        "VersionsFunctionServiceRoleDefaultPolicy40A50019",
+        "VersionsFunctionServiceRole7DB4CF48",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
+          "S3Key": "7452d6de066f0cc86cccc7def94c6eade0be5d3a6751474822005d4be8cf1e80.zip",
+        },
+        "Description": "The Keep: /api/documents/{id}/versions and diff",
+        "Environment": {
+          "Variables": {
+            "DB_CLUSTER_ARN": {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:",
+                  {
+                    "Ref": "AWS::Partition",
+                  },
+                  ":rds:us-east-1:697941679713:cluster:",
+                  {
+                    "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                  },
+                ],
+              ],
+            },
+            "DB_NAME": "thekeep",
+            "DB_SECRET_ARN": {
+              "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+            },
+            "NODE_OPTIONS": "--enable-source-maps",
+          },
+        },
+        "Handler": "index.handler",
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "VersionsFunctionLogs65BF33A4",
+          },
+        },
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "VersionsFunctionServiceRole7DB4CF48",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 30,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "VersionsFunctionLogs65BF33A4": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "RetentionInDays": 30,
+      },
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Delete",
+    },
+    "VersionsFunctionServiceRole7DB4CF48": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "VersionsFunctionServiceRoleDefaultPolicy40A50019": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "rds-data:BatchExecuteStatement",
+                "rds-data:BeginTransaction",
+                "rds-data:CommitTransaction",
+                "rds-data:ExecuteStatement",
+                "rds-data:RollbackTransaction",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":rds:us-east-1:697941679713:cluster:",
+                    {
+                      "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                    },
+                  ],
+                ],
+              },
+            },
+            {
+              "Action": [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "VersionsFunctionServiceRoleDefaultPolicy40A50019",
+        "Roles": [
+          {
+            "Ref": "VersionsFunctionServiceRole7DB4CF48",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+  },
+  "Rules": {
+    "CheckBootstrapVersion": {
+      "Assertions": [
+        {
+          "Assert": {
+            "Fn::Not": [
+              {
+                "Fn::Contains": [
+                  [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5",
+                  ],
+                  {
+                    "Ref": "BootstrapVersion",
+                  },
+                ],
+              },
+            ],
+          },
+          "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI.",
+        },
+      ],
+    },
+  },
+}
+`;
+
 exports[`AuthStack > matches the snapshot 1`] = `
 {
   "Outputs": {
@@ -1687,6 +2798,25 @@ exports[`SiteStack > matches the snapshot 1`] = `
             "tylerfuqua.com",
             "www.tylerfuqua.com",
           ],
+          "CacheBehaviors": [
+            {
+              "AllowedMethods": [
+                "GET",
+                "HEAD",
+                "OPTIONS",
+                "PUT",
+                "PATCH",
+                "POST",
+                "DELETE",
+              ],
+              "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+              "Compress": true,
+              "OriginRequestPolicyId": "b689b0a8-53d0-40ab-baf2-68738e2966ac",
+              "PathPattern": "/api/*",
+              "TargetOriginId": "SiteDistributionOrigin243001B31",
+              "ViewerProtocolPolicy": "https-only",
+            },
+          ],
           "Comment": "The Keep (tylerfuqua.com)",
           "DefaultCacheBehavior": {
             "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
@@ -1727,6 +2857,16 @@ exports[`SiteStack > matches the snapshot 1`] = `
               "S3OriginConfig": {
                 "OriginAccessIdentity": "",
               },
+            },
+            {
+              "CustomOriginConfig": {
+                "OriginProtocolPolicy": "https-only",
+                "OriginSSLProtocols": [
+                  "TLSv1.2",
+                ],
+              },
+              "DomainName": "abc123.execute-api.us-east-1.amazonaws.com",
+              "Id": "SiteDistributionOrigin243001B31",
             },
           ],
           "PriceClass": "PriceClass_100",

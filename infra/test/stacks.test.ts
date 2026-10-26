@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { AccountStack } from '../lib/account-stack.js';
+import { ApiStack } from '../lib/api-stack.js';
 import { AuthStack } from '../lib/auth-stack.js';
 import { config } from '../lib/config.js';
 import { DataStack } from '../lib/data-stack.js';
@@ -37,7 +38,28 @@ describe('AccountStack', () => {
 });
 
 describe('SiteStack', () => {
-  const template = Template.fromStack(new SiteStack(app(), 'Site', { env: config.env }));
+  const template = Template.fromStack(
+    new SiteStack(app(), 'Site', {
+      env: config.env,
+      apiDomainName: 'abc123.execute-api.us-east-1.amazonaws.com',
+    }),
+  );
+
+  it('forwards /api/* to the HTTP API uncached, with every viewer header but Host', () => {
+    template.hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: {
+        CacheBehaviors: [
+          Match.objectLike({
+            PathPattern: '/api/*',
+            AllowedMethods: ['GET', 'HEAD', 'OPTIONS', 'PUT', 'PATCH', 'POST', 'DELETE'],
+            CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad',
+            OriginRequestPolicyId: 'b689b0a8-53d0-40ab-baf2-68738e2966ac',
+            ViewerProtocolPolicy: 'https-only',
+          }),
+        ],
+      },
+    });
+  });
 
   it('matches the snapshot', () => {
     expect(template.toJSON()).toMatchSnapshot();
@@ -154,5 +176,48 @@ describe('AuthStack', () => {
     const senders = policies.filter((p) => JSON.stringify(p).includes('ses:SendEmail'));
     expect(senders).toHaveLength(1);
     expect(JSON.stringify(senders[0])).toContain('CreateAuthChallenge');
+  });
+});
+
+describe('ApiStack', () => {
+  const a = app();
+  const data = new DataStack(a, 'Data', { env: config.env });
+  const auth = new AuthStack(a, 'Auth', { env: config.env });
+  const template = Template.fromStack(
+    new ApiStack(a, 'Api', {
+      env: config.env,
+      cluster: data.cluster,
+      userPool: auth.userPool,
+      userPoolClient: auth.webClient,
+    }),
+  );
+
+  it('matches the snapshot', () => {
+    expect(template.toJSON()).toMatchSnapshot();
+  });
+
+  it('puts a Cognito JWT authorizer on every route', () => {
+    template.resourceCountIs('AWS::ApiGatewayV2::Authorizer', 1);
+    template.hasResourceProperties('AWS::ApiGatewayV2::Authorizer', { AuthorizerType: 'JWT' });
+    const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
+    expect(routes).toHaveLength(9);
+    for (const route of routes) {
+      expect(route.Properties.AuthorizationType).toBe('JWT');
+      expect(route.Properties.RouteKey).toMatch(/^(GET|POST|DELETE) \/api\//);
+    }
+  });
+
+  it('runs one Lambda per resource, outside the VPC, with Data API access', () => {
+    template.resourceCountIs('AWS::Lambda::Function', 3);
+    const fns = Object.values(template.findResources('AWS::Lambda::Function'));
+    for (const fn of fns) {
+      expect(fn.Properties.VpcConfig).toBeUndefined();
+      expect(fn.Properties.Runtime).toBe('nodejs22.x');
+      expect(fn.Properties.Environment.Variables).toMatchObject({ DB_NAME: config.database.name });
+    }
+    const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('rds-data:ExecuteStatement');
+    template.resourceCountIs('AWS::Logs::LogGroup', 3);
+    template.allResourcesProperties('AWS::Logs::LogGroup', { RetentionInDays: 30 });
   });
 });
