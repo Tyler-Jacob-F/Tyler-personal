@@ -6,10 +6,17 @@ one-time account setup, run by Tyler with admin credentials for the account.
 
 ## Stacks
 
-| Stack            | What                                                                | Deployed by          |
-| ---------------- | ------------------------------------------------------------------- | -------------------- |
-| `TheKeepAccount` | GitHub OIDC provider, PR (read-only) and deploy roles, $5 budget    | Tyler, once, locally |
-| `TheKeepSite`    | S3 bucket, CloudFront, SPA rewrite function, ACM cert, Route 53 DNS | GitHub Actions       |
+| Stack            | What                                                                             | Deployed by          |
+| ---------------- | -------------------------------------------------------------------------------- | -------------------- |
+| `TheKeepAccount` | GitHub OIDC provider, PR (read-only) and deploy roles, $5 budget                 | Tyler, once, locally |
+| `TheKeepData`    | Aurora Serverless v2 (PostgreSQL, 0–2 ACU) with the Data API, secret, SSM params | GitHub Actions       |
+| `TheKeepAuth`    | Cognito user pool, admin user, custom-auth trigger Lambdas, SES identities       | GitHub Actions       |
+| `TheKeepApi`     | HTTP API with a Cognito JWT authorizer, one Lambda per resource, dashboard       | GitHub Actions       |
+| `TheKeepSite`    | S3 bucket, CloudFront (with `/api/*` to the API), SPA rewrite, ACM, Route 53     | GitHub Actions       |
+
+Deploy order follows the dependencies: Data and Auth, then Api, then Site. After the
+stacks, the workflow applies pending migrations from `apps/api/migrations` through the Data
+API, builds the SPA with the Cognito ids from stack outputs, and publishes it.
 
 Names, the account ID and the domain live in `lib/config.ts`.
 
@@ -52,10 +59,12 @@ Copy the two role ARNs it prints into the repository's GitHub Actions variables
 Then merge to `main`. The deploy workflow creates `TheKeepSite` and publishes the SPA.
 The first run takes a few minutes while ACM validates the certificate through DNS.
 
-### Optional: cache the hosted zone lookup
+### Cached lookups
 
-`SiteStack` looks up the Route 53 zone at synth time. Running a synth locally once writes
-the answer to `infra/cdk.context.json`; commit that file so CI does not need the lookup.
+The site and auth stacks look up the Route 53 zone, and the VPC in the data stack checks
+its availability zones against the account's list. Both answers live in
+`infra/cdk.context.json` so synth, `cdk diff` and tests need no AWS calls. If the account's
+AZ list ever changes, edit that file by hand or run a synth with credentials.
 
 ```sh
 pnpm -C infra synth

@@ -18,6 +18,14 @@
   --color-input: var(--color-neutral-200);
   --color-disabled: var(--color-neutral-300);
 
+  /* Tones Phase 1 needs: destructive (errors, delete, removed lines) and success (added
+   * lines). The other families and the real values land with the Phase 4 design pass. */
+  --color-destructive: var(--color-red-700);
+  --color-destructive-foreground: var(--color-white);
+  --color-destructive-subtle: var(--color-red-50);
+  --color-success: var(--color-green-700);
+  --color-success-subtle: var(--color-green-50);
+
   --radius-control: 0.375rem;
   --radius-card: 0.75rem;
 }

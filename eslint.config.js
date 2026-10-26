@@ -23,7 +23,7 @@ export default tseslint.config(
     rules: { 'react-refresh/only-export-components': 'off' },
   },
   {
-    files: ['infra/**/*.ts', '**/*.config.{js,ts}'],
+    files: ['infra/**/*.ts', 'apps/api/**/*.ts', 'packages/**/*.ts', '**/*.config.{js,ts}'],
     languageOptions: { globals: globals.node },
   },
   prettier,

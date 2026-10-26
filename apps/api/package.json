@@ -1,0 +1,27 @@
+{
+  "name": "@the-keep/api",
+  "private": true,
+  "type": "module",
+  "description": "Lambda handlers behind API Gateway, the data layer and the migration runner",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "migrate": "tsx src/migrate.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-rds-data": "3.1157.0",
+    "@aws-sdk/client-sesv2": "3.1157.0",
+    "@the-keep/shared": "workspace:*",
+    "diff": "9.0.0",
+    "drizzle-orm": "0.45.4",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.12",
+    "@types/aws-lambda": "8.10.164",
+    "@types/node": "22.20.5",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "5.0.5"
+  }
+}
