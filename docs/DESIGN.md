@@ -257,7 +257,7 @@ the latest; the first two before Phase 0 so the repo is named and owned correctl
 stack names, and the Cognito domain prefix all derive from it.
 
 - [ ] Name: _(undecided)_
-- [ ] Domain: _(undecided)_
+- [x] Domain: `tylerfuqua.com`, registered in Route 53 (Oct 26, 2026)
 
 **AWS account.** New account or existing? Accounts created before July 15, 2025 are on the
 legacy 12-month free tier; newer accounts get credits instead. This changes whether RDS is
