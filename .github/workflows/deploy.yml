@@ -14,7 +14,8 @@ concurrency:
 
 env:
   AWS_REGION: us-east-1
-  STACK: TheKeepSite
+  # Order matters only for reading outputs; CDK sequences the deploys by dependency.
+  STACKS: TheKeepData TheKeepSite
 
 jobs:
   deploy:
@@ -49,13 +50,25 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: cdk deploy
-        run: pnpm -C infra cdk deploy "$STACK" --require-approval never --outputs-file outputs.json
+        run: pnpm -C infra cdk deploy $STACKS --require-approval never --outputs-file outputs.json
 
       - name: Read stack outputs
         id: outputs
         run: |
-          echo "bucket=$(jq -r ".${STACK}.SiteBucketName" infra/outputs.json)" >> "$GITHUB_OUTPUT"
-          echo "distribution=$(jq -r ".${STACK}.DistributionId" infra/outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "bucket=$(jq -r '.TheKeepSite.SiteBucketName' infra/outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "distribution=$(jq -r '.TheKeepSite.DistributionId' infra/outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "cluster_arn=$(jq -r '.TheKeepData.ClusterArn' infra/outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "secret_arn=$(jq -r '.TheKeepData.SecretArn' infra/outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "db_name=$(jq -r '.TheKeepData.DatabaseName' infra/outputs.json)" >> "$GITHUB_OUTPUT"
+
+      # Pending SQL files in apps/api/migrations, through the Data API, recorded in
+      # schema_migration. Wakes the cluster if it is paused.
+      - name: Run migrations
+        env:
+          DB_CLUSTER_ARN: ${{ steps.outputs.outputs.cluster_arn }}
+          DB_SECRET_ARN: ${{ steps.outputs.outputs.secret_arn }}
+          DB_NAME: ${{ steps.outputs.outputs.db_name }}
+        run: pnpm -C apps/api migrate
 
       # Double sync: hashed assets are immutable for a
       # year; root files (index.html and friends) are never cached so a deploy is visible
