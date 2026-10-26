@@ -1,14 +1,23 @@
+import { Navigate, Route, Routes } from 'react-router';
+import { RequireAuth } from '@/auth/RequireAuth';
+import { AppShell } from '@/components/AppShell';
+import { SignIn } from '@/routes/SignIn';
+
+/** Route table. Screens are added under the shell as phases bring them. */
 export function App() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-4 py-16">
-      <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-        The Keep
-      </p>
-      <h1 className="mt-2 text-4xl font-semibold tracking-tight">Tyler Fuqua</h1>
-      <p className="mt-4 text-lg text-muted-foreground">
-        Software engineer in Richmond, Virginia. Recipes, writing, and small-group logistics will
-        live here. For now, a page with a name on it.
-      </p>
-    </main>
+    <Routes>
+      <Route path="/sign-in" element={<SignIn />} />
+      <Route element={<RequireAuth />}>
+        <Route element={<AppShell />}>
+          <Route index element={<Navigate to="/recipes" replace />} />
+          <Route
+            path="/recipes"
+            element={<p className="text-muted-foreground">Recipes arrive next.</p>}
+          />
+        </Route>
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

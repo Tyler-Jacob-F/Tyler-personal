@@ -32,7 +32,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
-      - run: pnpm -C apps/web build
 
       - name: Show OIDC claims (sub, aud, repository); no token is printed
         uses: actions/github-script@v7
@@ -60,6 +59,8 @@ jobs:
           echo "cluster_arn=$(jq -r '.TheKeepData.ClusterArn' infra/outputs.json)" >> "$GITHUB_OUTPUT"
           echo "secret_arn=$(jq -r '.TheKeepData.SecretArn' infra/outputs.json)" >> "$GITHUB_OUTPUT"
           echo "db_name=$(jq -r '.TheKeepData.DatabaseName' infra/outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "user_pool_id=$(jq -r '.TheKeepAuth.UserPoolId' infra/outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "user_pool_client_id=$(jq -r '.TheKeepAuth.UserPoolClientId' infra/outputs.json)" >> "$GITHUB_OUTPUT"
 
       # Pending SQL files in apps/api/migrations, through the Data API, recorded in
       # schema_migration. Wakes the cluster if it is paused.
@@ -69,6 +70,14 @@ jobs:
           DB_SECRET_ARN: ${{ steps.outputs.outputs.secret_arn }}
           DB_NAME: ${{ steps.outputs.outputs.db_name }}
         run: pnpm -C apps/api migrate
+
+      # The SPA learns its Cognito pool and client from the stacks it just deployed.
+      - name: Build web
+        env:
+          VITE_AWS_REGION: ${{ env.AWS_REGION }}
+          VITE_COGNITO_USER_POOL_ID: ${{ steps.outputs.outputs.user_pool_id }}
+          VITE_COGNITO_CLIENT_ID: ${{ steps.outputs.outputs.user_pool_client_id }}
+        run: pnpm -C apps/web build
 
       # Double sync: hashed assets are immutable for a
       # year; root files (index.html and friends) are never cached so a deploy is visible
