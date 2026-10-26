@@ -19,10 +19,17 @@ recorded as author.
   never reaches a function's environment. Migrations run from CI through the same API.
   This is a judgment call the brief did not make; it is reversible (a `pg` driver is a
   one-file swap in the data layer) and flagged here so no session relitigates it.
-- **Cognito managed login with Google as the only identity provider.** The SPA uses
-  Cognito's OIDC endpoints directly (`oidc-client-ts`); no Amplify.
-- **Admin is exactly one allowlisted email**, stored in the `member` table with role
-  `admin`. Every other Google account gets a 403 after sign-in.
+- **Sign-in is a one-time code by email, not a social provider.** Tyler's admin
+  identity is an iCloud address; Sign in with Apple needs a $99/year developer
+  membership, which fails the budget principle. The brief's own fallback (Cognito custom
+  auth flow with a code sent through SES) becomes the primary path, and it is the path
+  Phase 3 members without Google will use anyway. Google federation moves to Phase 3.
+- **Admin is exactly one allowlisted email**, `tyler.fuqua@icloud.com`, pre-created in
+  the user pool by CDK and present in the `member` table with role `admin`. No sign-up
+  path exists; an unknown address gets no code.
+- **SES stays in the sandbox for this phase.** The sending domain `tylerfuqua.com` and
+  the admin address are verified identities, which is all sandbox mode needs to deliver
+  to the admin. Production access is requested in Phase 3 when real members arrive.
 
 ## In scope
 
@@ -30,8 +37,9 @@ recorded as author.
   the API request/response shapes. The single source of truth from this phase on.
 - `infra`: a `TheKeepData` stack (Aurora Serverless v2 cluster, Data API on, Secrets
   Manager secret, min 0 / max 2 ACU) and a `TheKeepApi` stack (HTTP API with a Cognito
-  JWT authorizer, Lambda handlers, Cognito user pool + Google IdP + managed-login domain).
-  CloudFront gains an `/api/*` behavior pointing at the HTTP API.
+  JWT authorizer, Lambda handlers, Cognito user pool with the custom-auth triggers, SES
+  domain identity with DKIM records in Route 53). CloudFront gains an `/api/*` behavior
+  pointing at the HTTP API.
 - Migrations: SQL files in `apps/api/migrations`, applied from the deploy workflow through
   the Data API. Tables: `document`, `version`, `attachment`, `member`, `agent_token`,
   shaped exactly as the brief's domain model. `agent_token` is created but unused.
@@ -40,8 +48,8 @@ recorded as author.
   against the shared schema for the document's type.
 - Identity and permission as two separate middlewares producing the brief's `caller`
   object; the permission middleware only knows rings and roles, nothing about Cognito.
-- `apps/web`: sign-in, recipe list, new recipe, edit (saves a new version with summary),
-  version history, unified diff view. React Router, TanStack Query, react-hook-form +
+- `apps/web`: sign-in (email, then code), recipe list, new recipe, edit (saves a new
+  version with summary), version history, unified diff view. React Router, TanStack Query, react-hook-form +
   zod, the shadcn primitives the screens need and no more.
 - Tests: handler tests with fake API Gateway events; data-layer tests against PGlite;
   web tests with MSW; CDK snapshots for both new stacks.
@@ -57,7 +65,9 @@ recorded as author.
   are added.
 - Attachment upload (presigned URLs) and recipe photos. The `attachment` table is
   created; no endpoint writes to it.
-- Members other than the admin, the member allowlist UI, the SES email fallback.
+- Members other than the admin, the member allowlist UI.
+- Google (or any social) federation, the managed-login hosted page, SES production
+  access. All Phase 3.
 - Public read path, CloudFront caching of API responses, SEO, the resume page.
 - Design values: primary color, long-form typeface, radius, dark palette. The UI uses the
   neutral ramp and whatever shadcn ships. Dark mode plumbing exists; no palette.
@@ -74,7 +84,9 @@ recorded as author.
 - Backend: TypeScript on Node 22, Lambda behind API Gateway HTTP API.
 - Database: PostgreSQL; versioned documents are relational. (Instance type amended above.)
 - Object storage: S3 keys referenced from Postgres; no blobs in the database.
-- Auth (people): Cognito user pool with Google federation; allowlist table decides roles.
+- Auth (people): Cognito user pool; allowlist table decides roles. (Google federation
+  deferred to Phase 3; the brief's email-code fallback is built now because the admin
+  needs it.)
 - Monorepo: `apps/api` and `packages/shared` are created in this phase.
 - Domain model: `document`, `version` (append-only), `attachment`, `member`,
   `agent_token`, exactly as specified. Promotion is a document-level change.
@@ -101,10 +113,16 @@ Each is one PR, in this order; later ones depend on earlier ones.
 - [ ] **Data layer.** Drizzle schema matching the migration, repository functions for
       documents and versions, tests on PGlite. The Data API driver in production, PGlite
       in tests, same queries.
-- [ ] **Auth stack.** Cognito user pool, Google identity provider, managed-login domain
-      `thekeep`, app client with PKCE and the site's callback URLs. Google client secret
-      read from an SSM SecureString that Tyler sets by hand (never in the repo). Snapshot
-      test.
+- [ ] **Auth stack.** Cognito user pool (email as username, no self sign-up, custom auth
+      flow enabled), the admin user created by CDK, an app client allowing only
+      `CUSTOM_AUTH` and refresh, and three trigger Lambdas: define challenge, create
+      challenge (generate a six-digit code, send it through SES, keep the hash in private
+      challenge parameters), verify challenge. Handler tests with fake trigger events.
+      Snapshot test.
+- [ ] **Email identity.** SES domain identity for `tylerfuqua.com` with DKIM CNAMEs and
+      a MAIL FROM subdomain in Route 53 via CDK; the admin address verified as a sandbox
+      recipient (Tyler clicks the verification link once). A plain-text code email with
+      no links.
 - [ ] **API stack and handlers.** HTTP API with JWT authorizer, `/api/*` routes, one
       Lambda per resource (`documents`, `versions`, `me`), identity + permission
       middlewares, structured logger. Handler tests with fake events. CloudFront `/api/*`
@@ -112,9 +130,12 @@ Each is one PR, in this order; later ones depend on earlier ones.
 - [ ] **Diff endpoint.** `GET /api/documents/:id/diff?from=&to=` returning a unified diff
       of `body` and a key-level diff of `frontmatter`, computed server-side with the
       `diff` package. Tests.
-- [ ] **Web: auth and shell.** `oidc-client-ts` + `react-oidc-context`, a protected route
-      wrapper, the top-nav AppShell, the typed fetch client, and the `me` query. The
-      custom test `render` grows the QueryClient, router and a fake auth provider.
+- [ ] **Web: auth and shell.** Sign-in screen (email, then code) driving Cognito's
+      `InitiateAuth` / `RespondToAuthChallenge` with the `CUSTOM_AUTH` flow through
+      `@aws-sdk/client-cognito-identity-provider`, tokens held in memory with refresh,
+      a protected route wrapper, the top-nav AppShell, the typed fetch client, and the
+      `me` query. The custom test `render` grows the QueryClient, router and a fake auth
+      provider.
 - [ ] **Web: recipes.** List, create, edit-as-new-version with a summary field, history,
       diff view. Forms from the shared schema via `zodResolver`. MSW tests for each
       screen.
@@ -126,14 +147,12 @@ Each is one PR, in this order; later ones depend on earlier ones.
 
 **Ask Tyler** (cannot be undone or is reserved by the brief):
 
-- The Google account email that becomes the admin row. It must be the account used to
-  sign in through Google.
 - Confirmation before the first `TheKeepData` deploy, since the cluster is the first
   resource with a meaningful hourly cost and a deletion-protection flag.
-- The Google OAuth client ID and secret: Tyler creates these in Google Cloud Console
-  (OAuth consent screen, then a Web application client with the Cognito callback URL)
-  and puts the secret in SSM as `/the-keep/google/client-secret`. The session never sees
-  the secret; it only reads the parameter name.
+- One click from Tyler: the SES verification email for `tyler.fuqua@icloud.com` that
+  arrives after the email-identity PR deploys.
+- The code's lifetime and attempt limit if they should differ from the defaults flagged
+  in the auth PR (10 minutes, 3 attempts).
 - Table or column renames after the first migration ships. Migrations are append-only
   from then on.
 
@@ -141,8 +160,8 @@ Each is one PR, in this order; later ones depend on earlier ones.
 
 - Exact Aurora engine version, max ACU, backup retention, log exports.
 - Drizzle vs. hand-written SQL for the data layer (Drizzle is the default above).
-- Cognito token lifetimes, the app client's OAuth scopes, hosted-UI vs. managed-login
-  branding settings.
+- Cognito token lifetimes, the app client's auth flows, the code email's sender name
+  and wording.
 - Lambda memory, timeout, bundling options, log retention days.
 - Route shapes and status codes within the brief's `/api/documents` family.
 - Slug generation rule (kebab-case of the title, suffixed on collision).
