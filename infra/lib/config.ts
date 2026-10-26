@@ -24,4 +24,8 @@ export const config = {
   /** Exactly one admin (docs/phases/01-spine.md). Pre-created in Cognito and `member` by code. */
   admin: { email: 'tyler.fuqua@icloud.com', displayName: 'Tyler' },
   database: { name: 'thekeep', ssmPrefix: '/the-keep/db' },
+  /** Sign-in code defaults, flagged in docs/phases/01-spine.md "Ask versus decide". */
+  auth: { codeTtlMinutes: 10, maxAttempts: 3 },
+  /** SES: the domain identity, its MAIL FROM subdomain, and the address codes come from. */
+  email: { sender: 'keep@tylerfuqua.com', mailFromDomain: 'mail.tylerfuqua.com' },
 } as const;

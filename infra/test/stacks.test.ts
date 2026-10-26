@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
+import { Match, Template } from 'aws-cdk-lib/assertions';
 import { AccountStack } from '../lib/account-stack.js';
+import { AuthStack } from '../lib/auth-stack.js';
 import { config } from '../lib/config.js';
 import { DataStack } from '../lib/data-stack.js';
 import { SiteStack } from '../lib/site-stack.js';
@@ -86,5 +87,49 @@ describe('DataStack', () => {
 
   it('publishes the cluster and secret ARNs as SSM parameters', () => {
     template.resourceCountIs('AWS::SSM::Parameter', 3);
+  });
+});
+
+describe('AuthStack', () => {
+  const template = Template.fromStack(new AuthStack(app(), 'Auth', { env: config.env }));
+
+  it('matches the snapshot', () => {
+    expect(template.toJSON()).toMatchSnapshot();
+  });
+
+  it('allows no self sign-up and wires the three custom-auth triggers', () => {
+    template.hasResourceProperties('AWS::Cognito::UserPool', {
+      AdminCreateUserConfig: { AllowAdminCreateUserOnly: true },
+      UsernameAttributes: ['email'],
+      LambdaConfig: {
+        DefineAuthChallenge: Match.anyValue(),
+        CreateAuthChallenge: Match.anyValue(),
+        VerifyAuthChallengeResponse: Match.anyValue(),
+      },
+      DeletionProtection: 'ACTIVE',
+    });
+    template.hasResource('AWS::Cognito::UserPool', { DeletionPolicy: 'Retain' });
+    template.resourceCountIs('AWS::Lambda::Function', 3);
+  });
+
+  it('pre-creates exactly the admin, with no welcome email', () => {
+    template.resourceCountIs('AWS::Cognito::UserPoolUser', 1);
+    template.hasResourceProperties('AWS::Cognito::UserPoolUser', {
+      Username: config.admin.email,
+      MessageAction: 'SUPPRESS',
+    });
+  });
+
+  it('lets the web client use only the custom flow and refresh', () => {
+    template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
+      ExplicitAuthFlows: ['ALLOW_CUSTOM_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH'],
+      GenerateSecret: false,
+      PreventUserExistenceErrors: 'ENABLED',
+    });
+  });
+
+  it('keeps every function log for a month', () => {
+    template.resourceCountIs('AWS::Logs::LogGroup', 3);
+    template.allResourcesProperties('AWS::Logs::LogGroup', { RetentionInDays: 30 });
   });
 });

@@ -1,5 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import { AccountStack } from '../lib/account-stack.js';
+import { AuthStack } from '../lib/auth-stack.js';
 import { config } from '../lib/config.js';
 import { DataStack } from '../lib/data-stack.js';
 import { SiteStack } from '../lib/site-stack.js';
@@ -15,6 +16,11 @@ new AccountStack(app, `${config.stackPrefix}Account`, {
 new DataStack(app, `${config.stackPrefix}Data`, {
   env,
   description: `${config.siteName}: Aurora Serverless v2 behind the RDS Data API`,
+});
+
+new AuthStack(app, `${config.stackPrefix}Auth`, {
+  env,
+  description: `${config.siteName}: Cognito user pool, sign-in by emailed code`,
 });
 
 new SiteStack(app, `${config.stackPrefix}Site`, {
