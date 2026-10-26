@@ -1,6 +1,12 @@
 import { Navigate, Route, Routes } from 'react-router';
 import { RequireAuth } from '@/auth/RequireAuth';
 import { AppShell } from '@/components/AppShell';
+import { EditRecipe } from '@/routes/recipes/EditRecipe';
+import { NewRecipe } from '@/routes/recipes/NewRecipe';
+import { RecipeDetail } from '@/routes/recipes/RecipeDetail';
+import { RecipeDiff } from '@/routes/recipes/RecipeDiff';
+import { RecipeHistory } from '@/routes/recipes/RecipeHistory';
+import { RecipeList } from '@/routes/recipes/RecipeList';
 import { SignIn } from '@/routes/SignIn';
 
 /** Route table. Screens are added under the shell as phases bring them. */
@@ -11,10 +17,12 @@ export function App() {
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
           <Route index element={<Navigate to="/recipes" replace />} />
-          <Route
-            path="/recipes"
-            element={<p className="text-muted-foreground">Recipes arrive next.</p>}
-          />
+          <Route path="/recipes" element={<RecipeList />} />
+          <Route path="/recipes/new" element={<NewRecipe />} />
+          <Route path="/recipes/:id" element={<RecipeDetail />} />
+          <Route path="/recipes/:id/edit" element={<EditRecipe />} />
+          <Route path="/recipes/:id/history" element={<RecipeHistory />} />
+          <Route path="/recipes/:id/diff" element={<RecipeDiff />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

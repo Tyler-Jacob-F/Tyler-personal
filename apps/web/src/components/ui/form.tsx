@@ -31,7 +31,8 @@ const ItemContext = createContext<ItemContextValue | null>(null);
 export function FormField<
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
->(props: ControllerProps<TFieldValues, TName>) {
+  TTransformedValues = TFieldValues,
+>(props: ControllerProps<TFieldValues, TName, TTransformedValues>) {
   return (
     <FieldContext.Provider value={{ name: props.name }}>
       <Controller {...props} />
