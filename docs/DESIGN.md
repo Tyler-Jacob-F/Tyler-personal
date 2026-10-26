@@ -38,23 +38,23 @@ Principles that keep scope honest:
 These are settled unless a phase surfaces a reason to revisit. Claude Code should treat
 them as constraints, not suggestions.
 
-| Area                   | Decision                                                                                                         | Why                                                                                                  |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Frontend               | TypeScript, React 19, Vite, Tailwind v4, shadcn/ui on Radix, react-hook-form + zod, TanStack Query, React Router | Conventions Tyler already knows well; static SPA needs no server                                     |
-| Backend                | TypeScript on Node 22, Lambda functions behind API Gateway (HTTP API)                                            | Learns the real AWS primitives; cost rounds to zero at this scale                                    |
-| Database               | PostgreSQL. RDS db.t4g.micro to start; evaluate Aurora Serverless v2 free tier once confirmed                    | Versioned documents, diffs, tags and relations are relational; DynamoDB would fight the domain model |
-| Object storage         | S3 for uploads (resume PDF, recipe photos, attachments), served through CloudFront                               | Documents reference S3 keys; never store blobs in Postgres                                           |
-| Static hosting         | S3 + CloudFront, SPA fallback via CloudFront Function                                                            | No web server to run or patch                                                                        |
-| Infrastructure as code | AWS CDK in TypeScript, in the same repo                                                                          | One language across the stack; `cdk diff` on every PR                                                |
-| CI/CD                  | GitHub Actions, OIDC federation to AWS (no long-lived keys), deploy on merge to `main`                           | The pipeline shape a bank would recognize                                                            |
-| Auth (people)          | Cognito user pool with Google as federated IdP; allowlist table decides roles                                    | Members sign in with the Gmail they have; no passwords to manage                                     |
-| Auth (agents)          | Per-agent API tokens with explicit scopes, separate from human sessions                                          | Agents are first-class clients with a smaller blast radius                                           |
-| Agent surface          | MCP server on Lambda wrapping the public API                                                                     | Claude Code and Duet become ingest paths, not just consumers                                         |
-| Reading feed           | Hardcover GraphQL API (Goodreads API is closed)                                                                  | Only maintained option with a real API                                                               |
-| Monorepo               | pnpm workspaces: `apps/web`, `apps/api`, `packages/shared`, `infra`                                              | Shared zod schemas between client, server and MCP                                                    |
-| Formatting             | Prettier + ESLint flat config from day one                                                                       | Formatting drift is cheaper to prevent than fix                                                      |
-| Testing                | Vitest + RTL + MSW for web; Vitest for API; CDK snapshot tests for infra                                         | Familiar shape; keep the custom render pattern                                                       |
-| Observability          | CloudWatch logs + a single dashboard; structured JSON logs                                                       | Enough to debug a Lambda at 11pm; nothing more yet                                                   |
+| Area                   | Decision                                                                                                                          | Why                                                                                                                                         |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend               | TypeScript, React 19, Vite, Tailwind v4, shadcn/ui on Radix, react-hook-form + zod, TanStack Query, React Router                  | Conventions Tyler already knows well; static SPA needs no server                                                                            |
+| Backend                | TypeScript on Node 22, Lambda functions behind API Gateway (HTTP API)                                                             | Learns the real AWS primitives; cost rounds to zero at this scale                                                                           |
+| Database               | PostgreSQL on Aurora Serverless v2, min 0 ACU, accessed through the RDS Data API (decided Phase 1; see `docs/phases/01-spine.md`) | Versioned documents, diffs, tags and relations are relational; DynamoDB would fight the domain model; pausing at zero keeps it under budget |
+| Object storage         | S3 for uploads (resume PDF, recipe photos, attachments), served through CloudFront                                                | Documents reference S3 keys; never store blobs in Postgres                                                                                  |
+| Static hosting         | S3 + CloudFront, SPA fallback via CloudFront Function                                                                             | No web server to run or patch                                                                                                               |
+| Infrastructure as code | AWS CDK in TypeScript, in the same repo                                                                                           | One language across the stack; `cdk diff` on every PR                                                                                       |
+| CI/CD                  | GitHub Actions, OIDC federation to AWS (no long-lived keys), deploy on merge to `main`                                            | The pipeline shape a bank would recognize                                                                                                   |
+| Auth (people)          | Cognito user pool with Google as federated IdP; allowlist table decides roles                                                     | Members sign in with the Gmail they have; no passwords to manage                                                                            |
+| Auth (agents)          | Per-agent API tokens with explicit scopes, separate from human sessions                                                           | Agents are first-class clients with a smaller blast radius                                                                                  |
+| Agent surface          | MCP server on Lambda wrapping the public API                                                                                      | Claude Code and Duet become ingest paths, not just consumers                                                                                |
+| Reading feed           | Hardcover GraphQL API (Goodreads API is closed)                                                                                   | Only maintained option with a real API                                                                                                      |
+| Monorepo               | pnpm workspaces: `apps/web`, `apps/api`, `packages/shared`, `infra`                                                               | Shared zod schemas between client, server and MCP                                                                                           |
+| Formatting             | Prettier + ESLint flat config from day one                                                                                        | Formatting drift is cheaper to prevent than fix                                                                                             |
+| Testing                | Vitest + RTL + MSW for web; Vitest for API; CDK snapshot tests for infra                                                          | Familiar shape; keep the custom render pattern                                                                                              |
+| Observability          | CloudWatch logs + a single dashboard; structured JSON logs                                                                        | Enough to debug a Lambda at 11pm; nothing more yet                                                                                          |
 
 ## Domain model
 
@@ -277,8 +277,8 @@ yours):
 
 **Open questions** (not blocking Phase 0 or 1):
 
-- [ ] Aurora Serverless v2 free tier: confirmed on the AWS pricing page, or stay on RDS
-      db.t4g.micro?
+- [x] Aurora Serverless v2 free tier: confirmed on the AWS pricing page, or stay on RDS
+      db.t4g.micro? Aurora Serverless v2 at min 0 ACU (Oct 26, 2026).
 - [ ] Hardcover API: create an account and confirm the GraphQL endpoint exposes "currently
       reading" and shelves
 - [ ] Duet integration path: does Duet reach external MCP servers today, or does the brief
