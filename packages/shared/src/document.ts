@@ -54,6 +54,7 @@ export const versionSchema = z.object({
   createdAt: z.iso.datetime(),
   /** When the content was written, if that differs from when it entered The Keep. */
   authoredAt: z.iso.datetime().nullable(),
-  summary: z.string().max(200),
+  /** One line, "added smoked paprika". Length is enforced on write (api.ts), never on read. */
+  summary: z.string(),
 });
 export type Version = z.infer<typeof versionSchema>;

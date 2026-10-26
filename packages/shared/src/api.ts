@@ -50,7 +50,7 @@ export const createDocumentRequestSchema = z.object({
   type: documentTypeSchema,
   frontmatter: z.record(z.string(), z.unknown()),
   body: z.string().max(200_000),
-  summary: z.string().trim().max(200).default(''),
+  summary: z.string().trim().max(500).default(''),
   tags: tagsSchema.default([]),
   authoredAt: authoredAtSchema,
 });
@@ -59,7 +59,7 @@ export type CreateDocumentRequest = z.infer<typeof createDocumentRequestSchema>;
 export const createVersionRequestSchema = z.object({
   frontmatter: z.record(z.string(), z.unknown()),
   body: z.string().max(200_000),
-  summary: z.string().trim().max(200).default(''),
+  summary: z.string().trim().max(500).default(''),
   authoredAt: authoredAtSchema,
 });
 export type CreateVersionRequest = z.infer<typeof createVersionRequestSchema>;
