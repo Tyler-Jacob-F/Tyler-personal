@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpUserPoolAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import type * as cognito from 'aws-cdk-lib/aws-cognito';
 import type * as lambda from 'aws-cdk-lib/aws-lambda';
 import type * as rds from 'aws-cdk-lib/aws-rds';
@@ -13,6 +14,8 @@ export interface ApiStackProps extends cdk.StackProps {
   cluster: rds.DatabaseCluster;
   userPool: cognito.IUserPool;
   userPoolClient: cognito.IUserPoolClient;
+  /** Other functions (the Cognito triggers) to show on the dashboard. */
+  otherFunctions?: lambda.IFunction[];
 }
 
 /**
@@ -90,6 +93,49 @@ export class ApiStack extends cdk.Stack {
     // https://abc123.execute-api.us-east-1.amazonaws.com -> abc123.execute-api.us-east-1.amazonaws.com
     this.apiDomainName = cdk.Fn.select(2, cdk.Fn.split('/', this.httpApi.apiEndpoint));
 
+    this.dashboard(cluster, [me, documents, versions, ...(props.otherFunctions ?? [])]);
+
     new cdk.CfnOutput(this, 'ApiEndpoint', { value: this.httpApi.apiEndpoint });
+  }
+
+  /** The one dashboard the brief allows: enough to debug a Lambda at 11pm. */
+  private dashboard(cluster: rds.DatabaseCluster, functions: lambda.IFunction[]): void {
+    const period = cdk.Duration.minutes(5);
+    const perFunction = (pick: (fn: lambda.IFunction) => cloudwatch.Metric) =>
+      functions.map((fn) => pick(fn).with({ label: fn.node.id, period }));
+
+    const dashboard = new cloudwatch.Dashboard(this, 'Dashboard', {
+      dashboardName: `${config.stackPrefix}`,
+      defaultInterval: cdk.Duration.hours(6),
+    });
+    dashboard.addWidgets(
+      new cloudwatch.GraphWidget({
+        title: 'Lambda errors',
+        width: 12,
+        left: perFunction((fn) => fn.metricErrors({ statistic: 'Sum' })),
+      }),
+      new cloudwatch.GraphWidget({
+        title: 'Lambda duration p95 (ms)',
+        width: 12,
+        left: perFunction((fn) => fn.metricDuration({ statistic: 'p95' })),
+      }),
+    );
+    dashboard.addWidgets(
+      new cloudwatch.GraphWidget({
+        title: 'API requests and errors',
+        width: 12,
+        left: [
+          this.httpApi.metricCount({ statistic: 'Sum', period, label: 'requests' }),
+          this.httpApi.metricClientError({ statistic: 'Sum', period, label: '4xx' }),
+          this.httpApi.metricServerError({ statistic: 'Sum', period, label: '5xx' }),
+        ],
+      }),
+      new cloudwatch.GraphWidget({
+        title: 'Aurora capacity',
+        width: 12,
+        left: [cluster.metricServerlessDatabaseCapacity({ period, label: 'ACU' })],
+        right: [cluster.metricACUUtilization({ period, label: 'ACU utilization %' })],
+      }),
+    );
   }
 }

@@ -189,6 +189,7 @@ describe('ApiStack', () => {
       cluster: data.cluster,
       userPool: auth.userPool,
       userPoolClient: auth.webClient,
+      otherFunctions: auth.triggers,
     }),
   );
 
@@ -219,5 +220,22 @@ describe('ApiStack', () => {
     expect(policies).toContain('rds-data:ExecuteStatement');
     template.resourceCountIs('AWS::Logs::LogGroup', 3);
     template.allResourcesProperties('AWS::Logs::LogGroup', { RetentionInDays: 30 });
+  });
+
+  it('draws one dashboard with Lambda errors and duration, API 4xx/5xx and Aurora ACU', () => {
+    template.resourceCountIs('AWS::CloudWatch::Dashboard', 1);
+    const body = JSON.stringify(template.findResources('AWS::CloudWatch::Dashboard'));
+    for (const needle of [
+      'Lambda errors',
+      'Lambda duration p95',
+      'AWS/ApiGateway\\",\\"4xx',
+      'AWS/ApiGateway\\",\\"5xx',
+      'ServerlessDatabaseCapacity',
+      'ACUUtilization',
+      'CreateAuthChallenge',
+      'DocumentsFunction',
+    ]) {
+      expect(body).toContain(needle);
+    }
   });
 });

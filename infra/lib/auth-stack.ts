@@ -1,5 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
+import type * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as ses from 'aws-cdk-lib/aws-ses';
 import type { Construct } from 'constructs';
@@ -14,6 +15,8 @@ import { apiFunction } from './lambda.js';
 export class AuthStack extends cdk.Stack {
   readonly userPool: cognito.UserPool;
   readonly webClient: cognito.UserPoolClient;
+  /** The three custom-auth triggers, for the dashboard in the API stack. */
+  readonly triggers: lambda.IFunction[];
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -51,6 +54,8 @@ export class AuthStack extends cdk.Stack {
       description: `${config.siteName}: custom auth flow, verify the code`,
       memorySize: 256,
     });
+
+    this.triggers = [defineAuthChallenge, createAuthChallenge, verifyAuthChallenge];
 
     this.userPool = new cognito.UserPool(this, 'UserPool', {
       userPoolName: `${config.stackPrefix}`,

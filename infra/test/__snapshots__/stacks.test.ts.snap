@@ -407,6 +407,104 @@ exports[`ApiStack > matches the snapshot 1`] = `
     },
   },
   "Resources": {
+    "Dashboard9E4231ED": {
+      "Properties": {
+        "DashboardBody": {
+          "Fn::Join": [
+            "",
+            [
+              "{"start":"-PT6H","widgets":[{"type":"metric","width":12,"height":6,"x":0,"y":0,"properties":{"view":"timeSeries","title":"Lambda errors","region":"",
+              {
+                "Ref": "AWS::Region",
+              },
+              "","metrics":[["AWS/Lambda","Errors","FunctionName","",
+              {
+                "Ref": "MeFunction4482FBE1",
+              },
+              "",{"label":"MeFunction","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
+              {
+                "Ref": "DocumentsFunctionF5D11372",
+              },
+              "",{"label":"DocumentsFunction","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
+              {
+                "Ref": "VersionsFunction6B40A6D6",
+              },
+              "",{"label":"VersionsFunction","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
+              {
+                "Fn::ImportValue": "Auth:ExportsOutputRefDefineAuthChallengeE7E3BC7B5357E3C6",
+              },
+              "",{"label":"DefineAuthChallenge","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
+              {
+                "Fn::ImportValue": "Auth:ExportsOutputRefCreateAuthChallengeB2F8D8734EDEC2CF",
+              },
+              "",{"label":"CreateAuthChallenge","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
+              {
+                "Fn::ImportValue": "Auth:ExportsOutputRefVerifyAuthChallenge610ED36B4EF9BFA9",
+              },
+              "",{"label":"VerifyAuthChallenge","stat":"Sum"}]],"yAxis":{}}},{"type":"metric","width":12,"height":6,"x":12,"y":0,"properties":{"view":"timeSeries","title":"Lambda duration p95 (ms)","region":"",
+              {
+                "Ref": "AWS::Region",
+              },
+              "","metrics":[["AWS/Lambda","Duration","FunctionName","",
+              {
+                "Ref": "MeFunction4482FBE1",
+              },
+              "",{"label":"MeFunction","stat":"p95"}],["AWS/Lambda","Duration","FunctionName","",
+              {
+                "Ref": "DocumentsFunctionF5D11372",
+              },
+              "",{"label":"DocumentsFunction","stat":"p95"}],["AWS/Lambda","Duration","FunctionName","",
+              {
+                "Ref": "VersionsFunction6B40A6D6",
+              },
+              "",{"label":"VersionsFunction","stat":"p95"}],["AWS/Lambda","Duration","FunctionName","",
+              {
+                "Fn::ImportValue": "Auth:ExportsOutputRefDefineAuthChallengeE7E3BC7B5357E3C6",
+              },
+              "",{"label":"DefineAuthChallenge","stat":"p95"}],["AWS/Lambda","Duration","FunctionName","",
+              {
+                "Fn::ImportValue": "Auth:ExportsOutputRefCreateAuthChallengeB2F8D8734EDEC2CF",
+              },
+              "",{"label":"CreateAuthChallenge","stat":"p95"}],["AWS/Lambda","Duration","FunctionName","",
+              {
+                "Fn::ImportValue": "Auth:ExportsOutputRefVerifyAuthChallenge610ED36B4EF9BFA9",
+              },
+              "",{"label":"VerifyAuthChallenge","stat":"p95"}]],"yAxis":{}}},{"type":"metric","width":12,"height":6,"x":0,"y":6,"properties":{"view":"timeSeries","title":"API requests and errors","region":"",
+              {
+                "Ref": "AWS::Region",
+              },
+              "","metrics":[["AWS/ApiGateway","Count","ApiId","",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "",{"label":"requests","stat":"Sum"}],["AWS/ApiGateway","4xx","ApiId","",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "",{"label":"4xx","stat":"Sum"}],["AWS/ApiGateway","5xx","ApiId","",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "",{"label":"5xx","stat":"Sum"}]],"yAxis":{}}},{"type":"metric","width":12,"height":6,"x":12,"y":6,"properties":{"view":"timeSeries","title":"Aurora capacity","region":"",
+              {
+                "Ref": "AWS::Region",
+              },
+              "","metrics":[["AWS/RDS","ServerlessDatabaseCapacity","DBClusterIdentifier","",
+              {
+                "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+              },
+              "",{"label":"ACU"}],["AWS/RDS","ACUUtilization","DBClusterIdentifier","",
+              {
+                "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+              },
+              "",{"label":"ACU utilization %","yAxis":"right"}]],"yAxis":{}}}]}",
+            ],
+          ],
+        },
+        "DashboardName": "TheKeep",
+      },
+      "Type": "AWS::CloudWatch::Dashboard",
+    },
     "DocumentsFunctionF5D11372": {
       "DependsOn": [
         "DocumentsFunctionServiceRoleDefaultPolicy6D0CB52D",

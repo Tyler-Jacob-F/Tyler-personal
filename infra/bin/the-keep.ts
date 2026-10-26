@@ -30,6 +30,7 @@ const api = new ApiStack(app, `${config.stackPrefix}Api`, {
   cluster: data.cluster,
   userPool: auth.userPool,
   userPoolClient: auth.webClient,
+  otherFunctions: auth.triggers,
 });
 
 new SiteStack(app, `${config.stackPrefix}Site`, {
