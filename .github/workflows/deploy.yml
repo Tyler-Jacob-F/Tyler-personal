@@ -33,6 +33,16 @@ jobs:
       - run: pnpm test
       - run: pnpm -C apps/web build
 
+      - name: Show OIDC claims (sub, aud, repository); no token is printed
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const token = await core.getIDToken('sts.amazonaws.com');
+            const claims = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString());
+            for (const k of ['sub', 'aud', 'repository', 'repository_owner', 'ref', 'event_name', 'iss']) {
+              core.info(`${k}: ${claims[k]}`);
+            }
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
