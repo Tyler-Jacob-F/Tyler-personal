@@ -39,23 +39,23 @@ Principles that keep scope honest:
 These are settled unless a phase surfaces a reason to revisit. Claude Code should treat
 them as constraints, not suggestions.
 
-| Area                   | Decision                                                                                                                  | Why                                                                                                   |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Frontend               | TypeScript, React 19, Vite, Tailwind v4, shadcn/ui on Radix, react-hook-form + zod, TanStack Query, React Router          | Matches the config portal conventions Tyler already knows; static SPA needs no server                 |
-| Backend                | TypeScript on Node 22, Lambda functions behind API Gateway (HTTP API)                                                     | Learns the real AWS primitives; cost rounds to zero at this scale                                     |
-| Database               | PostgreSQL. RDS db.t4g.micro to start; evaluate Aurora Serverless v2 free tier once confirmed                             | Versioned documents, diffs, tags and relations are relational; DynamoDB would fight the domain model  |
-| Object storage         | S3 for uploads (resume PDF, recipe photos, attachments), served through CloudFront                                        | Documents reference S3 keys; never store blobs in Postgres                                            |
-| Static hosting         | S3 + CloudFront, SPA fallback via CloudFront Function                                                                     | No web server to run or patch                                                                         |
-| Infrastructure as code | AWS CDK in TypeScript, in the same repo                                                                                   | One language across the stack; `cdk diff` on every PR                                                 |
-| CI/CD                  | GitHub Actions, OIDC federation to AWS (no long-lived keys), deploy on merge to `main`                                    | The pipeline shape a bank would recognize                                                             |
-| Auth (people)          | Cognito user pool with Google as federated IdP; allowlist table decides roles                                             | Members sign in with the Gmail they have; no passwords to manage                                      |
-| Auth (agents)          | Per-agent API tokens with explicit scopes, separate from human sessions                                                   | Agents are first-class clients with a smaller blast radius                                            |
-| Agent surface          | MCP server on Lambda wrapping the public API                                                                              | Claude Code and Duet become ingest paths, not just consumers                                          |
-| Reading feed           | Hardcover GraphQL API (Goodreads API is closed)                                                                           | Only maintained option with a real API                                                                |
-| Monorepo               | pnpm workspaces: `apps/web`, `apps/api`, `packages/shared`, `infra`                                                       | Shared zod schemas between client, server and MCP                                                     |
-| Formatting             | Prettier + ESLint flat config from day one                                                                                | The portal skipped Prettier and shows the drift                                                       |
-| Testing                | Vitest + RTL + MSW for web; Vitest for API; CDK snapshot tests for infra                                                  | Same shape as the portal; keep the custom render pattern                                              |
-| Observability          | CloudWatch logs + a single dashboard; structured JSON logs                                                                | Enough to debug a Lambda at 11pm; nothing more yet                                                    |
+| Area                   | Decision                                                                                                         | Why                                                                                                  |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Frontend               | TypeScript, React 19, Vite, Tailwind v4, shadcn/ui on Radix, react-hook-form + zod, TanStack Query, React Router | Matches the config portal conventions Tyler already knows; static SPA needs no server                |
+| Backend                | TypeScript on Node 22, Lambda functions behind API Gateway (HTTP API)                                            | Learns the real AWS primitives; cost rounds to zero at this scale                                    |
+| Database               | PostgreSQL. RDS db.t4g.micro to start; evaluate Aurora Serverless v2 free tier once confirmed                    | Versioned documents, diffs, tags and relations are relational; DynamoDB would fight the domain model |
+| Object storage         | S3 for uploads (resume PDF, recipe photos, attachments), served through CloudFront                               | Documents reference S3 keys; never store blobs in Postgres                                           |
+| Static hosting         | S3 + CloudFront, SPA fallback via CloudFront Function                                                            | No web server to run or patch                                                                        |
+| Infrastructure as code | AWS CDK in TypeScript, in the same repo                                                                          | One language across the stack; `cdk diff` on every PR                                                |
+| CI/CD                  | GitHub Actions, OIDC federation to AWS (no long-lived keys), deploy on merge to `main`                           | The pipeline shape a bank would recognize                                                            |
+| Auth (people)          | Cognito user pool with Google as federated IdP; allowlist table decides roles                                    | Members sign in with the Gmail they have; no passwords to manage                                     |
+| Auth (agents)          | Per-agent API tokens with explicit scopes, separate from human sessions                                          | Agents are first-class clients with a smaller blast radius                                           |
+| Agent surface          | MCP server on Lambda wrapping the public API                                                                     | Claude Code and Duet become ingest paths, not just consumers                                         |
+| Reading feed           | Hardcover GraphQL API (Goodreads API is closed)                                                                  | Only maintained option with a real API                                                               |
+| Monorepo               | pnpm workspaces: `apps/web`, `apps/api`, `packages/shared`, `infra`                                              | Shared zod schemas between client, server and MCP                                                    |
+| Formatting             | Prettier + ESLint flat config from day one                                                                       | The portal skipped Prettier and shows the drift                                                      |
+| Testing                | Vitest + RTL + MSW for web; Vitest for API; CDK snapshot tests for infra                                         | Same shape as the portal; keep the custom render pattern                                             |
+| Observability          | CloudWatch logs + a single dashboard; structured JSON logs                                                       | Enough to debug a Lambda at 11pm; nothing more yet                                                   |
 
 ## Domain model
 
@@ -81,15 +81,15 @@ jsonb diff of `frontmatter`.
 truth for client validation, server validation, the MCP tool definitions, and the
 frontmatter column. Initial types:
 
-| Type     | Frontmatter (beyond body)                          | Default ring | Notes                                                                                                   |
-| -------- | -------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------- |
-| `recipe` | servings, prep/cook minutes, ingredients[], tags   | me           | Versions are the point; public ring renders the current version with a "history" affordance            |
-| `essay`  | title, subtitle, status (draft / revised / final)  | me           | Writing lives here; publishing is promotion to public                                                   |
-| `note`   | title                                              | me           | Short, informal; the "what I'm working on" feed is notes promoted to public                             |
-| `survey` | questions[] (typed), closes_at, allow_anonymous    | group        | Responses are their own table, keyed by survey document and either a member or a share token            |
-| `signup` | slots[] (label, capacity), closes_at               | group        | Dessert sign-ups and the like; claims are rows, not versions                                            |
-| `brief`  | date, sections[]                                   | me           | Written by an agent token; the dashboard renders today's                                                |
-| `page`   | title                                              | public       | Resume, about, bookstore list; versioned like everything else                                           |
+| Type     | Frontmatter (beyond body)                         | Default ring | Notes                                                                                        |
+| -------- | ------------------------------------------------- | ------------ | -------------------------------------------------------------------------------------------- |
+| `recipe` | servings, prep/cook minutes, ingredients[], tags  | me           | Versions are the point; public ring renders the current version with a "history" affordance  |
+| `essay`  | title, subtitle, status (draft / revised / final) | me           | Writing lives here; publishing is promotion to public                                        |
+| `note`   | title                                             | me           | Short, informal; the "what I'm working on" feed is notes promoted to public                  |
+| `survey` | questions[] (typed), closes_at, allow_anonymous   | group        | Responses are their own table, keyed by survey document and either a member or a share token |
+| `signup` | slots[] (label, capacity), closes_at              | group        | Dessert sign-ups and the like; claims are rows, not versions                                 |
+| `brief`  | date, sections[]                                  | me           | Written by an agent token; the dashboard renders today's                                     |
+| `page`   | title                                             | public       | Resume, about, bookstore list; versioned like everything else                                |
 
 **Members and agents** are separate tables. `member`: email, role (admin / group),
 display name. `agent_token`: name, hashed secret, scopes[], last_used_at, revoked_at. A
@@ -172,12 +172,12 @@ token (agents). Authorization answers "what may they see or do" and is entirely 
 a document's `ring` plus the caller's role. Keep the two apart in the codebase; one
 middleware resolves identity, a second resolves permission.
 
-| Ring     | Who                       | How they authenticate                                                                           | What they can do                                                                                                  |
-| -------- | ------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `public` | Anyone                    | Nothing                                                                                         | Read documents whose ring is `public`; submit to surveys or sign-ups via a share token                            |
-| `group`  | Members with role `group` | Cognito + Google; email must be on the `member` allowlist                                       | Read `group` and `public` documents; respond to surveys, claim sign-up slots, view the group calendar             |
-| `me`     | Tyler, role `admin`       | Cognito + Google; exactly one allowlisted admin email                                           | Everything: create and version any document, promote or demote rings, manage members and agent tokens            |
-| `agents` | Named agent tokens        | `Authorization: Bearer <token>`, hashed at rest, presented to the MCP server or API directly    | Only the scopes on the token; never promotion to `public`, never member or token management                       |
+| Ring     | Who                       | How they authenticate                                                                        | What they can do                                                                                      |
+| -------- | ------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `public` | Anyone                    | Nothing                                                                                      | Read documents whose ring is `public`; submit to surveys or sign-ups via a share token                |
+| `group`  | Members with role `group` | Cognito + Google; email must be on the `member` allowlist                                    | Read `group` and `public` documents; respond to surveys, claim sign-up slots, view the group calendar |
+| `me`     | Tyler, role `admin`       | Cognito + Google; exactly one allowlisted admin email                                        | Everything: create and version any document, promote or demote rings, manage members and agent tokens |
+| `agents` | Named agent tokens        | `Authorization: Bearer <token>`, hashed at rest, presented to the MCP server or API directly | Only the scopes on the token; never promotion to `public`, never member or token management           |
 
 **Agent scopes** are verbs on types: `read:documents`, `write:recipes`, `write:briefs`,
 `write:notes`, `read:reading`. A token for Duet might carry `write:briefs read:documents`.
@@ -206,14 +206,14 @@ converge on the same handlers with a normalized `caller` object:
 
 _Six phases, each live at the domain before the next begins._
 
-| Phase                | Scope                                                                                            | Gate                                              |
-| -------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
-| Phase 0 · Foundation | Repo, CDK, S3 + CloudFront, domain, GitHub Actions via OIDC, billing alarm, a page with your name | A merge to main is live at the domain             |
-| Phase 1 · Spine      | Postgres, documents + versions, recipe type, diffs, admin login (Cognito, one allowlisted email)  | Save and diff two chili versions in production    |
-| Phase 2 · Agents     | Agent tokens with scopes, MCP server on Lambda, brief type, agent activity in the admin UI        | Claude saves a recipe through MCP                 |
-| Phase 3 · Group      | Group ring, member allowlist, surveys, sign-ups, share tokens, group calendar                     | The small group answers a real survey             |
-| Phase 4 · Public face| Public read API, resume page, essays and notes feeds, dark mode, the design values applied        | Resume and an essay are public                    |
-| Phase 5 · Feeds      | Hardcover ingest, Ishar status, calendar sync, whatever earns its place                           | The reading feed updates without you              |
+| Phase                 | Scope                                                                                             | Gate                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Phase 0 · Foundation  | Repo, CDK, S3 + CloudFront, domain, GitHub Actions via OIDC, billing alarm, a page with your name | A merge to main is live at the domain          |
+| Phase 1 · Spine       | Postgres, documents + versions, recipe type, diffs, admin login (Cognito, one allowlisted email)  | Save and diff two chili versions in production |
+| Phase 2 · Agents      | Agent tokens with scopes, MCP server on Lambda, brief type, agent activity in the admin UI        | Claude saves a recipe through MCP              |
+| Phase 3 · Group       | Group ring, member allowlist, surveys, sign-ups, share tokens, group calendar                     | The small group answers a real survey          |
+| Phase 4 · Public face | Public read API, resume page, essays and notes feeds, dark mode, the design values applied        | Resume and an essay are public                 |
+| Phase 5 · Feeds       | Hardcover ingest, Ishar status, calendar sync, whatever earns its place                           | The reading feed updates without you           |
 
 roadmap · 6 phases, a gate on each
 
@@ -256,14 +256,14 @@ the latest; the first two before Phase 0 so the repo is named and owned correctl
 **Name and domain.** What the site is called and the domain it lives at. The repo, the CDK
 stack names, and the Cognito domain prefix all derive from it.
 
-- [ ] Name: _(undecided)_
+- [x] Name: The Keep
 - [x] Domain: `tylerfuqua.com`, registered in Route 53 (Oct 26, 2026)
 
 **AWS account.** New account or existing? Accounts created before July 15, 2025 are on the
 legacy 12-month free tier; newer accounts get credits instead. This changes whether RDS is
 free for a year.
 
-- [ ] Account: _(undecided)_
+- [x] Account: new, `697941679713`, created Oct 2026 (credits, not the legacy free tier)
 
 **Design values** (the token architecture is inherited; these are the numbers that make it
 yours):
@@ -300,16 +300,16 @@ token discipline. Only a blue, a navy, a teal and a logo are the employer's. Car
 discipline; replace the identity; rewrite rather than copy any composed component, since
 that code was written on Roundtrip's time.
 
-| Carry as-is                                                                                                                                                                     | Adapt                                                                                                                                  | Leave behind                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Tailwind v4 `@theme` block in `index.css` as the single token source; semantic names only, no raw palette classes                                                                | Primary color and sidebar palette: new values, same token names and hover/active steps                                                 | `api-client.ts` (dual V1/V3, snake/camel, Rails pagination); write a thin typed fetch for the Lambda API                        |
-| Neutral ramp (`background`, `foreground`, `muted`, `border`, `input`, `disabled`) and the five tone families with fill/text/subtle/border steps                                 | Dark mode from day one via `@custom-variant dark` on a `data-theme` attribute; the portal has none                                     | Auth0 gate, LaunchDarkly, feature flags                                                                                         |
-| Self-hosted font via fontsource; Tailwind default type scale; weight-over-size hierarchy; eyebrow recipe (`text-xs font-semibold uppercase tracking-wider text-muted-foreground`) | Add `--radius-*` tokens so Button and Card stop encoding radius inline                                                                 | `ConsequenceStatement`, `useTableParams`, `TablePagination`, the operations-tool archetypes and glossary                        |
-| `cn()` helper, `@/` alias, strict `tsconfig` flags (`noUnusedLocals`, `verbatimModuleSyntax`, `erasableSyntaxOnly`), ESLint flat config                                         | AppShell: keep `h-screen flex-col` → `main overflow-y-auto` and the single `md` breakpoint; replace sidebar navigation with a top nav | `@hookform/resolvers` without a schema lib, the unused `cn` npm package, `tw-animate-css` unless used                           |
-| Vitest + RTL + MSW with `onUnhandledRequest: 'error'`; custom render injecting QueryClient, router, auth; three-job CI shape (test, lint, typecheck)                             | Forms: keep react-hook-form, adopt zod + `zodResolver`, use the shadcn Form wrapper                                                     | Storybook (a maintenance tax for a 15-component solo project)                                                                   |
-| Form row pattern: `grid gap-2` → Label → Input → `text-xs text-muted-foreground` hint → `text-sm text-destructive` error                                                         | Rewrite from the spec, not the files: Alert, StatusBadge, FormSheet, ConfirmDialog, DetailRow, SearchInput, FlashMessages              | The radix-ui umbrella vs `@radix-ui/react-*` split: pick `@radix-ui/react-*` and stay consistent                                |
-| S3 double-sync recipe (no-cache on root files, `max-age=31536000, immutable` on `assets/*`) plus CloudFront invalidation                                                         | Prettier added; the portal skipped it and shows the drift                                                                              | Committed `.env.<mode>` files; use CDK outputs and SSM parameters instead                                                       |
-| TanStack Query 5 with `staleTime` 30s, `retry` 1, one file per resource in `src/api/` with a `<resource>Keys` factory                                                            | `table.tsx`: strip the `SortDirection` import so it is a pure primitive                                                                | Any brand asset, copy, logo or product name                                                                                     |
+| Carry as-is                                                                                                                                                                       | Adapt                                                                                                                                 | Leave behind                                                                                             |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Tailwind v4 `@theme` block in `index.css` as the single token source; semantic names only, no raw palette classes                                                                 | Primary color and sidebar palette: new values, same token names and hover/active steps                                                | `api-client.ts` (dual V1/V3, snake/camel, Rails pagination); write a thin typed fetch for the Lambda API |
+| Neutral ramp (`background`, `foreground`, `muted`, `border`, `input`, `disabled`) and the five tone families with fill/text/subtle/border steps                                   | Dark mode from day one via `@custom-variant dark` on a `data-theme` attribute; the portal has none                                    | Auth0 gate, LaunchDarkly, feature flags                                                                  |
+| Self-hosted font via fontsource; Tailwind default type scale; weight-over-size hierarchy; eyebrow recipe (`text-xs font-semibold uppercase tracking-wider text-muted-foreground`) | Add `--radius-*` tokens so Button and Card stop encoding radius inline                                                                | `ConsequenceStatement`, `useTableParams`, `TablePagination`, the operations-tool archetypes and glossary |
+| `cn()` helper, `@/` alias, strict `tsconfig` flags (`noUnusedLocals`, `verbatimModuleSyntax`, `erasableSyntaxOnly`), ESLint flat config                                           | AppShell: keep `h-screen flex-col` → `main overflow-y-auto` and the single `md` breakpoint; replace sidebar navigation with a top nav | `@hookform/resolvers` without a schema lib, the unused `cn` npm package, `tw-animate-css` unless used    |
+| Vitest + RTL + MSW with `onUnhandledRequest: 'error'`; custom render injecting QueryClient, router, auth; three-job CI shape (test, lint, typecheck)                              | Forms: keep react-hook-form, adopt zod + `zodResolver`, use the shadcn Form wrapper                                                   | Storybook (a maintenance tax for a 15-component solo project)                                            |
+| Form row pattern: `grid gap-2` → Label → Input → `text-xs text-muted-foreground` hint → `text-sm text-destructive` error                                                          | Rewrite from the spec, not the files: Alert, StatusBadge, FormSheet, ConfirmDialog, DetailRow, SearchInput, FlashMessages             | The radix-ui umbrella vs `@radix-ui/react-*` split: pick `@radix-ui/react-*` and stay consistent         |
+| S3 double-sync recipe (no-cache on root files, `max-age=31536000, immutable` on `assets/*`) plus CloudFront invalidation                                                          | Prettier added; the portal skipped it and shows the drift                                                                             | Committed `.env.<mode>` files; use CDK outputs and SSM parameters instead                                |
+| TanStack Query 5 with `staleTime` 30s, `retry` 1, one file per resource in `src/api/` with a `<resource>Keys` factory                                                             | `table.tsx`: strip the `SortDirection` import so it is a pure primitive                                                               | Any brand asset, copy, logo or product name                                                              |
 
 ## Working with Claude Code
 
