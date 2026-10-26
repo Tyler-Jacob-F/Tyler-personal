@@ -45,7 +45,7 @@ jobs:
           echo "bucket=$(jq -r ".${STACK}.SiteBucketName" infra/outputs.json)" >> "$GITHUB_OUTPUT"
           echo "distribution=$(jq -r ".${STACK}.DistributionId" infra/outputs.json)" >> "$GITHUB_OUTPUT"
 
-      # Double sync carried from the config portal: hashed assets are immutable for a
+      # Double sync: hashed assets are immutable for a
       # year; root files (index.html and friends) are never cached so a deploy is visible
       # on the next request.
       - name: Publish assets (immutable)

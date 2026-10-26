@@ -3,7 +3,7 @@
 
 /*
  * Single token source. Semantic names only; components never use raw palette classes.
- * Values below are Tailwind's neutral ramp carried from the config portal. Identity
+ * Values below are Tailwind's neutral ramp. Identity
  * (primary color, typefaces, radius, dark palette) is decided in Phase 4; see
  * docs/DESIGN.md "Yours to decide".
  */

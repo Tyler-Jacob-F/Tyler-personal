@@ -24,10 +24,10 @@ All of it lives in `infra/lib/config.ts`.
 
 ## In scope
 
-- Monorepo skeleton: pnpm workspaces, root `tsconfig` with the strict flags carried from
-  the portal, Prettier, ESLint flat config, Vitest.
+- Monorepo skeleton: pnpm workspaces, root `tsconfig` with the strict flags from
+  the brief, Prettier, ESLint flat config, Vitest.
 - `apps/web`: a Vite + React 19 SPA that renders a single page with Tyler's name. Tailwind
-  v4 with the `@theme` block in `index.css` and the carried neutral ramp. No components
+  v4 with the `@theme` block in `index.css` and the neutral ramp. No components
   beyond what the page needs.
 - `infra`: CDK app with one stack for static hosting (S3 bucket, CloudFront distribution,
   SPA fallback via CloudFront Function, ACM certificate, DNS record) and one for account
@@ -68,7 +68,7 @@ Do not relitigate these. See "Decisions made" in `docs/DESIGN.md`.
 - Formatting: Prettier + ESLint flat config from day one.
 - Testing: Vitest for web, CDK snapshot tests for infra.
 - Budget is a feature: billing alarm at $5 before any application code.
-- Conventions carried from the config portal: `@theme` token block, neutral ramp, strict
+- Frontend conventions: `@theme` token block, neutral ramp, strict
   `tsconfig` flags, `cn()` and `@/` alias, fontsource font, S3 double-sync recipe,
   three-job CI shape.
 

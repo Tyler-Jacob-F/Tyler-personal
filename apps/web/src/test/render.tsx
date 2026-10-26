@@ -2,7 +2,7 @@ import { render as rtlRender, type RenderOptions, type RenderResult } from '@tes
 import type { ReactElement, ReactNode } from 'react';
 
 /**
- * Custom render carried from the config portal. Later phases inject QueryClient, router
+ * Custom render wrapper. Later phases inject QueryClient, router
  * and auth here so tests never assemble providers by hand.
  */
 function Providers({ children }: { children: ReactNode }) {

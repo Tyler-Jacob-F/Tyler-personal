@@ -41,7 +41,7 @@ them as constraints, not suggestions.
 
 | Area                   | Decision                                                                                                         | Why                                                                                                  |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Frontend               | TypeScript, React 19, Vite, Tailwind v4, shadcn/ui on Radix, react-hook-form + zod, TanStack Query, React Router | Matches the config portal conventions Tyler already knows; static SPA needs no server                |
+| Frontend               | TypeScript, React 19, Vite, Tailwind v4, shadcn/ui on Radix, react-hook-form + zod, TanStack Query, React Router | Conventions Tyler already knows well; static SPA needs no server                                     |
 | Backend                | TypeScript on Node 22, Lambda functions behind API Gateway (HTTP API)                                            | Learns the real AWS primitives; cost rounds to zero at this scale                                    |
 | Database               | PostgreSQL. RDS db.t4g.micro to start; evaluate Aurora Serverless v2 free tier once confirmed                    | Versioned documents, diffs, tags and relations are relational; DynamoDB would fight the domain model |
 | Object storage         | S3 for uploads (resume PDF, recipe photos, attachments), served through CloudFront                               | Documents reference S3 keys; never store blobs in Postgres                                           |
@@ -53,8 +53,8 @@ them as constraints, not suggestions.
 | Agent surface          | MCP server on Lambda wrapping the public API                                                                     | Claude Code and Duet become ingest paths, not just consumers                                         |
 | Reading feed           | Hardcover GraphQL API (Goodreads API is closed)                                                                  | Only maintained option with a real API                                                               |
 | Monorepo               | pnpm workspaces: `apps/web`, `apps/api`, `packages/shared`, `infra`                                              | Shared zod schemas between client, server and MCP                                                    |
-| Formatting             | Prettier + ESLint flat config from day one                                                                       | The portal skipped Prettier and shows the drift                                                      |
-| Testing                | Vitest + RTL + MSW for web; Vitest for API; CDK snapshot tests for infra                                         | Same shape as the portal; keep the custom render pattern                                             |
+| Formatting             | Prettier + ESLint flat config from day one                                                                       | Formatting drift is cheaper to prevent than fix                                                      |
+| Testing                | Vitest + RTL + MSW for web; Vitest for API; CDK snapshot tests for infra                                         | Familiar shape; keep the custom render pattern                                                       |
 | Observability          | CloudWatch logs + a single dashboard; structured JSON logs                                                       | Enough to debug a Lambda at 11pm; nothing more yet                                                   |
 
 ## Domain model
@@ -268,11 +268,10 @@ free for a year.
 **Design values** (the token architecture is inherited; these are the numbers that make it
 yours):
 
-- [ ] Primary color and its hover/active steps (replaces the portal's `#1a73e8`)
+- [ ] Primary color and its hover/active steps
 - [ ] Body typeface: keep Source Sans 3, or something warmer
 - [ ] Long-form typeface for essays and book notes: serif or not, and which
-- [ ] Radius scale: one value for controls, one for cards (the portal mixes 4px and 12px by
-      accident)
+- [ ] Radius scale: one value for controls, one for cards
 - [ ] Dark palette designed as its own thing: background, surface, text, muted, border
 - [ ] Logged-in home: what the first screen shows (recommended: recent documents + a text
       box, not widgets)
@@ -292,24 +291,23 @@ yours):
 - [ ] Recipe diff rendering: unified text diff only, or a structured ingredient diff too?
       (Start unified; revisit after five versions of chili)
 
-## Conventions carried from the config portal
+## Frontend conventions
 
-The config portal audit (Oct 25, 2026) found that its design system is almost entirely
-structure: Tailwind's own neutral ramp and tone values, an openly licensed font, and a
-token discipline. Only a blue, a navy, a teal and a logo are the employer's. Carry the
-discipline; replace the identity; rewrite rather than copy any composed component, since
-that code was written on Roundtrip's time.
+Tailwind's own neutral ramp and tone values, an openly licensed font, and a strict token
+discipline. These are ordinary choices, written here so the stack stays consistent from
+one phase to the next. Composed components are written from their spec, never pasted
+from elsewhere.
 
-| Carry as-is                                                                                                                                                                       | Adapt                                                                                                                                 | Leave behind                                                                                             |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Tailwind v4 `@theme` block in `index.css` as the single token source; semantic names only, no raw palette classes                                                                 | Primary color and sidebar palette: new values, same token names and hover/active steps                                                | `api-client.ts` (dual V1/V3, snake/camel, Rails pagination); write a thin typed fetch for the Lambda API |
-| Neutral ramp (`background`, `foreground`, `muted`, `border`, `input`, `disabled`) and the five tone families with fill/text/subtle/border steps                                   | Dark mode from day one via `@custom-variant dark` on a `data-theme` attribute; the portal has none                                    | Auth0 gate, LaunchDarkly, feature flags                                                                  |
-| Self-hosted font via fontsource; Tailwind default type scale; weight-over-size hierarchy; eyebrow recipe (`text-xs font-semibold uppercase tracking-wider text-muted-foreground`) | Add `--radius-*` tokens so Button and Card stop encoding radius inline                                                                | `ConsequenceStatement`, `useTableParams`, `TablePagination`, the operations-tool archetypes and glossary |
-| `cn()` helper, `@/` alias, strict `tsconfig` flags (`noUnusedLocals`, `verbatimModuleSyntax`, `erasableSyntaxOnly`), ESLint flat config                                           | AppShell: keep `h-screen flex-col` → `main overflow-y-auto` and the single `md` breakpoint; replace sidebar navigation with a top nav | `@hookform/resolvers` without a schema lib, the unused `cn` npm package, `tw-animate-css` unless used    |
-| Vitest + RTL + MSW with `onUnhandledRequest: 'error'`; custom render injecting QueryClient, router, auth; three-job CI shape (test, lint, typecheck)                              | Forms: keep react-hook-form, adopt zod + `zodResolver`, use the shadcn Form wrapper                                                   | Storybook (a maintenance tax for a 15-component solo project)                                            |
-| Form row pattern: `grid gap-2` → Label → Input → `text-xs text-muted-foreground` hint → `text-sm text-destructive` error                                                          | Rewrite from the spec, not the files: Alert, StatusBadge, FormSheet, ConfirmDialog, DetailRow, SearchInput, FlashMessages             | The radix-ui umbrella vs `@radix-ui/react-*` split: pick `@radix-ui/react-*` and stay consistent         |
-| S3 double-sync recipe (no-cache on root files, `max-age=31536000, immutable` on `assets/*`) plus CloudFront invalidation                                                          | Prettier added; the portal skipped it and shows the drift                                                                             | Committed `.env.<mode>` files; use CDK outputs and SSM parameters instead                                |
-| TanStack Query 5 with `staleTime` 30s, `retry` 1, one file per resource in `src/api/` with a `<resource>Keys` factory                                                             | `table.tsx`: strip the `SortDirection` import so it is a pure primitive                                                               | Any brand asset, copy, logo or product name                                                              |
+| Use                                                                                                                                                                               | Add                                                                                                                              | Avoid                                                                                                 |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Tailwind v4 `@theme` block in `index.css` as the single token source; semantic names only, no raw palette classes                                                                 | Primary color and nav palette as tokens with hover/active steps                                                                  | A sprawling API client; write a thin typed fetch for the Lambda API                                   |
+| Neutral ramp (`background`, `foreground`, `muted`, `border`, `input`, `disabled`) and five tone families with fill/text/subtle/border steps                                       | Dark mode from day one via `@custom-variant dark` on a `data-theme` attribute                                                    | Third-party auth gates, feature-flag services                                                         |
+| Self-hosted font via fontsource; Tailwind default type scale; weight-over-size hierarchy; eyebrow recipe (`text-xs font-semibold uppercase tracking-wider text-muted-foreground`) | `--radius-*` tokens so Button and Card never encode radius inline                                                                | Operations-tool patterns (table params hooks, pagination widgets) the domain does not need            |
+| `cn()` helper, `@/` alias, strict `tsconfig` flags (`noUnusedLocals`, `verbatimModuleSyntax`, `erasableSyntaxOnly`), ESLint flat config                                           | AppShell: `h-screen flex-col` → `main overflow-y-auto`, a single `md` breakpoint, top nav rather than a sidebar                  | `@hookform/resolvers` without a schema lib, the unused `cn` npm package, `tw-animate-css` unless used |
+| Vitest + RTL + MSW with `onUnhandledRequest: 'error'`; custom render injecting QueryClient, router, auth; three-job CI shape (test, lint, typecheck)                              | Forms: react-hook-form with zod + `zodResolver` and the shadcn Form wrapper                                                      | Storybook (a maintenance tax for a 15-component solo project)                                         |
+| Form row pattern: `grid gap-2` → Label → Input → `text-xs text-muted-foreground` hint → `text-sm text-destructive` error                                                          | Small composed components written from spec: Alert, StatusBadge, FormSheet, ConfirmDialog, DetailRow, SearchInput, FlashMessages | Mixing the radix-ui umbrella with `@radix-ui/react-*`: pick `@radix-ui/react-*` and stay consistent   |
+| S3 double-sync (no-cache on root files, `max-age=31536000, immutable` on `assets/*`) plus CloudFront invalidation                                                                 | Prettier from day one                                                                                                            | Committed `.env.<mode>` files; use CDK outputs and SSM parameters instead                             |
+| TanStack Query 5 with `staleTime` 30s, `retry` 1, one file per resource in `src/api/` with a `<resource>Keys` factory                                                             | `table.tsx` as a pure primitive with no sorting import                                                                           | Any third-party brand asset, copy, logo or product name                                               |
 
 ## Working with Claude Code
 
