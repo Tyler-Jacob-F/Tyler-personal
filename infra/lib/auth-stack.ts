@@ -1,5 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as ses from 'aws-cdk-lib/aws-ses';
 import type { Construct } from 'constructs';
 import { config } from './config.js';
 import { apiFunction } from './lambda.js';
@@ -19,6 +21,18 @@ export class AuthStack extends cdk.Stack {
     const emailFrom = `${config.siteName} <${config.email.sender}>`;
     const codeTtlSeconds = String(config.auth.codeTtlMinutes * 60);
 
+    // SES stays in the sandbox this phase: the sending domain (DKIM CNAMEs and the MAIL
+    // FROM subdomain's MX/TXT land in Route 53) plus the admin address as a verified
+    // recipient. Tyler clicks that one verification link once.
+    const zone = route53.HostedZone.fromLookup(this, 'Zone', { domainName: config.domainName });
+    const domainIdentity = new ses.EmailIdentity(this, 'DomainIdentity', {
+      identity: ses.Identity.publicHostedZone(zone),
+      mailFromDomain: config.email.mailFromDomain,
+    });
+    const adminIdentity = new ses.EmailIdentity(this, 'AdminIdentity', {
+      identity: ses.Identity.email(config.admin.email),
+    });
+
     const defineAuthChallenge = apiFunction(this, 'DefineAuthChallenge', {
       entry: 'auth/define-auth-challenge.ts',
       description: `${config.siteName}: custom auth flow, define challenge`,
@@ -30,6 +44,8 @@ export class AuthStack extends cdk.Stack {
       memorySize: 256,
       environment: { EMAIL_FROM: emailFrom, CODE_TTL_SECONDS: codeTtlSeconds },
     });
+    domainIdentity.grantSendEmail(createAuthChallenge);
+    adminIdentity.grantSendEmail(createAuthChallenge);
     const verifyAuthChallenge = apiFunction(this, 'VerifyAuthChallenge', {
       entry: 'auth/verify-auth-challenge.ts',
       description: `${config.siteName}: custom auth flow, verify the code`,

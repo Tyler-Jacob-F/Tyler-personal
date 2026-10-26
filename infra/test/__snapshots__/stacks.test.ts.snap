@@ -409,6 +409,12 @@ exports[`AuthStack > matches the snapshot 1`] = `
     },
   },
   "Resources": {
+    "AdminIdentityBA435212": {
+      "Properties": {
+        "EmailIdentity": "tyler.fuqua@icloud.com",
+      },
+      "Type": "AWS::SES::EmailIdentity",
+    },
     "AdminUser": {
       "Properties": {
         "MessageAction": "SUPPRESS",
@@ -431,6 +437,7 @@ exports[`AuthStack > matches the snapshot 1`] = `
     },
     "CreateAuthChallengeB2F8D873": {
       "DependsOn": [
+        "CreateAuthChallengeServiceRoleDefaultPolicy637265A4",
         "CreateAuthChallengeServiceRoleCE50EC04",
       ],
       "Properties": {
@@ -506,6 +513,66 @@ exports[`AuthStack > matches the snapshot 1`] = `
       },
       "Type": "AWS::IAM::Role",
     },
+    "CreateAuthChallengeServiceRoleDefaultPolicy637265A4": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "ses:SendEmail",
+                "ses:SendRawEmail",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":ses:us-east-1:697941679713:identity/",
+                    {
+                      "Ref": "DomainIdentity034B48F5",
+                    },
+                  ],
+                ],
+              },
+            },
+            {
+              "Action": [
+                "ses:SendEmail",
+                "ses:SendRawEmail",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":ses:us-east-1:697941679713:identity/",
+                    {
+                      "Ref": "AdminIdentityBA435212",
+                    },
+                  ],
+                ],
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "CreateAuthChallengeServiceRoleDefaultPolicy637265A4",
+        "Roles": [
+          {
+            "Ref": "CreateAuthChallengeServiceRoleCE50EC04",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
     "DefineAuthChallengeE7E3BC7B": {
       "DependsOn": [
         "DefineAuthChallengeServiceRole1D83696B",
@@ -580,6 +647,105 @@ exports[`AuthStack > matches the snapshot 1`] = `
         ],
       },
       "Type": "AWS::IAM::Role",
+    },
+    "DomainIdentity034B48F5": {
+      "Properties": {
+        "EmailIdentity": "tylerfuqua.com",
+        "MailFromAttributes": {
+          "MailFromDomain": "mail.tylerfuqua.com",
+        },
+      },
+      "Type": "AWS::SES::EmailIdentity",
+    },
+    "DomainIdentityDkimDnsToken1F913005C": {
+      "Properties": {
+        "HostedZoneId": "DUMMY",
+        "Name": {
+          "Fn::GetAtt": [
+            "DomainIdentity034B48F5",
+            "DkimDNSTokenName1",
+          ],
+        },
+        "ResourceRecords": [
+          {
+            "Fn::GetAtt": [
+              "DomainIdentity034B48F5",
+              "DkimDNSTokenValue1",
+            ],
+          },
+        ],
+        "TTL": "1800",
+        "Type": "CNAME",
+      },
+      "Type": "AWS::Route53::RecordSet",
+    },
+    "DomainIdentityDkimDnsToken252631100": {
+      "Properties": {
+        "HostedZoneId": "DUMMY",
+        "Name": {
+          "Fn::GetAtt": [
+            "DomainIdentity034B48F5",
+            "DkimDNSTokenName2",
+          ],
+        },
+        "ResourceRecords": [
+          {
+            "Fn::GetAtt": [
+              "DomainIdentity034B48F5",
+              "DkimDNSTokenValue2",
+            ],
+          },
+        ],
+        "TTL": "1800",
+        "Type": "CNAME",
+      },
+      "Type": "AWS::Route53::RecordSet",
+    },
+    "DomainIdentityDkimDnsToken3762490AB": {
+      "Properties": {
+        "HostedZoneId": "DUMMY",
+        "Name": {
+          "Fn::GetAtt": [
+            "DomainIdentity034B48F5",
+            "DkimDNSTokenName3",
+          ],
+        },
+        "ResourceRecords": [
+          {
+            "Fn::GetAtt": [
+              "DomainIdentity034B48F5",
+              "DkimDNSTokenValue3",
+            ],
+          },
+        ],
+        "TTL": "1800",
+        "Type": "CNAME",
+      },
+      "Type": "AWS::Route53::RecordSet",
+    },
+    "DomainIdentityMailFromMxRecordD26C25A5": {
+      "Properties": {
+        "HostedZoneId": "DUMMY",
+        "Name": "mail.tylerfuqua.com.",
+        "ResourceRecords": [
+          "10 feedback-smtp.us-east-1.amazonses.com",
+        ],
+        "TTL": "1800",
+        "Type": "MX",
+      },
+      "Type": "AWS::Route53::RecordSet",
+    },
+    "DomainIdentityMailFromTxtRecord688D3A8F": {
+      "Properties": {
+        "HostedZoneId": "DUMMY",
+        "Name": "mail.tylerfuqua.com.",
+        "ResourceRecords": [
+          ""v=spf1 include:amazonses.com ~all"",
+        ],
+        "TTL": "1800",
+        "Type": "TXT",
+      },
+      "Type": "AWS::Route53::RecordSet",
     },
     "UserPool6BA7E5F2": {
       "DeletionPolicy": "Retain",

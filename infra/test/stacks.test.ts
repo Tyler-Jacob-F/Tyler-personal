@@ -132,4 +132,27 @@ describe('AuthStack', () => {
     template.resourceCountIs('AWS::Logs::LogGroup', 3);
     template.allResourcesProperties('AWS::Logs::LogGroup', { RetentionInDays: 30 });
   });
+
+  it('verifies the sending domain with DKIM and MAIL FROM records, and the admin address', () => {
+    template.resourceCountIs('AWS::SES::EmailIdentity', 2);
+    template.hasResourceProperties('AWS::SES::EmailIdentity', {
+      EmailIdentity: config.domainName,
+      MailFromAttributes: { MailFromDomain: config.email.mailFromDomain },
+    });
+    template.hasResourceProperties('AWS::SES::EmailIdentity', {
+      EmailIdentity: config.admin.email,
+    });
+    const records = template.findResources('AWS::Route53::RecordSet');
+    const types = Object.values(records).map((r) => r.Properties.Type as string);
+    expect(types.filter((t) => t === 'CNAME')).toHaveLength(3);
+    expect(types).toContain('MX');
+    expect(types).toContain('TXT');
+  });
+
+  it('lets only the create-challenge function send email', () => {
+    const policies = Object.values(template.findResources('AWS::IAM::Policy'));
+    const senders = policies.filter((p) => JSON.stringify(p).includes('ses:SendEmail'));
+    expect(senders).toHaveLength(1);
+    expect(JSON.stringify(senders[0])).toContain('CreateAuthChallenge');
+  });
 });
