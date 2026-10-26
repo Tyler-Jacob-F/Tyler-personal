@@ -36,6 +36,8 @@ describe('0004_import_chili_lineage', () => {
       'steves-famous-chili',
       'tylers-chili',
     ]);
+    // Everything imported must survive the client's response parsing, summaries included.
+    for (const item of docs) documentWithVersionSchema.parse(item);
 
     const tylers = docs.find((d) => d.document.slug === 'tylers-chili')!;
     expect(tylers.version.number).toBe(4);
