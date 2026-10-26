@@ -39,7 +39,7 @@ export class AccountStack extends cdk.Stack {
 
     // Pull requests: read-only. Enough for `cdk diff`, nothing more.
     const prRole = new iam.Role(this, 'GitHubPullRequestRole', {
-      roleName: `${config.stackPrefix}-GitHubPullRequest`,
+      roleName: config.roles.pullRequest,
       assumedBy: trust('pull_request'),
       maxSessionDuration: cdk.Duration.hours(1),
     });
@@ -49,7 +49,7 @@ export class AccountStack extends cdk.Stack {
 
     // Merges to the deploy branch: assume the CDK bootstrap roles, publish the SPA.
     const deployRole = new iam.Role(this, 'GitHubDeployRole', {
-      roleName: `${config.stackPrefix}-GitHubDeploy`,
+      roleName: config.roles.deploy,
       assumedBy: trust(`ref:refs/heads/${deployBranch}`),
       maxSessionDuration: cdk.Duration.hours(1),
     });

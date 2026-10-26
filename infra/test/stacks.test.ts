@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { AccountStack } from '../lib/account-stack.js';
 import { config } from '../lib/config.js';
+import { DataStack } from '../lib/data-stack.js';
 import { SiteStack } from '../lib/site-stack.js';
 
 function app() {
@@ -51,5 +52,39 @@ describe('SiteStack', () => {
 
   it('answers at the apex and www over IPv4 and IPv6', () => {
     template.resourceCountIs('AWS::Route53::RecordSet', 4);
+  });
+});
+
+describe('DataStack', () => {
+  const template = Template.fromStack(new DataStack(app(), 'Data', { env: config.env }));
+
+  it('matches the snapshot', () => {
+    expect(template.toJSON()).toMatchSnapshot();
+  });
+
+  it('pauses at zero ACU, caps at two, and speaks the Data API', () => {
+    template.hasResourceProperties('AWS::RDS::DBCluster', {
+      Engine: 'aurora-postgresql',
+      EnableHttpEndpoint: true,
+      DeletionProtection: true,
+      ServerlessV2ScalingConfiguration: { MinCapacity: 0, MaxCapacity: 2 },
+    });
+    template.hasResource('AWS::RDS::DBCluster', { DeletionPolicy: 'Retain' });
+  });
+
+  it('has no NAT gateway and no public subnet', () => {
+    template.resourceCountIs('AWS::EC2::NatGateway', 0);
+    template.resourceCountIs('AWS::EC2::InternetGateway', 0);
+  });
+
+  it('lets the deploy role run migrations through the Data API', () => {
+    const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
+    expect(policies).toContain('rds-data:ExecuteStatement');
+    expect(policies).toContain('secretsmanager:GetSecretValue');
+    expect(policies).toContain(config.roles.deploy);
+  });
+
+  it('publishes the cluster and secret ARNs as SSM parameters', () => {
+    template.resourceCountIs('AWS::SSM::Parameter', 3);
   });
 });

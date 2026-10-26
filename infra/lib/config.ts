@@ -19,4 +19,9 @@ export const config = {
   billing: { alarmEmail: 'tyler.fuqua+aws@icloud.com', monthlyLimitUsd: 5 },
   /** Fixed so the account stack can grant CI access to it without a cross-stack reference. */
   siteBucketName: 'the-keep-site-697941679713',
+  /** Fixed names so later stacks can grant the CI roles access without a cross-stack reference. */
+  roles: { deploy: 'TheKeep-GitHubDeploy', pullRequest: 'TheKeep-GitHubPullRequest' },
+  /** Exactly one admin (docs/phases/01-spine.md). Pre-created in Cognito and `member` by code. */
+  admin: { email: 'tyler.fuqua@icloud.com', displayName: 'Tyler' },
+  database: { name: 'thekeep', ssmPrefix: '/the-keep/db' },
 } as const;
