@@ -205,6 +205,11 @@ from 2023 to 2026) changed the recipe schema. Tyler approved the shapes.
   show "written … · entered …" when set.
 - **Bodies render as markdown** (react-markdown, themed through the tokens). No notes
   field: notes are prose and live in the body.
+- **One content import by migration**, `0004_import_chili_lineage`: Steve's chili and the
+  four dated versions of Tyler's, authored as the admin, idempotent, frontmatter checked
+  against the shared schema by a test. The exception, not the pattern: content enters
+  through the API, and the folder-wide import waits for Phase 2's agent tokens. Unit
+  tests skip `NNNN_import_*` files so fixtures start empty.
 
 ## Before the first deploy
 

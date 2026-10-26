@@ -10,11 +10,16 @@ export const migrationsDir = path.resolve(
   '../../migrations',
 );
 
-/** A fresh in-memory Postgres with every migration applied. */
-export async function migratedPglite(): Promise<PGlite> {
+/** Content imports (`NNNN_import_*.sql`) are data, not shape; unit tests start without them. */
+export const isImportMigration = (name: string) => /^\d{4}_import_/.test(name);
+
+/** A fresh in-memory Postgres with every schema migration applied, imports optional. */
+export async function migratedPglite({ includeImports = false } = {}): Promise<PGlite> {
   const pg = new PGlite();
   const files = await readMigrationFiles(migrationsDir);
-  for (const file of files) await pg.exec(file.sql);
+  for (const file of files) {
+    if (includeImports || !isImportMigration(file.name)) await pg.exec(file.sql);
+  }
   return pg;
 }
 
