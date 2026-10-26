@@ -1,5 +1,6 @@
 import {
   createDocumentRequestSchema,
+  createVersionRequestSchema,
   ingredientLines,
   diffQuerySchema,
   documentSchema,
@@ -150,6 +151,18 @@ describe('API DTOs', () => {
     expect(
       createDocumentRequestSchema.safeParse({ ...base, authoredAt: 'last winter' }).success,
     ).toBe(false);
+  });
+
+  it('caps the summary on write but reads any stored length back', () => {
+    const long = 'x'.repeat(501);
+    expect(
+      createVersionRequestSchema.safeParse({ frontmatter: chili, body: '', summary: long }).success,
+    ).toBe(false);
+    expect(
+      createVersionRequestSchema.parse({ frontmatter: chili, body: '', summary: 'x'.repeat(500) })
+        .summary,
+    ).toHaveLength(500);
+    expect(versionSchema.shape.summary.safeParse('y'.repeat(2000)).success).toBe(true);
   });
 
   it('coerces diff query numbers from strings', () => {

@@ -63,7 +63,7 @@ export const recipeFormSchema = z.object({
       'Keep each ingredient under 200 characters and the list under 30 groups.',
     ),
   body: z.string().max(200_000),
-  summary: z.string().trim().max(200, 'Keep the summary to one line.'),
+  summary: z.string().trim().max(500, 'Keep the summary to one line.'),
   /** A calendar date, or blank: when the recipe was written, if not today. */
   authoredAt: z
     .string()

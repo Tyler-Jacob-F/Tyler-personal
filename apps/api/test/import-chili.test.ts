@@ -1,6 +1,11 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { type IngredientGroup, recipeFrontmatterSchema } from '@the-keep/shared';
+import {
+  documentWithVersionSchema,
+  type IngredientGroup,
+  recipeFrontmatterSchema,
+  versionSchema,
+} from '@the-keep/shared';
 import { drizzle } from 'drizzle-orm/pglite';
 import * as schema from '../src/db/schema.js';
 import { getDocument, listDocuments, listVersions } from '../src/db/repositories.js';
@@ -31,6 +36,8 @@ describe('0004_import_chili_lineage', () => {
       'steves-famous-chili',
       'tylers-chili',
     ]);
+    // Everything imported must survive the client's response parsing, summaries included.
+    for (const item of docs) documentWithVersionSchema.parse(item);
 
     const tylers = docs.find((d) => d.document.slug === 'tylers-chili')!;
     expect(tylers.version.number).toBe(4);
@@ -46,6 +53,7 @@ describe('0004_import_chili_lineage', () => {
       [1, '2023-11-06'],
     ]);
     expect(versions[1]!.summary).toMatch(/Clean Smoke/);
+    for (const v of versions) versionSchema.parse(v);
     const v4 = recipeFrontmatterSchema.parse(versions[0]!.frontmatter);
     const headings = v4.ingredients.map((g: IngredientGroup) => g.heading);
     expect(headings).toContain('Chile blend (~7 Tbsp total)');
