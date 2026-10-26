@@ -11,11 +11,25 @@ function app() {
   return new cdk.App({ context: { 'aws:cdk:bundling-stacks': [] } });
 }
 
+/**
+ * Lambda asset hashes depend on the machine that computed them, so snapshots mask
+ * `S3Key` values that look like one. Everything else in the template is compared as is.
+ */
+function stable(template: Template): unknown {
+  return JSON.parse(
+    JSON.stringify(template.toJSON(), (key, value: unknown) =>
+      key === 'S3Key' && typeof value === 'string' && /^[0-9a-f]{64}\.zip$/.test(value)
+        ? '<asset-hash>.zip'
+        : value,
+    ),
+  );
+}
+
 describe('AccountStack', () => {
   const template = Template.fromStack(new AccountStack(app(), 'Account', { env: config.env }));
 
   it('matches the snapshot', () => {
-    expect(template.toJSON()).toMatchSnapshot();
+    expect(stable(template)).toMatchSnapshot();
   });
 
   it('trusts GitHub only for this repository, by name and by numeric ID', () => {
@@ -62,7 +76,7 @@ describe('SiteStack', () => {
   });
 
   it('matches the snapshot', () => {
-    expect(template.toJSON()).toMatchSnapshot();
+    expect(stable(template)).toMatchSnapshot();
   });
 
   it('keeps the bucket private and serves it through CloudFront', () => {
@@ -82,7 +96,7 @@ describe('DataStack', () => {
   const template = Template.fromStack(new DataStack(app(), 'Data', { env: config.env }));
 
   it('matches the snapshot', () => {
-    expect(template.toJSON()).toMatchSnapshot();
+    expect(stable(template)).toMatchSnapshot();
   });
 
   it('pauses at zero ACU, caps at two, and speaks the Data API', () => {
@@ -116,7 +130,7 @@ describe('AuthStack', () => {
   const template = Template.fromStack(new AuthStack(app(), 'Auth', { env: config.env }));
 
   it('matches the snapshot', () => {
-    expect(template.toJSON()).toMatchSnapshot();
+    expect(stable(template)).toMatchSnapshot();
   });
 
   it('allows no self sign-up and wires the three custom-auth triggers', () => {
@@ -194,7 +208,7 @@ describe('ApiStack', () => {
   );
 
   it('matches the snapshot', () => {
-    expect(template.toJSON()).toMatchSnapshot();
+    expect(stable(template)).toMatchSnapshot();
   });
 
   it('puts a Cognito JWT authorizer on every route', () => {

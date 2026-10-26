@@ -35,7 +35,7 @@ exports[`AccountStack > matches the snapshot 1`] = `
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
-          "S3Key": "c0d9f24649426c60a1bc01108070535a40353ae6cd8ceccb812969319b936e5d.zip",
+          "S3Key": "<asset-hash>.zip",
         },
         "Handler": "__entrypoint__.handler",
         "MemorySize": 128,
@@ -516,7 +516,7 @@ exports[`ApiStack > matches the snapshot 1`] = `
         ],
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
-          "S3Key": "fdc076e0c18a9bf4a32e63a9fb9c5c6a6e7dc90efe1d55f4445c1e053026a43d.zip",
+          "S3Key": "<asset-hash>.zip",
         },
         "Description": "The Keep: /api/documents",
         "Environment": {
@@ -1284,7 +1284,7 @@ exports[`ApiStack > matches the snapshot 1`] = `
         ],
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
-          "S3Key": "323b71b8be289b28b542ab4b8b09c109ff9bcc27e19fb53d7910683bded012b4.zip",
+          "S3Key": "<asset-hash>.zip",
         },
         "Description": "The Keep: GET /api/me",
         "Environment": {
@@ -1430,7 +1430,7 @@ exports[`ApiStack > matches the snapshot 1`] = `
         ],
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
-          "S3Key": "7452d6de066f0cc86cccc7def94c6eade0be5d3a6751474822005d4be8cf1e80.zip",
+          "S3Key": "<asset-hash>.zip",
         },
         "Description": "The Keep: /api/documents/{id}/versions and diff",
         "Environment": {
@@ -1655,7 +1655,7 @@ exports[`AuthStack > matches the snapshot 1`] = `
         ],
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
-          "S3Key": "a16c48bb8529fb65cf584b48e364097c487ce9f5e6e8d0d61520ed53416a37f1.zip",
+          "S3Key": "<asset-hash>.zip",
         },
         "Description": "The Keep: custom auth flow, email a sign-in code",
         "Environment": {
@@ -1792,7 +1792,7 @@ exports[`AuthStack > matches the snapshot 1`] = `
         ],
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
-          "S3Key": "4652779f2c4bbe9bd33ad08befdde4b9c834c798200a463605aca4d35e7d6a1a.zip",
+          "S3Key": "<asset-hash>.zip",
         },
         "Description": "The Keep: custom auth flow, define challenge",
         "Environment": {
@@ -2118,7 +2118,7 @@ exports[`AuthStack > matches the snapshot 1`] = `
         ],
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
-          "S3Key": "4093d3f2d241bfe4df99ed9f10dfb234baeb1b6bdb53ed1e3a30035e13d13627.zip",
+          "S3Key": "<asset-hash>.zip",
         },
         "Description": "The Keep: custom auth flow, verify the code",
         "Environment": {
@@ -2497,7 +2497,7 @@ exports[`DataStack > matches the snapshot 1`] = `
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
-          "S3Key": "2819175352ad1ce0dae768e83fc328fb70fb5f10b4a8ff0ccbcb791f02b0716d.zip",
+          "S3Key": "<asset-hash>.zip",
         },
         "Handler": "index.handler",
         "Role": {
@@ -2840,7 +2840,7 @@ exports[`SiteStack > matches the snapshot 1`] = `
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
-          "S3Key": "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip",
+          "S3Key": "<asset-hash>.zip",
         },
         "Description": {
           "Fn::Join": [
