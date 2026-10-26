@@ -1,0 +1,65 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  STACK: TheKeepSite
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm -C apps/web build
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: cdk deploy
+        run: pnpm -C infra cdk deploy "$STACK" --require-approval never --outputs-file outputs.json
+
+      - name: Read stack outputs
+        id: outputs
+        run: |
+          echo "bucket=$(jq -r ".${STACK}.SiteBucketName" infra/outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "distribution=$(jq -r ".${STACK}.DistributionId" infra/outputs.json)" >> "$GITHUB_OUTPUT"
+
+      # Double sync carried from the config portal: hashed assets are immutable for a
+      # year; root files (index.html and friends) are never cached so a deploy is visible
+      # on the next request.
+      - name: Publish assets (immutable)
+        run: |
+          aws s3 sync apps/web/dist "s3://${{ steps.outputs.outputs.bucket }}" \
+            --exclude "*" --include "assets/*" \
+            --cache-control "public, max-age=31536000, immutable" --delete
+      - name: Publish root files (no-cache)
+        run: |
+          aws s3 sync apps/web/dist "s3://${{ steps.outputs.outputs.bucket }}" \
+            --exclude "assets/*" \
+            --cache-control "no-cache" --delete
+      - name: Invalidate CloudFront
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ steps.outputs.outputs.distribution }}" \
+            --paths "/*"
