@@ -46,6 +46,7 @@ export function build(db: Db): ApiHandler {
           frontmatter,
           summary: input.summary,
           author: { kind: identity.caller.kind, id: identity.caller.id },
+          authoredAt: input.authoredAt ?? null,
         });
         log.info('version created', { documentId: id, number: version.number });
         return json(201, version);
@@ -71,7 +72,7 @@ export function build(db: Db): ApiHandler {
         const [a, b] = await Promise.all([getVersion(db, id, from), getVersion(db, id, to)]);
         if (!a) throw notFound(`version ${from}`);
         if (!b) throw notFound(`version ${to}`);
-        const body: DiffResponse = diffVersions(found.document.slug, a, b);
+        const body: DiffResponse = diffVersions(found.document.type, found.document.slug, a, b);
         return json(200, body);
       },
     },

@@ -1,8 +1,9 @@
 import { Link, useNavigate, useParams } from 'react-router';
 import { useDeleteDocument, useDocument } from '@/api/documents';
 import { Alert } from '@/components/Alert';
+import { Markdown } from '@/components/Markdown';
 import { Button } from '@/components/ui/button';
-import { recipeOf, titleOf, when } from '@/routes/recipes/format';
+import { dates, recipeOf, titleOf } from '@/routes/recipes/format';
 
 export function RecipeDetail() {
   const { id = '' } = useParams();
@@ -15,6 +16,10 @@ export function RecipeDetail() {
 
   const { document, version } = recipe.data;
   const r = recipeOf(version.frontmatter);
+  const facts: Array<[string, string]> = [];
+  if (r?.servings !== undefined) facts.push(['Servings', String(r.servings)]);
+  if (r?.prepMinutes !== undefined) facts.push(['Prep', `${r.prepMinutes} min`]);
+  if (r?.cookMinutes !== undefined) facts.push(['Cook', `${r.cookMinutes} min`]);
 
   return (
     <article className="grid gap-6">
@@ -27,7 +32,7 @@ export function RecipeDetail() {
             {titleOf(version.frontmatter)}
           </h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            v{version.number} · {version.author.name} · {when(version.createdAt)}
+            v{version.number} · {version.author.name} · {dates(version)}
             {version.summary ? ` · ${version.summary}` : ''}
           </p>
         </div>
@@ -41,20 +46,14 @@ export function RecipeDetail() {
         </div>
       </div>
 
-      {r && (
+      {facts.length > 0 && (
         <dl className="grid grid-cols-3 gap-4 rounded-card border border-border p-4 text-sm">
-          <div>
-            <dt className="text-xs text-muted-foreground">Servings</dt>
-            <dd className="font-medium">{r.servings}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Prep</dt>
-            <dd className="font-medium">{r.prepMinutes} min</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Cook</dt>
-            <dd className="font-medium">{r.cookMinutes} min</dd>
-          </div>
+          {facts.map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-xs text-muted-foreground">{label}</dt>
+              <dd className="font-medium">{value}</dd>
+            </div>
+          ))}
         </dl>
       )}
 
@@ -63,11 +62,18 @@ export function RecipeDetail() {
           <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             Ingredients
           </h2>
-          <ul className="mt-2 list-disc pl-5 text-sm">
-            {r.ingredients.map((line, i) => (
-              <li key={i}>{line}</li>
+          <div className="mt-2 grid gap-4 md:grid-cols-2">
+            {r.ingredients.map((group, g) => (
+              <div key={g}>
+                {group.heading && <h3 className="text-sm font-semibold">{group.heading}</h3>}
+                <ul className="mt-1 list-disc pl-5 text-sm">
+                  {group.items.map((line, i) => (
+                    <li key={i}>{line}</li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
         </section>
       )}
 
@@ -75,7 +81,9 @@ export function RecipeDetail() {
         <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
           Method
         </h2>
-        <pre className="mt-2 font-sans text-sm whitespace-pre-wrap">{version.body}</pre>
+        <div className="mt-2">
+          <Markdown>{version.body}</Markdown>
+        </div>
       </section>
 
       <div className="border-t border-border pt-4">

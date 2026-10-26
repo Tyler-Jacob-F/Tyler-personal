@@ -69,6 +69,7 @@ export const version = pgTable(
     authorMemberId: uuid('author_member_id').references(() => member.id),
     authorAgentTokenId: uuid('author_agent_token_id').references(() => agentToken.id),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
+    authoredAt: timestamptz('authored_at'),
     summary: text('summary').notNull().default(''),
   },
   (t) => [

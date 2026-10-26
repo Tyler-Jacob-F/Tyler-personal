@@ -1,6 +1,6 @@
 import type { Caller } from '@the-keep/shared';
 import { authorize, can } from '../src/middleware/permission.js';
-import { diffFrontmatter } from '../src/lib/diff.js';
+import { diffFrontmatter, diffIngredients } from '../src/lib/diff.js';
 
 const admin: Caller = { kind: 'member', id: 'a', role: 'admin' };
 const group: Caller = { kind: 'member', id: 'g', role: 'group' };
@@ -45,5 +45,32 @@ describe('diffFrontmatter', () => {
       { key: 'c', change: 'removed', from: 'gone' },
       { key: 'd', change: 'added', to: 'new' },
     ]);
+  });
+});
+
+describe('diffIngredients', () => {
+  it('lists removed groups first, matches headings case-insensitively, and marks unchanged groups', () => {
+    const from = {
+      ingredients: [
+        { heading: 'Garnish', items: ['cilantro'] },
+        { heading: 'Meats', items: ['1 lb beef'] },
+        { heading: 'Beans', items: ['1 can pinto'] },
+      ],
+    };
+    const to = {
+      ingredients: [
+        { heading: 'meats', items: ['1 lb beef'] },
+        { heading: 'Beans', items: ['1 can pinto', '1 can black'] },
+      ],
+    };
+    expect(diffIngredients(from, to).map((g) => [g.heading, g.change])).toEqual([
+      ['Garnish', 'removed'],
+      ['meats', 'same'],
+      ['Beans', 'changed'],
+    ]);
+  });
+
+  it('returns nothing for frontmatter without ingredients', () => {
+    expect(diffIngredients({ title: 'x' }, { title: 'y' })).toEqual([]);
   });
 });

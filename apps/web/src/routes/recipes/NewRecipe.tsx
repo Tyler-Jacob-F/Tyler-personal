@@ -25,6 +25,7 @@ export function NewRecipe() {
               body: values.body,
               summary: values.summary,
               tags: [],
+              authoredAt: values.authoredAt,
             });
             navigate(`/recipes/${created.document.id}`);
           } catch (e) {

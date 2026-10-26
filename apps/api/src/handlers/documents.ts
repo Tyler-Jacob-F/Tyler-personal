@@ -49,6 +49,7 @@ export function build(db: Db): ApiHandler {
           frontmatter,
           summary: input.summary,
           author: { kind: identity.caller.kind, id: identity.caller.id },
+          authoredAt: input.authoredAt ?? null,
         });
         log.info('document created', {
           documentId: created.document.id,

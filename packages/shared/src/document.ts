@@ -52,6 +52,8 @@ export const versionSchema = z.object({
   frontmatter: z.record(z.string(), z.unknown()),
   author: authorSchema,
   createdAt: z.iso.datetime(),
+  /** When the content was written, if that differs from when it entered The Keep. */
+  authoredAt: z.iso.datetime().nullable(),
   summary: z.string().max(200),
 });
 export type Version = z.infer<typeof versionSchema>;
