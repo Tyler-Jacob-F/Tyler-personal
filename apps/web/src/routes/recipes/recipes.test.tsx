@@ -42,26 +42,34 @@ describe('NewRecipe', () => {
     );
     render(<App />, { route: '/recipes/new' });
     await user.type(await screen.findByLabelText('Title'), 'Chili');
-    await user.clear(screen.getByLabelText('Servings'));
     await user.type(screen.getByLabelText('Servings'), '8');
-    await user.clear(screen.getByLabelText('Prep minutes'));
     await user.type(screen.getByLabelText('Prep minutes'), '20');
-    await user.clear(screen.getByLabelText('Cook minutes'));
     await user.type(screen.getByLabelText('Cook minutes'), '180');
-    await user.type(screen.getByLabelText('Ingredients'), '2 lb ground chuck\n1 onion, diced');
+    await user.type(
+      screen.getByLabelText('Ingredients'),
+      '1 onion, diced\nMeats:\n2 lb ground chuck',
+    );
     await user.type(screen.getByLabelText('Method'), '# Chili');
+    await user.type(screen.getByLabelText('Written on'), '2023-11-06');
     await user.click(screen.getByRole('button', { name: 'Save recipe' }));
 
     await waitFor(() =>
       expect(posted).toEqual({
         type: 'recipe',
-        frontmatter: chili,
+        frontmatter: {
+          ...chili,
+          ingredients: [
+            { heading: null, items: ['1 onion, diced'] },
+            { heading: 'Meats', items: ['2 lb ground chuck'] },
+          ],
+        },
         body: '# Chili',
         summary: '',
         tags: [],
+        authoredAt: '2023-11-06',
       }),
     );
-    expect(await screen.findByRole('heading', { name: 'Chili' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Chili', level: 1 })).toBeInTheDocument();
   });
 
   it('keeps the form on screen with messages when fields are wrong', async () => {
@@ -69,12 +77,33 @@ describe('NewRecipe', () => {
     const post = vi.fn();
     server.use(http.post('/api/documents', post));
     render(<App />, { route: '/recipes/new' });
-    await user.clear(await screen.findByLabelText('Servings'));
-    await user.type(screen.getByLabelText('Servings'), 'eight');
+    await user.type(await screen.findByLabelText('Servings'), 'eight');
     await user.click(screen.getByRole('button', { name: 'Save recipe' }));
     expect(await screen.findByText(/whole number/)).toBeInTheDocument();
     expect(screen.getByText(/at least one ingredient/)).toBeInTheDocument();
     expect(post).not.toHaveBeenCalled();
+  });
+
+  it('lets servings and times stay blank and sends no numbers for them', async () => {
+    const user = userEvent.setup();
+    let posted: { frontmatter: Record<string, unknown>; authoredAt: unknown } | undefined;
+    server.use(
+      http.post('/api/documents', async ({ request }) => {
+        posted = (await request.json()) as typeof posted;
+        return HttpResponse.json(recipeDoc(), { status: 201 });
+      }),
+      http.get(`/api/documents/${ids.doc}`, () => HttpResponse.json(recipeDoc())),
+    );
+    render(<App />, { route: '/recipes/new' });
+    await user.type(await screen.findByLabelText('Title'), 'Chili');
+    await user.type(screen.getByLabelText('Ingredients'), 'salt');
+    await user.click(screen.getByRole('button', { name: 'Save recipe' }));
+    await waitFor(() => expect(posted).toBeDefined());
+    expect(posted!.frontmatter).toEqual({
+      title: 'Chili',
+      ingredients: [{ heading: null, items: ['salt'] }],
+    });
+    expect(posted!.authoredAt).toBeNull();
   });
 });
 
@@ -82,9 +111,11 @@ describe('RecipeDetail', () => {
   it('shows the current version with its details, ingredients and method', async () => {
     server.use(http.get(`/api/documents/${ids.doc}`, () => HttpResponse.json(recipeDoc(version2))));
     render(<App />, { route: `/recipes/${ids.doc}` });
-    expect(await screen.findByRole('heading', { name: 'Chili' })).toBeInTheDocument();
-    expect(screen.getByText(/v2 · Tyler/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Chili', level: 1 })).toBeInTheDocument();
+    expect(screen.getByText(/v2 · Tyler · written Jan 31, 2025 · entered/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Meats' })).toBeInTheDocument();
     expect(screen.getByText('1 tsp smoked paprika')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Chili', level: 2 })).toBeInTheDocument();
     expect(screen.getByText(/Stir in smoked paprika/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
       'href',
@@ -122,7 +153,7 @@ describe('EditRecipe', () => {
     );
     render(<App />, { route: `/recipes/${ids.doc}/edit` });
     const ingredients = await screen.findByLabelText('Ingredients');
-    expect(ingredients).toHaveValue('2 lb ground chuck\n1 onion, diced');
+    expect(ingredients).toHaveValue('Meats:\n2 lb ground chuck\n1 onion, diced');
     expect(screen.getByLabelText('Cook minutes')).toHaveValue('180');
 
     await user.type(ingredients, '\n1 tsp smoked paprika');
@@ -132,9 +163,18 @@ describe('EditRecipe', () => {
 
     await waitFor(() =>
       expect(posted).toEqual({
-        frontmatter: { ...chili, ingredients: [...chili.ingredients, '1 tsp smoked paprika'] },
+        frontmatter: {
+          ...chili,
+          ingredients: [
+            {
+              heading: 'Meats',
+              items: ['2 lb ground chuck', '1 onion, diced', '1 tsp smoked paprika'],
+            },
+          ],
+        },
         body: '# Chili\n\nBrown the beef.\nStir in smoked paprika.\n',
         summary: 'added smoked paprika',
+        authoredAt: null,
       }),
     );
     expect(await screen.findByText(/v2 · Tyler/)).toBeInTheDocument();
@@ -179,9 +219,9 @@ describe('RecipeDiff', () => {
     expect(await screen.findByText('v1 → v2')).toBeInTheDocument();
     expect(screen.getByText('+Stir in smoked paprika.')).toBeInTheDocument();
     expect(screen.queryByText(/^Index:/)).toBeNull();
-    expect(
-      screen.getByText('2 lb ground chuck, 1 onion, diced, 1 tsp smoked paprika'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('1 tsp smoked paprika')).toBeInTheDocument();
+    expect(screen.queryByText('2 lb ground chuck')).toBeNull();
+    expect(screen.getByText('No changes to the details.')).toBeInTheDocument();
   });
 
   it('asks for two versions when the query is missing', async () => {

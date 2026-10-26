@@ -15,7 +15,19 @@ const chili = {
   servings: 8,
   prepMinutes: 20,
   cookMinutes: 180,
-  ingredients: ['2 lb ground chuck', '1 onion, diced'],
+  ingredients: [
+    { heading: 'Meats', items: ['2 lb ground chuck'] },
+    { heading: 'Liquids', items: ['2 tsp Worcestershire', '1 can Guinness'] },
+  ],
+};
+const chili2 = {
+  ...chili,
+  cookMinutes: 240,
+  ingredients: [
+    { heading: 'Meats', items: ['2 lb ground chuck', '1 lb ground lamb'] },
+    { heading: 'Liquids', items: ['1 can Guinness'] },
+    { heading: 'Beans', items: ['1 can pinto beans'] },
+  ],
 };
 const body1 = '# Chili\n\nBrown the beef.\nAdd the onion.\n';
 const body2 = '# Chili\n\nBrown the beef.\nAdd the onion.\nStir in smoked paprika.\n';
@@ -47,13 +59,10 @@ async function saveSecond(): Promise<Version> {
       route: route('/versions'),
       params: { id: docId },
       body: {
-        frontmatter: {
-          ...chili,
-          cookMinutes: 240,
-          ingredients: [...chili.ingredients, '1 tsp smoked paprika'],
-        },
+        frontmatter: chili2,
         body: body2,
         summary: 'added smoked paprika',
+        authoredAt: '2025-01-31T22:12:15.000Z',
       },
     }),
   );
@@ -62,9 +71,14 @@ async function saveSecond(): Promise<Version> {
 }
 
 describe('POST /api/documents/{id}/versions', () => {
-  it('appends version 2 with a summary and the admin as author', async () => {
+  it('appends version 2 with a summary, an authored date and the admin as author', async () => {
     const v2 = await saveSecond();
-    expect(v2).toMatchObject({ number: 2, summary: 'added smoked paprika', body: body2 });
+    expect(v2).toMatchObject({
+      number: 2,
+      summary: 'added smoked paprika',
+      body: body2,
+      authoredAt: '2025-01-31T22:12:15.000Z',
+    });
     expect(v2.author).toMatchObject({ kind: 'member', name: 'Tyler' });
   });
 
@@ -123,7 +137,7 @@ describe('GET versions', () => {
 });
 
 describe('GET /api/documents/{id}/diff', () => {
-  it('returns a unified body diff and a key-level frontmatter diff', async () => {
+  it('returns a unified body diff, a key-level frontmatter diff and a per-group ingredient diff', async () => {
     await saveSecond();
     const res = await api(
       fakeEvent({
@@ -141,13 +155,69 @@ describe('GET /api/documents/{id}/diff', () => {
     expect(diff.body).toContain('+++ chili.md\tv2');
     expect(diff.body).toContain('+Stir in smoked paprika.');
     expect(diff.body).not.toContain('-Brown the beef.');
+    expect(diff.to.authoredAt).toBe('2025-01-31T22:12:15.000Z');
     expect(diff.frontmatter).toEqual([
       { key: 'cookMinutes', change: 'changed', from: 180, to: 240 },
+    ]);
+    expect(diff.ingredients).toEqual([
       {
-        key: 'ingredients',
+        heading: 'Meats',
         change: 'changed',
-        from: chili.ingredients,
-        to: [...chili.ingredients, '1 tsp smoked paprika'],
+        lines: [
+          { kind: 'same', text: '2 lb ground chuck' },
+          { kind: 'added', text: '1 lb ground lamb' },
+        ],
+      },
+      {
+        heading: 'Liquids',
+        change: 'changed',
+        lines: [
+          { kind: 'removed', text: '2 tsp Worcestershire' },
+          { kind: 'same', text: '1 can Guinness' },
+        ],
+      },
+      { heading: 'Beans', change: 'added', lines: [{ kind: 'added', text: '1 can pinto beans' }] },
+    ]);
+  });
+
+  it('diffs a flat (pre-groups) version against a grouped one', async () => {
+    const flat = await buildDocuments(t.db)(
+      fakeEvent({
+        method: 'POST',
+        route: '/api/documents',
+        body: {
+          type: 'recipe',
+          frontmatter: { title: 'Old', ingredients: ['salt', 'pepper'] },
+          body: '',
+        },
+      }),
+    );
+    const id = bodyOf<DocumentWithVersion>(flat).document.id;
+    await api(
+      fakeEvent({
+        method: 'POST',
+        route: route('/versions'),
+        params: { id },
+        body: { frontmatter: { title: 'Old', ingredients: [{ items: ['salt'] }] }, body: '' },
+      }),
+    );
+    const res = await api(
+      fakeEvent({
+        method: 'GET',
+        route: route('/diff'),
+        params: { id },
+        query: { from: '1', to: '2' },
+      }),
+    );
+    expect(res.statusCode).toBe(200);
+    expect(bodyOf<DiffResponse>(res).ingredients).toEqual([
+      {
+        heading: null,
+        change: 'changed',
+        lines: [
+          { kind: 'same', text: 'salt' },
+          { kind: 'removed', text: 'pepper' },
+        ],
       },
     ]);
   });

@@ -185,6 +185,27 @@ Each is reversible unless marked.
 - **Tags live on the document envelope**, not the recipe frontmatter, following the
   domain model over the type table.
 
+### After the first real recipes (Oct 26, 2026)
+
+Importing the chili lineage by hand (Steve's 2014 card, then four of Tyler's iterations
+from 2023 to 2026) changed the recipe schema. Tyler approved the shapes.
+
+- **Servings, prep and cook minutes are optional.** The recipes say "simmer 2–3 hr"; every
+  number typed into those fields had been invented.
+- **Ingredients are groups** (`[{ heading, items[] }]`), because "Meats (3 lb total)" and
+  "Core spice blend" are information. Lines stay free text; quantity parsing is still
+  deferred. The schema lifts the earlier flat `string[]` into one unnamed group on read,
+  so versions saved before this keep rendering and diffing. In the form, a line ending in
+  a colon starts a group.
+- **The diff knows ingredients:** a line diff per group, groups paired by heading, instead
+  of two whole-list blobs. Shape: `DiffResponse.ingredients`.
+- **`version.authored_at`** (migration `0003`, nullable) records when content was written
+  when that differs from when it entered The Keep; `created_at` stays the audit
+  timestamp. The form exposes it as "Written on"; the history, detail and diff screens
+  show "written … · entered …" when set.
+- **Bodies render as markdown** (react-markdown, themed through the tokens). No notes
+  field: notes are prose and live in the body.
+
 ## Before the first deploy
 
 Merging this phase to `main` is the confirmation the directive asks for before the first

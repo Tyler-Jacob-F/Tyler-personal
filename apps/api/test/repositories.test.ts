@@ -64,6 +64,13 @@ describe('documents', () => {
     expect(created.version.frontmatter).toEqual(chili);
     expect(created.version.author).toEqual({ kind: 'member', id: owner, name: 'Tyler' });
     expect(created.version.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    expect(created.version.authoredAt).toBeNull();
+  });
+
+  it('keeps an authored date distinct from the audit timestamp', async () => {
+    const created = await createDocument(t.db, newDoc({ authoredAt: '2014-03-03T00:00:00.000Z' }));
+    expect(created.version.authoredAt).toBe('2014-03-03T00:00:00.000Z');
+    expect(created.version.createdAt).not.toBe(created.version.authoredAt);
   });
 
   it('suffixes the slug on collision', async () => {

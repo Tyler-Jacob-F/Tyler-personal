@@ -41,6 +41,7 @@ export function EditRecipe() {
               frontmatter: toFrontmatter(values),
               body: values.body,
               summary: values.summary,
+              authoredAt: values.authoredAt,
             });
             navigate(`/recipes/${id}`);
           } catch (e) {

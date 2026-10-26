@@ -31,9 +31,45 @@ describe('POST /api/documents', () => {
   it('creates a recipe in the me ring with version 1 authored by the admin', async () => {
     const created = await createChili();
     expect(created.document).toMatchObject({ type: 'recipe', slug: 'chili', ring: 'me', tags: [] });
-    expect(created.version).toMatchObject({ number: 1, summary: '', frontmatter: chili });
+    expect(created.version).toMatchObject({
+      number: 1,
+      summary: '',
+      authoredAt: null,
+      frontmatter: { ...chili, ingredients: [{ heading: null, items: chili.ingredients }] },
+    });
     expect(created.version.author).toMatchObject({ kind: 'member', name: 'Tyler' });
     expect(created.version.author.id).toBe(created.document.owner);
+  });
+
+  it('stores ingredient groups, optional numbers left out, and an authored date', async () => {
+    const res = await api(
+      fakeEvent({
+        method: 'POST',
+        route: '/api/documents',
+        body: {
+          type: 'recipe',
+          frontmatter: {
+            title: 'Three-Meat Chili',
+            ingredients: [
+              { heading: 'Meats (3 lb total)', items: ['1 lb beef', '1 lb lamb', '1 lb pork'] },
+              { items: ['1 can Guinness'] },
+            ],
+          },
+          body: 'Simmer 2–3 hr.',
+          authoredAt: '2023-11-06',
+        },
+      }),
+    );
+    expect(res.statusCode).toBe(201);
+    const created = bodyOf<DocumentWithVersion>(res);
+    expect(created.version.authoredAt).toBe('2023-11-06T00:00:00.000Z');
+    expect(created.version.frontmatter).toEqual({
+      title: 'Three-Meat Chili',
+      ingredients: [
+        { heading: 'Meats (3 lb total)', items: ['1 lb beef', '1 lb lamb', '1 lb pork'] },
+        { heading: null, items: ['1 can Guinness'] },
+      ],
+    });
   });
 
   it('validates frontmatter against the recipe schema', async () => {
@@ -47,7 +83,7 @@ describe('POST /api/documents', () => {
     expect(res.statusCode).toBe(400);
     const body = bodyOf<{ error: string; issues: Array<{ path: string }> }>(res);
     expect(body.error).toBe('bad_request');
-    expect(body.issues.map((i) => i.path).sort()).toEqual(['ingredients', 'servings']);
+    expect(body.issues.map((i) => i.path).sort()).toEqual(['ingredients.0.items', 'servings']);
   });
 
   it('rejects an unknown type and a malformed body', async () => {

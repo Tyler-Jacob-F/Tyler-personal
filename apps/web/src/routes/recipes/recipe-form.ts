@@ -1,36 +1,75 @@
-import { type RecipeFrontmatter, recipeFrontmatterSchema } from '@the-keep/shared';
+import {
+  type IngredientGroup,
+  ingredientGroupSchema,
+  type RecipeFrontmatter,
+  recipeFrontmatterSchema,
+} from '@the-keep/shared';
 import { z } from 'zod';
 
 /**
- * The form's view of the shared recipe schema: numbers arrive as input strings and
- * ingredients as one-per-line text; the output is exactly what the API takes.
+ * The form's view of the shared recipe schema: numbers arrive as input strings (blank
+ * allowed), ingredients as text with a line ending in ":" starting a group; the output is
+ * exactly what the API takes.
  */
-const wholeNumber = (label: string, min: number) =>
+const optionalWholeNumber = (label: string, min: number) =>
   z
     .string()
     .trim()
-    .min(1, `${label} is required.`)
-    .refine((text) => Number.isInteger(Number(text)), `${label} must be a whole number.`)
-    .refine((text) => Number(text) >= min, `${label} must be at least ${min}.`)
-    .transform((text) => Number(text));
+    .refine(
+      (text) => text === '' || Number.isInteger(Number(text)),
+      `${label} must be a whole number.`,
+    )
+    .refine((text) => text === '' || Number(text) >= min, `${label} must be at least ${min}.`)
+    .transform((text) => (text === '' ? undefined : Number(text)));
+
+/** "Meats (3 lb total):" starts a group; lines before any heading form an unnamed group. */
+export function parseIngredientGroups(text: string): IngredientGroup[] {
+  const groups: IngredientGroup[] = [];
+  let current: IngredientGroup | null = null;
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (line.endsWith(':') && line.length > 1) {
+      current = { heading: line.slice(0, -1).trim(), items: [] };
+      groups.push(current);
+      continue;
+    }
+    if (!current) {
+      current = { heading: null, items: [] };
+      groups.push(current);
+    }
+    current.items.push(line);
+  }
+  return groups.filter((group) => group.items.length > 0);
+}
+
+export function formatIngredientGroups(groups: IngredientGroup[]): string {
+  return groups
+    .map((group) => [...(group.heading ? [`${group.heading}:`] : []), ...group.items].join('\n'))
+    .join('\n');
+}
 
 export const recipeFormSchema = z.object({
   title: z.string().trim().min(1, 'Title is required.').pipe(recipeFrontmatterSchema.shape.title),
-  servings: wholeNumber('Servings', 1),
-  prepMinutes: wholeNumber('Prep minutes', 0),
-  cookMinutes: wholeNumber('Cook minutes', 0),
+  servings: optionalWholeNumber('Servings', 1),
+  prepMinutes: optionalWholeNumber('Prep minutes', 0),
+  cookMinutes: optionalWholeNumber('Cook minutes', 0),
   ingredientsText: z
     .string()
-    .transform((text) =>
-      text
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(Boolean),
-    )
-    .refine((lines) => lines.length > 0, 'List at least one ingredient, one per line.')
-    .pipe(recipeFrontmatterSchema.shape.ingredients),
+    .transform(parseIngredientGroups)
+    .refine((groups) => groups.length > 0, 'List at least one ingredient, one per line.')
+    .refine(
+      (groups) => z.array(ingredientGroupSchema).max(30).safeParse(groups).success,
+      'Keep each ingredient under 200 characters and the list under 30 groups.',
+    ),
   body: z.string().max(200_000),
   summary: z.string().trim().max(200, 'Keep the summary to one line.'),
+  /** A calendar date, or blank: when the recipe was written, if not today. */
+  authoredAt: z
+    .string()
+    .trim()
+    .refine((d) => d === '' || /^\d{4}-\d{2}-\d{2}$/.test(d), 'Use a date like 2025-01-31.')
+    .transform((d) => (d === '' ? null : d)),
 });
 
 export type RecipeFormInput = z.input<typeof recipeFormSchema>;
@@ -48,13 +87,16 @@ export function toFrontmatter(values: RecipeFormOutput): RecipeFrontmatter {
 
 export const emptyRecipe: RecipeFormInput = {
   title: '',
-  servings: '4',
-  prepMinutes: '0',
-  cookMinutes: '0',
+  servings: '',
+  prepMinutes: '',
+  cookMinutes: '',
   ingredientsText: '',
   body: '',
   summary: '',
+  authoredAt: '',
 };
+
+const show = (n: number | undefined) => (n === undefined ? '' : String(n));
 
 export function fromVersion(frontmatter: Record<string, unknown>, body: string): RecipeFormInput {
   const parsed = recipeFrontmatterSchema.safeParse(frontmatter);
@@ -62,11 +104,12 @@ export function fromVersion(frontmatter: Record<string, unknown>, body: string):
   const r = parsed.data;
   return {
     title: r.title,
-    servings: String(r.servings),
-    prepMinutes: String(r.prepMinutes),
-    cookMinutes: String(r.cookMinutes),
-    ingredientsText: r.ingredients.join('\n'),
+    servings: show(r.servings),
+    prepMinutes: show(r.prepMinutes),
+    cookMinutes: show(r.cookMinutes),
+    ingredientsText: formatIngredientGroups(r.ingredients),
     body,
     summary: '',
+    authoredAt: '',
   };
 }

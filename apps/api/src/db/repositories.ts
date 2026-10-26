@@ -21,6 +21,8 @@ export interface NewDocument {
   frontmatter: Record<string, unknown>;
   summary: string;
   author: AuthorRef;
+  /** ISO timestamp of when the content was written, for imported history. */
+  authoredAt?: string | null;
 }
 
 export interface NewVersion {
@@ -28,6 +30,7 @@ export interface NewVersion {
   frontmatter: Record<string, unknown>;
   summary: string;
   author: AuthorRef;
+  authoredAt?: string | null;
 }
 
 export class NotFoundError extends Error {
@@ -75,6 +78,7 @@ function toVersion(row: VersionRow, memberName: string | null, agentName: string
     frontmatter: row.frontmatter,
     author,
     createdAt: toIso(row.createdAt),
+    authoredAt: row.authoredAt ? toIso(row.authoredAt) : null,
     summary: row.summary,
   };
 }
@@ -129,6 +133,7 @@ export async function createDocument(db: Db, input: NewDocument): Promise<Docume
         body: input.body,
         frontmatter: input.frontmatter,
         summary: input.summary,
+        authoredAt: input.authoredAt ?? null,
         ...authorColumns(input.author),
       })
       .returning({ id: version.id });
@@ -214,6 +219,7 @@ export async function createVersion(
         body: input.body,
         frontmatter: input.frontmatter,
         summary: input.summary,
+        authoredAt: input.authoredAt ?? null,
         ...authorColumns(input.author),
       })
       .returning({ id: version.id });

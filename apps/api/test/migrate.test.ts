@@ -12,10 +12,11 @@ describe('migration runner', () => {
     const pg = await freshPglite();
     const runner = pgliteRunner(pg);
     const files = await readMigrationFiles(migrationsDir);
-    expect(files.map((f) => f.name)).toEqual(['0001_spine.sql', '0002_admin_member.sql']);
+    const names = ['0001_spine.sql', '0002_admin_member.sql', '0003_version_authored_at.sql'];
+    expect(files.map((f) => f.name)).toEqual(names);
 
     const first = await migrate(runner, files);
-    expect(first).toEqual(['0001_spine.sql', '0002_admin_member.sql']);
+    expect(first).toEqual(names);
 
     const second = await migrate(runner, files);
     expect(second).toEqual([]);
@@ -23,7 +24,7 @@ describe('migration runner', () => {
     const recorded = await pg.query<{ name: string }>(
       'select name from schema_migration order by name',
     );
-    expect(recorded.rows.map((r) => r.name)).toEqual(['0001_spine.sql', '0002_admin_member.sql']);
+    expect(recorded.rows.map((r) => r.name)).toEqual(names);
 
     const tables = await pg.query<{ table_name: string }>(
       "select table_name from information_schema.tables where table_schema = 'public' order by table_name",

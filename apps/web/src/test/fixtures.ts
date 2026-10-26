@@ -12,7 +12,17 @@ export const chili = {
   servings: 8,
   prepMinutes: 20,
   cookMinutes: 180,
-  ingredients: ['2 lb ground chuck', '1 onion, diced'],
+  ingredients: [
+    { heading: 'Meats', items: ['2 lb ground chuck'] },
+    { heading: null, items: ['1 onion, diced'] },
+  ],
+};
+export const chili2 = {
+  ...chili,
+  ingredients: [
+    { heading: 'Meats', items: ['2 lb ground chuck'] },
+    { heading: null, items: ['1 onion, diced', '1 tsp smoked paprika'] },
+  ],
 };
 
 const author = { kind: 'member' as const, id: ids.owner, name: 'Tyler' };
@@ -25,6 +35,7 @@ export const version1: Version = {
   frontmatter: chili,
   author,
   createdAt: '2026-10-26T12:00:00.000Z',
+  authoredAt: null,
   summary: '',
 };
 
@@ -33,8 +44,9 @@ export const version2: Version = {
   id: ids.v2,
   number: 2,
   body: '# Chili\n\nBrown the beef.\nStir in smoked paprika.\n',
-  frontmatter: { ...chili, ingredients: [...chili.ingredients, '1 tsp smoked paprika'] },
+  frontmatter: chili2,
   createdAt: '2026-10-26T13:00:00.000Z',
+  authoredAt: '2025-01-31T00:00:00.000Z',
   summary: 'added smoked paprika',
 };
 
@@ -56,8 +68,14 @@ export function recipeDoc(version: Version = version1): DocumentWithVersion {
 }
 
 export const diff12: DiffResponse = {
-  from: { number: 1, summary: '', author, createdAt: version1.createdAt },
-  to: { number: 2, summary: 'added smoked paprika', author, createdAt: version2.createdAt },
+  from: { number: 1, summary: '', author, createdAt: version1.createdAt, authoredAt: null },
+  to: {
+    number: 2,
+    summary: 'added smoked paprika',
+    author,
+    createdAt: version2.createdAt,
+    authoredAt: version2.authoredAt,
+  },
   body: [
     'Index: chili.md',
     '===================================================================',
@@ -70,12 +88,16 @@ export const diff12: DiffResponse = {
     '+Stir in smoked paprika.',
     '',
   ].join('\n'),
-  frontmatter: [
+  frontmatter: [],
+  ingredients: [
+    { heading: 'Meats', change: 'same', lines: [{ kind: 'same', text: '2 lb ground chuck' }] },
     {
-      key: 'ingredients',
+      heading: null,
       change: 'changed',
-      from: chili.ingredients,
-      to: [...chili.ingredients, '1 tsp smoked paprika'],
+      lines: [
+        { kind: 'same', text: '1 onion, diced' },
+        { kind: 'added', text: '1 tsp smoked paprika' },
+      ],
     },
   ],
 };

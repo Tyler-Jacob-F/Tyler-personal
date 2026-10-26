@@ -1,5 +1,6 @@
 import {
   createDocumentRequestSchema,
+  ingredientLines,
   diffQuerySchema,
   documentSchema,
   isDocumentType,
@@ -15,20 +16,50 @@ const chili = {
   servings: 8,
   prepMinutes: 20,
   cookMinutes: 180,
-  ingredients: ['2 lb ground chuck', '1 onion, diced', '2 tbsp chili powder'],
+  ingredients: [
+    { heading: 'Meats', items: ['2 lb ground chuck'] },
+    { heading: null, items: ['1 onion, diced', '2 tbsp chili powder'] },
+  ],
 };
 
 describe('recipe frontmatter', () => {
   it('accepts a complete recipe and trims strings', () => {
     const parsed = recipeFrontmatterSchema.parse({ ...chili, title: '  Chili ' });
     expect(parsed.title).toBe('Chili');
-    expect(parsed.ingredients).toHaveLength(3);
+    expect(parsed.ingredients).toHaveLength(2);
   });
 
-  it('rejects a recipe without ingredients, servings or a title', () => {
+  it('rejects a recipe without ingredients or a title, and a zero serving count', () => {
     expect(recipeFrontmatterSchema.safeParse({ ...chili, ingredients: [] }).success).toBe(false);
+    expect(
+      recipeFrontmatterSchema.safeParse({ ...chili, ingredients: [{ heading: 'x', items: [] }] })
+        .success,
+    ).toBe(false);
     expect(recipeFrontmatterSchema.safeParse({ ...chili, servings: 0 }).success).toBe(false);
     expect(recipeFrontmatterSchema.safeParse({ ...chili, title: '' }).success).toBe(false);
+  });
+
+  it('lets servings and times be absent: recipes say "simmer 2–3 hr", not "cook: 180"', () => {
+    const parsed = recipeFrontmatterSchema.parse({
+      title: 'Chili',
+      ingredients: chili.ingredients,
+    });
+    expect(parsed.servings).toBeUndefined();
+    expect(parsed.cookMinutes).toBeUndefined();
+  });
+
+  it('lifts the flat ingredient list older versions stored into one unnamed group', () => {
+    const parsed = recipeFrontmatterSchema.parse({
+      ...chili,
+      ingredients: ['2 lb beef', '1 onion'],
+    });
+    expect(parsed.ingredients).toEqual([{ heading: null, items: ['2 lb beef', '1 onion'] }]);
+    expect(ingredientLines(parsed.ingredients)).toEqual(['2 lb beef', '1 onion']);
+  });
+
+  it('defaults a missing heading to null', () => {
+    const parsed = recipeFrontmatterSchema.parse({ ...chili, ingredients: [{ items: ['salt'] }] });
+    expect(parsed.ingredients[0]!.heading).toBeNull();
   });
 
   it('rejects fractional minutes and non-integer servings', () => {
@@ -86,6 +117,7 @@ describe('document envelope', () => {
       frontmatter: chili,
       author: { kind: 'member', id: doc.owner, name: 'Tyler' },
       createdAt: doc.createdAt,
+      authoredAt: null,
       summary: '',
     };
     expect(versionSchema.parse(version)).toEqual(version);
@@ -103,6 +135,21 @@ describe('API DTOs', () => {
     });
     expect(parsed.summary).toBe('');
     expect(parsed.tags).toEqual([]);
+  });
+
+  it('accepts authoredAt as a date or a timestamp, or not at all', () => {
+    const base = { type: 'recipe', frontmatter: chili, body: '' };
+    expect(createDocumentRequestSchema.parse(base).authoredAt).toBeUndefined();
+    expect(
+      createDocumentRequestSchema.parse({ ...base, authoredAt: '2023-11-06' }).authoredAt,
+    ).toBe('2023-11-06T00:00:00.000Z');
+    expect(
+      createDocumentRequestSchema.parse({ ...base, authoredAt: '2025-01-31T22:12:15.000Z' })
+        .authoredAt,
+    ).toBe('2025-01-31T22:12:15.000Z');
+    expect(
+      createDocumentRequestSchema.safeParse({ ...base, authoredAt: 'last winter' }).success,
+    ).toBe(false);
   });
 
   it('coerces diff query numbers from strings', () => {

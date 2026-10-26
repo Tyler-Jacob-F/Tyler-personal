@@ -1,9 +1,10 @@
-import type { FrontmatterChange } from '@the-keep/shared';
+import type { FrontmatterChange, IngredientGroupDiff } from '@the-keep/shared';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { useDiff, useDocument } from '@/api/documents';
 import { Alert } from '@/components/Alert';
 import { DiffView } from '@/components/DiffView';
-import { titleOf, when } from '@/routes/recipes/format';
+import { dates, titleOf } from '@/routes/recipes/format';
+import { cn } from '@/lib/utils';
 
 function show(value: unknown): string {
   if (Array.isArray(value)) return value.map(String).join(', ');
@@ -30,6 +31,40 @@ function FrontmatterChanges({ changes }: { changes: FrontmatterChange[] }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+const lineStyles = {
+  added: 'bg-success-subtle text-success',
+  removed: 'bg-destructive-subtle text-destructive line-through',
+  same: '',
+} as const;
+
+function IngredientChanges({ groups }: { groups: IngredientGroupDiff[] }) {
+  const changed = groups.filter((g) => g.change !== 'same');
+  if (changed.length === 0)
+    return <p className="text-sm text-muted-foreground">No changes to the ingredients.</p>;
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {changed.map((group, g) => (
+        <div key={g} className="rounded-card border border-border text-sm">
+          <div className="flex items-baseline justify-between border-b border-border px-3 py-2">
+            <span className="font-semibold">{group.heading ?? 'Ingredients'}</span>
+            <span className="text-xs text-muted-foreground">{group.change}</span>
+          </div>
+          <ul>
+            {group.lines.map((line, i) => (
+              <li key={i} className={cn('px-3 py-0.5', lineStyles[line.kind])}>
+                <span className="mr-2 inline-block w-3 text-muted-foreground">
+                  {line.kind === 'added' ? '+' : line.kind === 'removed' ? '−' : ''}
+                </span>
+                {line.text}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -61,12 +96,21 @@ export function RecipeDiff() {
           </Link>
         </h1>
         <p className="mt-1 text-xs text-muted-foreground">
-          {d.to.summary || 'no summary'} · {d.to.author.name} · {when(d.to.createdAt)} ·{' '}
+          {d.to.summary || 'no summary'} · {d.to.author.name} · {dates(d.to)} ·{' '}
           <Link to={`/recipes/${id}/history`} className="hover:underline">
             history
           </Link>
         </p>
       </div>
+
+      {d.ingredients && (
+        <section className="grid gap-2">
+          <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+            Ingredients
+          </h2>
+          <IngredientChanges groups={d.ingredients} />
+        </section>
+      )}
 
       <section className="grid gap-2">
         <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">

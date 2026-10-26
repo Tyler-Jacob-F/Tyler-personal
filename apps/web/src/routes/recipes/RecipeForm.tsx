@@ -76,7 +76,7 @@ export function RecipeForm({
                 <FormItem>
                   <FormLabel>{label}</FormLabel>
                   <FormControl>
-                    <Input inputMode="numeric" {...field} />
+                    <Input inputMode="numeric" placeholder="optional" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -92,9 +92,15 @@ export function RecipeForm({
             <FormItem>
               <FormLabel>Ingredients</FormLabel>
               <FormControl>
-                <Textarea rows={8} placeholder={'2 lb ground chuck\n1 onion, diced'} {...field} />
+                <Textarea
+                  rows={10}
+                  placeholder={'Meats:\n2 lb ground chuck\nAromatics:\n1 onion, diced'}
+                  {...field}
+                />
               </FormControl>
-              <FormDescription>One per line, with the amount.</FormDescription>
+              <FormDescription>
+                One per line, with the amount. A line ending in a colon starts a group.
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -133,6 +139,23 @@ export function RecipeForm({
             )}
           />
         )}
+
+        <FormField
+          control={form.control}
+          name="authoredAt"
+          render={({ field }) => (
+            <FormItem className="md:max-w-xs">
+              <FormLabel>Written on</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} />
+              </FormControl>
+              <FormDescription>
+                Only if this version was written earlier than today, as when importing an old file.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div>
           <Button type="submit" disabled={form.formState.isSubmitting}>

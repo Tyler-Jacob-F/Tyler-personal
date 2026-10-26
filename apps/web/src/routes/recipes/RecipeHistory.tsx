@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router';
 import { useDocument, useVersions } from '@/api/documents';
 import { Alert } from '@/components/Alert';
 import { Button } from '@/components/ui/button';
-import { titleOf, when } from '@/routes/recipes/format';
+import { dates, titleOf } from '@/routes/recipes/format';
 
 export function RecipeHistory() {
   const { id = '' } = useParams();
@@ -51,7 +51,7 @@ export function RecipeHistory() {
             </div>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span>
-                {version.author.name} · {when(version.createdAt)}
+                {version.author.name} · {dates(version)}
               </span>
               {version.number > 1 && (
                 <Link
