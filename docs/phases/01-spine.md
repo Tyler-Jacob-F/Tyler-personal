@@ -141,7 +141,9 @@ Each is one PR, in this order; later ones depend on earlier ones.
       screen.
 - [x] **Dashboard and logs.** CloudWatch dashboard with Lambda errors and duration, API
       4xx/5xx, Aurora ACU utilization. Log retention set on every function.
-- [ ] **Gate check.** Chili, twice, diffed, in production. Record the date here.
+- [x] **Gate check.** Chili, twice, diffed, in production. **Gate true: Oct 26, 2026.** Signed
+      in by emailed code; the chili lineage (Steve's 2014 card, four of Tyler's versions
+      from 2023 to 2026) imported and diffed at tylerfuqua.com.
 
 ## Decided during implementation (Oct 26, 2026)
 
@@ -211,17 +213,13 @@ from 2023 to 2026) changed the recipe schema. Tyler approved the shapes.
   through the API, and the folder-wide import waits for Phase 2's agent tokens. Unit
   tests skip `NNNN_import_*` files so fixtures start empty.
 
-## Before the first deploy
+## How the first deploy went (Oct 26, 2026)
 
-Merging this phase to `main` is the confirmation the directive asks for before the first
-`TheKeepData` deploy: the cluster (deletion protection on, retained on stack delete) and
-the Cognito pool (retained) are created by that merge.
-
-After the deploy: SES emails `tyler.fuqua@icloud.com` one verification link; click it
-before trying to sign in. If the first `InitiateAuth` refuses the admin user because it
-sits in `FORCE_CHANGE_PASSWORD` status after `AdminCreateUser`, the one-time fix is
-`aws cognito-idp admin-set-user-password --permanent` with any throwaway password; no
-password flow is enabled on the client, so it can never be used to sign in.
+Merging to `main` was the confirmation before the first `TheKeepData` deploy. The first
+run failed in its test gate on a cold-runner timeout, not on AWS; the second created all
+four stacks and applied the migrations in fourteen minutes. The SES verification link
+arrived and the pre-created admin signed in through the custom flow on the first try, so
+the `FORCE_CHANGE_PASSWORD` worry never materialized.
 
 ## Ask versus decide
 

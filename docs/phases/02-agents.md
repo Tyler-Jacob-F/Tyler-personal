@@ -1,0 +1,130 @@
+# Phase 2 · Agents
+
+Cites `docs/DESIGN.md`. Read it first, then `docs/phases/01-spine.md`, whose "Decided
+during implementation" section says what exists and why.
+
+## Gate
+
+From a Claude Code session holding an agent token with `write:recipes`, import the recipe
+archive folder (PDFs and Pages files, the chili lineage included) through the MCP server
+at the real domain. Every file becomes a document or a dated version in production, the
+token is recorded as author, and the admin UI's agent activity view shows the run.
+
+## Decided (Oct 27, 2026)
+
+- **Bearer tokens are the only door.** Cowork's custom connector dialog offers Request
+  headers (confirmed in Tyler's account, Oct 27), Claude Code takes `--header`, and a
+  scheduled Claude Code task carries the token as an environment secret. No OAuth
+  authorization server; revisit only if a client arrives that cannot send a header.
+- **One MCP endpoint, same API.** `https://tylerfuqua.com/mcp`, Streamable HTTP,
+  stateless (no server-side sessions, since it runs on Lambda). CloudFront forwards
+  `/mcp` to the HTTP API like `/api/*`. The MCP Lambda imports the same handler modules
+  the REST routes use and calls them in-process with the agent `caller`, so there is one
+  validation path and no second cold start. This honors the brief's "MCP wrapping the
+  public API" by sharing code rather than by an HTTP hop; flagged, reversible.
+- **Duet is on a waitlist.** Nothing in this phase assumes it. The "always on" producer
+  for the morning brief is a scheduled Claude Code task holding a `write:briefs` token;
+  Duet takes over the same token when it can present a header.
+- **Scopes stay as the brief lists them** (`read:documents`, `write:recipes`,
+  `write:briefs`, `write:notes`, `read:reading`). The permission middleware learns to map
+  a write to a document type onto its scope; Phase 1's placeholder `write:documents`
+  goes away.
+
+## In scope
+
+- `packages/shared`: scope enum, agent token DTOs (create, list, revoke), the `brief`
+  frontmatter schema, MCP tool input schemas derived from the existing DTOs.
+- Agent tokens: repository (create with hash, find by hash, revoke, touch
+  `last_used_at`), admin-only routes `/api/admin/tokens` (list, create, revoke), a Tokens
+  screen that shows the secret once. No agent scope can reach these routes.
+- Lambda authorizer on `/api/agent/*` and `/mcp`: looks up the hash, refuses revoked
+  tokens, returns `{ id, name, scopes }` as context; handlers receive
+  `{ kind: 'agent', id, scopes }` and the existing permission middleware does the rest.
+- `/api/agent/*` mirrors the documents and versions routes on the same handlers.
+- MCP server Lambda: tools `list_documents`, `get_document`, `create_document`,
+  `create_version`, each with a zod input schema and a one-paragraph description written
+  for a model to read. Tested in-process with the MCP SDK client against PGlite.
+- `brief` type: schema (`date`, `sections[]` of `{ heading, body }`), default ring `me`,
+  rendered on the logged-in home as "today's brief" above recent documents. Written by
+  the scheduled task; the task's prompt and setup are a runbook, not code.
+- Agent activity: the admin UI lists recent versions authored by agents, separately
+  from human activity, with the token name and time.
+- Importer runbook: `docs/runbooks/import-recipes.md` and `tools/pages-text.py` (the
+  dependency-free Pages unpacker from Phase 1), the ordering rule (oldest first, a
+  re-export is not a version, the file's own date goes in `authoredAt`), and the one-line
+  Claude Code command that adds the MCP server with the token from an environment
+  variable. The gate is running it.
+- Tests travel with code as before; CDK snapshots for the authorizer, the new Lambda and
+  the CloudFront behavior.
+
+## Out of scope
+
+- OAuth of any kind for the MCP server: no DCR, no CIMD, no consent screen.
+- Google federation, the `group` ring, members, surveys, sign-ups, share tokens, the
+  calendar. Phase 3.
+- The public read path, CloudFront caching, SEO, the resume, design values. Phase 4.
+- Hardcover, Ishar, any feed. Phase 5.
+- Token expiry, rotation or scope editing. Revoke and reissue is the whole lifecycle.
+- MCP resources, prompts, sampling, or the legacy SSE transport. Tools only.
+- Rate limiting beyond API Gateway's defaults.
+- Attachments and recipe photos; structured ingredient quantities.
+- Any agent path that promotes a ring, manages members or manages tokens. Never.
+- Anything Duet-specific.
+
+## Decisions from the brief this phase touches
+
+- Auth (agents): per-agent API tokens with explicit scopes, separate from human sessions.
+- Agent surface: MCP server on Lambda wrapping the public API.
+- Agent tokens bypass the JWT authorizer on `/api/agent/*` and are verified by a Lambda
+  authorizer that returns the scopes as context; both paths converge on the same handlers
+  and the same `caller` shape.
+- Scopes are verbs on types; checked after identity and before any handler logic.
+- Every version an agent writes records the token name as author; the admin UI lists
+  agent activity separately from human activity.
+- `brief`: `date`, `sections[]`, default ring `me`, written by an agent token.
+- Private by default: no agent can make anything public.
+
+## Deliverables
+
+Each is one PR, in this order.
+
+- [ ] **Token model.** Scope enum and token DTOs in `packages/shared`; `agent_token`
+      repository; `write:documents` replaced by per-type scopes in the permission
+      middleware. Tests.
+- [ ] **Admin tokens.** `/api/admin/tokens` (admin role only) and the Tokens screen:
+      name, scopes, create (secret shown once), revoke, last used. Handler and MSW tests.
+- [ ] **Agent door.** Lambda authorizer, `/api/agent/*` routes, CloudFront unchanged
+      (same `/api/*` behavior). Handler tests with fake authorizer events; snapshot.
+- [ ] **MCP server.** The `mcp` Lambda, four tools, `/mcp` route and CloudFront behavior.
+      In-process MCP client tests. Snapshot.
+- [ ] **Brief type.** Schema, home-screen renderer, `write:briefs` on the scope map,
+      the scheduled-task runbook. Tests.
+- [ ] **Agent activity.** The admin view. MSW test.
+- [ ] **Importer runbook and tool.** `docs/runbooks/import-recipes.md`,
+      `tools/pages-text.py`, the ordering rule.
+- [ ] **Gate check.** Import the archive from a Claude Code session; record the date
+      here.
+
+## Ask versus decide
+
+**Ask Tyler** (cannot be undone or is reserved by the brief):
+
+- **Token format**, fixed once the first token exists: proposed `keep_` followed by 32
+  random bytes as base64url (43 characters), shown once at creation, stored as its
+  SHA-256 hash, never recoverable.
+- **The MCP URL**, a public address: proposed `https://tylerfuqua.com/mcp`.
+- **Persisting the refresh token** across page reloads (localStorage, id and access
+  tokens still in memory) so the weekly user is not emailed a code on every reload. Not
+  in the brief; small and reversible; Tyler's call because it changes what a stolen
+  laptop can do.
+- The names and scopes of the first tokens (an importer with `write:recipes`, a Cowork
+  connector, a brief writer with `write:briefs`).
+
+**Decide and flag in the PR description:**
+
+- Hash algorithm (SHA-256 unsalted; the token is 256 bits of entropy), authorizer result
+  cache TTL, the MCP Lambda's memory and timeout.
+- Tool names, descriptions and input shapes; how errors are reported to the model.
+- The `brief` sections shape and how "today" is chosen on the home screen.
+- Which Claude Code environment holds the brief writer's token and on what schedule.
+- The agent activity view's window and ordering.
