@@ -8,6 +8,7 @@ import { RecipeDiff } from '@/routes/recipes/RecipeDiff';
 import { RecipeHistory } from '@/routes/recipes/RecipeHistory';
 import { RecipeList } from '@/routes/recipes/RecipeList';
 import { SignIn } from '@/routes/SignIn';
+import { StackPage } from '@/routes/stack/StackPage';
 
 /** Route table. Screens are added under the shell as phases bring them. */
 export function App() {
@@ -23,6 +24,7 @@ export function App() {
           <Route path="/recipes/:id/edit" element={<EditRecipe />} />
           <Route path="/recipes/:id/history" element={<RecipeHistory />} />
           <Route path="/recipes/:id/diff" element={<RecipeDiff />} />
+          <Route path="/stack" element={<StackPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
