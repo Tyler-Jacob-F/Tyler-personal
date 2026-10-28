@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/aws-data-api/pg';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
-import { createDataApiClient, dataApiTargetFromEnv } from '../lib/data-api.js';
+import { createDataApiClient, dataApiTargetFromEnv, LAMBDA_RESUME_RETRY } from '../lib/data-api.js';
 import * as schema from './schema.js';
 
 /**
@@ -13,6 +13,9 @@ let cached: Db | undefined;
 
 /** One Drizzle instance per Lambda container, built from the environment the stack sets. */
 export function getDb(): Db {
-  cached ??= drizzle(createDataApiClient(), { ...dataApiTargetFromEnv(), schema });
+  cached ??= drizzle(createDataApiClient({}, LAMBDA_RESUME_RETRY), {
+    ...dataApiTargetFromEnv(),
+    schema,
+  });
   return cached;
 }

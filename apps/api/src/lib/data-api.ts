@@ -34,11 +34,19 @@ function isResuming(error: unknown): boolean {
 }
 
 export interface ResumeRetryOptions {
-  /** Total patience; an Aurora Serverless v2 resume from 0 ACU takes around 15 seconds. */
+  /**
+   * Total patience. An Aurora Serverless v2 resume from 0 ACU is usually around 15 seconds
+   * but has taken over 45 after a long pause; callers choose by what they can afford.
+   */
   maxWaitMs?: number;
   delayMs?: number;
   sleep?: (ms: number) => Promise<void>;
 }
+
+/** Inside a Lambda: fail before the function's 30 s timeout so the client sees a clean 5xx. */
+export const LAMBDA_RESUME_RETRY: ResumeRetryOptions = { maxWaitMs: 25_000, delayMs: 2_000 };
+/** In CI: the migration runner can wait as long as a slow resume takes. */
+export const MIGRATION_RESUME_RETRY: ResumeRetryOptions = { maxWaitMs: 240_000, delayMs: 3_000 };
 
 /**
  * The cluster pauses at 0 ACU when idle and the first call wakes it. Retry that one
