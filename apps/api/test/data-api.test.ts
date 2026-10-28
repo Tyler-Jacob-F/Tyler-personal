@@ -1,4 +1,10 @@
-import { createDataApiClient, dataApiTargetFromEnv, withResumeRetry } from '../src/lib/data-api.js';
+import {
+  createDataApiClient,
+  dataApiTargetFromEnv,
+  LAMBDA_RESUME_RETRY,
+  MIGRATION_RESUME_RETRY,
+  withResumeRetry,
+} from '../src/lib/data-api.js';
 
 class NamedError extends Error {
   constructor(name: string, message = name) {
@@ -59,6 +65,13 @@ describe('withResumeRetry', () => {
         { sleep, delayMs: 10, maxWaitMs: 25 },
       ),
     ).rejects.toThrow('DatabaseResumingException');
+  });
+});
+
+describe('resume budgets', () => {
+  it('keeps the Lambda budget inside its 30 s timeout and gives CI minutes', () => {
+    expect(LAMBDA_RESUME_RETRY.maxWaitMs).toBeLessThan(30_000);
+    expect(MIGRATION_RESUME_RETRY.maxWaitMs).toBeGreaterThanOrEqual(180_000);
   });
 });
 
