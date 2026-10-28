@@ -22,6 +22,14 @@ export function AppShell() {
             >
               Recipes
             </NavLink>
+            <NavLink
+              to="/stack"
+              className={({ isActive }) =>
+                cn('text-muted-foreground hover:text-foreground', isActive && 'text-foreground')
+              }
+            >
+              Stack
+            </NavLink>
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
             {state.status === 'signedIn' && <span className="hidden md:inline">{state.email}</span>}

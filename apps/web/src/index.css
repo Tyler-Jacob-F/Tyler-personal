@@ -25,6 +25,9 @@
   --color-destructive-subtle: var(--color-red-50);
   --color-success: var(--color-green-700);
   --color-success-subtle: var(--color-green-50);
+  /* Highlight: the thing being pointed at (a traced request on the Stack page). */
+  --color-highlight: var(--color-amber-700);
+  --color-highlight-subtle: var(--color-amber-50);
 
   --radius-control: 0.375rem;
   --radius-card: 0.75rem;
