@@ -26,6 +26,27 @@ describe('SignIn', () => {
     );
   });
 
+  it('prefills a remembered email so one click sends the code', async () => {
+    const user = userEvent.setup();
+    const requestCode = vi.fn(async (email: string) => ({ email, username: 'u', session: 's' }));
+    render(<SignIn />, {
+      route: '/sign-in',
+      auth: { signedIn: false, rememberedEmail: 'tyler.fuqua@icloud.com', requestCode },
+    });
+    expect(screen.getByLabelText('Email')).toHaveValue('tyler.fuqua@icloud.com');
+    await user.click(screen.getByRole('button', { name: 'Send code' }));
+    expect(requestCode).toHaveBeenCalledWith('tyler.fuqua@icloud.com');
+  });
+
+  it('waits quietly while a remembered session is restored', () => {
+    render(<SignIn />, {
+      route: '/sign-in',
+      auth: { signedIn: false, state: { status: 'restoring' } },
+    });
+    expect(screen.getByText(/Signing you back in/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Email')).toBeNull();
+  });
+
   it('validates the email and the code shape before calling anything', async () => {
     const user = userEvent.setup();
     const requestCode = vi.fn();

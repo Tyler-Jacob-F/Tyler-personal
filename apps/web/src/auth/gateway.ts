@@ -2,6 +2,7 @@ import {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
   RespondToAuthChallengeCommand,
+  RevokeTokenCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { config } from '@/config';
 
@@ -40,6 +41,8 @@ export interface AuthGateway {
   requestCode(email: string): Promise<Challenge>;
   submitCode(challenge: Challenge, code: string): Promise<SubmitResult>;
   refresh(refreshToken: string): Promise<Tokens>;
+  /** Invalidate a refresh token at Cognito, so sign-out means sign-out. */
+  revoke(refreshToken: string): Promise<void>;
 }
 
 function tokensFrom(
@@ -134,6 +137,12 @@ export function cognitoGateway(
         .catch(translate);
       if (!out.AuthenticationResult) throw new AuthError('no_tokens', 'Refresh returned no tokens');
       return tokensFrom(out.AuthenticationResult, refreshToken);
+    },
+
+    async revoke(refreshToken) {
+      await client
+        .send(new RevokeTokenCommand({ ClientId: clientId, Token: refreshToken }))
+        .catch(translate);
     },
   };
 }
