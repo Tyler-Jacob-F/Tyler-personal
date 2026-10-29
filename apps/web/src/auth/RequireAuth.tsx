@@ -5,6 +5,9 @@ import { useAuth } from '@/auth/useAuth';
 export function RequireAuth() {
   const { state } = useAuth();
   const location = useLocation();
+  if (state.status === 'restoring') {
+    return <p className="p-6 text-sm text-muted-foreground">Signing you back in…</p>;
+  }
   if (state.status !== 'signedIn') {
     return <Navigate to="/sign-in" replace state={{ from: location.pathname + location.search }} />;
   }

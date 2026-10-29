@@ -25,6 +25,11 @@ token is recorded as author, and the admin UI's agent activity view shows the ru
 - **Duet is on a waitlist.** Nothing in this phase assumes it. The "always on" producer
   for the morning brief is a scheduled Claude Code task holding a `write:briefs` token;
   Duet takes over the same token when it can present a header.
+- **The refresh token is remembered in the browser** (decided Oct 29, after a week of
+  typing codes): a reload restores the session silently, sign-out revokes the token at
+  Cognito and forgets it, and the sign-in form prefills the last email. The id and access
+  tokens stay in memory. A stolen unlocked laptop can act as Tyler for up to thirty days
+  or until he signs out anywhere, which is the trade he chose.
 - **Scopes stay as the brief lists them** (`read:documents`, `write:recipes`,
   `write:briefs`, `write:notes`, `read:reading`). The permission middleware learns to map
   a write to a document type onto its scope; Phase 1's placeholder `write:documents`
@@ -113,10 +118,6 @@ Each is one PR, in this order.
   random bytes as base64url (43 characters), shown once at creation, stored as its
   SHA-256 hash, never recoverable.
 - **The MCP URL**, a public address: proposed `https://tylerfuqua.com/mcp`.
-- **Persisting the refresh token** across page reloads (localStorage, id and access
-  tokens still in memory) so the weekly user is not emailed a code on every reload. Not
-  in the brief; small and reversible; Tyler's call because it changes what a stolen
-  laptop can do.
 - The names and scopes of the first tokens (an importer with `write:recipes`, a Cowork
   connector, a brief writer with `write:briefs`).
 

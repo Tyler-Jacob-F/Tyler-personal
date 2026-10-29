@@ -16,11 +16,12 @@ export interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
 export function fakeAuth(
   overrides: Partial<AuthContextValue> & { signedIn?: boolean } = {},
 ): AuthContextValue {
-  const { signedIn = true, ...rest } = overrides;
+  const { signedIn = true, rememberedEmail = null, ...rest } = overrides;
   return {
     state: signedIn
       ? { status: 'signedIn', email: 'tyler.fuqua@icloud.com' }
       : { status: 'anonymous' },
+    rememberedEmail,
     requestCode: async (email) => ({ email, username: email, session: 'session-1' }),
     submitCode: async () => true,
     getToken: async () => (signedIn ? 'test-id-token' : null),

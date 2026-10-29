@@ -27,14 +27,20 @@ function message(error: unknown): string {
 
 /** Two steps: email, then the six-digit code that email delivers. */
 export function SignIn() {
-  const { state, requestCode, submitCode } = useAuth();
+  const { state, rememberedEmail, requestCode, submitCode } = useAuth();
   const location = useLocation();
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const emailForm = useForm({ resolver: zodResolver(emailSchema), defaultValues: { email: '' } });
+  const emailForm = useForm({
+    resolver: zodResolver(emailSchema),
+    defaultValues: { email: rememberedEmail ?? '' },
+  });
   const codeForm = useForm({ resolver: zodResolver(codeSchema), defaultValues: { code: '' } });
 
+  if (state.status === 'restoring') {
+    return <p className="p-6 text-sm text-muted-foreground">Signing you back in…</p>;
+  }
   if (state.status === 'signedIn') {
     const from = (location.state as { from?: string } | null)?.from ?? '/';
     return <Navigate to={from} replace />;
@@ -87,14 +93,23 @@ export function SignIn() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" autoComplete="email" autoFocus {...field} />
+                    <Input
+                      type="email"
+                      autoComplete="username"
+                      autoFocus={!rememberedEmail}
+                      {...field}
+                    />
                   </FormControl>
                   <FormDescription>A six-digit code goes to this address.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={emailForm.formState.isSubmitting}>
+            <Button
+              type="submit"
+              autoFocus={Boolean(rememberedEmail)}
+              disabled={emailForm.formState.isSubmitting}
+            >
               Send code
             </Button>
           </form>
