@@ -731,6 +731,10 @@ exports[`ApiStack > matches the snapshot 1`] = `
               },
               "",{"label":"AgentAuthorizerFunction","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
               {
+                "Ref": "McpFunctionF370A1F8",
+              },
+              "",{"label":"McpFunction","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
+              {
                 "Fn::ImportValue": "Auth:ExportsOutputRefDefineAuthChallengeE7E3BC7B5357E3C6",
               },
               "",{"label":"DefineAuthChallenge","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
@@ -766,6 +770,10 @@ exports[`ApiStack > matches the snapshot 1`] = `
                 "Ref": "AgentAuthorizerFunctionD5801B44",
               },
               "",{"label":"AgentAuthorizerFunction","stat":"p95"}],["AWS/Lambda","Duration","FunctionName","",
+              {
+                "Ref": "McpFunctionF370A1F8",
+              },
+              "",{"label":"McpFunction","stat":"p95"}],["AWS/Lambda","Duration","FunctionName","",
               {
                 "Fn::ImportValue": "Auth:ExportsOutputRefDefineAuthChallengeE7E3BC7B5357E3C6",
               },
@@ -958,6 +966,75 @@ exports[`ApiStack > matches the snapshot 1`] = `
         ],
       },
       "Type": "AWS::IAM::Policy",
+    },
+    "HttpApiANYmcpEB02869A": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiAgentAuthorizerE89C6658",
+        },
+        "RouteKey": "ANY /mcp",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiANYmcpMcpFunctionmcpF1AEE258",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiANYmcpMcpFunctionmcpF1AEE258": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "McpFunctionF370A1F8",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiANYmcpMcpFunctionmcpPermissionC0EF5ECD": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpFunctionF370A1F8",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/mcp",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
     },
     "HttpApiAgentAuthorizerE89C6658": {
       "Properties": {
@@ -2289,6 +2366,152 @@ exports[`ApiStack > matches the snapshot 1`] = `
         },
       },
       "Type": "AWS::Lambda::Permission",
+    },
+    "McpFunctionF370A1F8": {
+      "DependsOn": [
+        "McpFunctionServiceRoleDefaultPolicy29310C43",
+        "McpFunctionServiceRoleF37F17FC",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
+          "S3Key": "<asset-hash>.zip",
+        },
+        "Description": "The Keep: MCP server at /mcp (Streamable HTTP, stateless)",
+        "Environment": {
+          "Variables": {
+            "DB_CLUSTER_ARN": {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:",
+                  {
+                    "Ref": "AWS::Partition",
+                  },
+                  ":rds:us-east-1:697941679713:cluster:",
+                  {
+                    "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                  },
+                ],
+              ],
+            },
+            "DB_NAME": "thekeep",
+            "DB_SECRET_ARN": {
+              "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+            },
+            "NODE_OPTIONS": "--enable-source-maps",
+          },
+        },
+        "Handler": "index.handler",
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "McpFunctionLogsDE22E4A3",
+          },
+        },
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpFunctionServiceRoleF37F17FC",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 30,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "McpFunctionLogsDE22E4A3": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "RetentionInDays": 30,
+      },
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Delete",
+    },
+    "McpFunctionServiceRoleDefaultPolicy29310C43": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "rds-data:BatchExecuteStatement",
+                "rds-data:BeginTransaction",
+                "rds-data:CommitTransaction",
+                "rds-data:ExecuteStatement",
+                "rds-data:RollbackTransaction",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":rds:us-east-1:697941679713:cluster:",
+                    {
+                      "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                    },
+                  ],
+                ],
+              },
+            },
+            {
+              "Action": [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "McpFunctionServiceRoleDefaultPolicy29310C43",
+        "Roles": [
+          {
+            "Ref": "McpFunctionServiceRoleF37F17FC",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "McpFunctionServiceRoleF37F17FC": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
     },
     "MeFunction4482FBE1": {
       "DependsOn": [
@@ -3928,6 +4151,23 @@ exports[`SiteStack > matches the snapshot 1`] = `
               "Compress": true,
               "OriginRequestPolicyId": "b689b0a8-53d0-40ab-baf2-68738e2966ac",
               "PathPattern": "/api/*",
+              "TargetOriginId": "SiteDistributionOrigin243001B31",
+              "ViewerProtocolPolicy": "https-only",
+            },
+            {
+              "AllowedMethods": [
+                "GET",
+                "HEAD",
+                "OPTIONS",
+                "PUT",
+                "PATCH",
+                "POST",
+                "DELETE",
+              ],
+              "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+              "Compress": true,
+              "OriginRequestPolicyId": "b689b0a8-53d0-40ab-baf2-68738e2966ac",
+              "PathPattern": "/mcp",
               "TargetOriginId": "SiteDistributionOrigin243001B31",
               "ViewerProtocolPolicy": "https-only",
             },

@@ -41,6 +41,24 @@ describe('StackPage', () => {
     expect(apigw.getAttribute('class')).toContain('fill-highlight-subtle');
   });
 
+  it('traces an agent saving a recipe through the token authorizer and the MCP server', async () => {
+    const user = userEvent.setup();
+    render(<App />, { route: '/stack' });
+    await user.click(await screen.findByRole('button', { name: 'Agent saves a recipe' }));
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(
+      screen.getByRole('button', { name: 'Agent token authorizer' }).getAttribute('class'),
+    ).toContain('fill-highlight-subtle');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByRole('button', { name: 'MCP server' }).getAttribute('class')).toContain(
+      'fill-highlight-subtle',
+    );
+    await user.click(screen.getByRole('button', { name: 'MCP server' }));
+    expect(screen.getByRole('heading', { name: NODES.mcp!.title })).toBeInTheDocument();
+    expect(screen.getByText(/Stateless because Lambda is/)).toBeInTheDocument();
+  });
+
   it('every trace step names boxes and arrows that exist in the diagram', () => {
     render(<App />, { route: '/stack' });
     const ids = new Set(

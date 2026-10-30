@@ -18,6 +18,7 @@ import {
   recipeFrontmatterSchema,
   schemaFor,
   slugify,
+  typeGuides,
   versionSchema,
 } from '../src/index.js';
 
@@ -81,9 +82,11 @@ describe('recipe frontmatter', () => {
 });
 
 describe('registry', () => {
-  it('resolves recipe to its schema and default ring', () => {
+  it('resolves recipe to its schema, default ring and a guide for the model', () => {
     expect(schemaFor('recipe').defaultRing).toBe('me');
     expect(schemaFor('recipe').schema).toBe(recipeFrontmatterSchema);
+    expect(schemaFor('recipe').guide).toMatch(/^recipe: /);
+    expect(typeGuides()).toContain('ingredients');
     expect(isDocumentType('recipe')).toBe(true);
   });
 

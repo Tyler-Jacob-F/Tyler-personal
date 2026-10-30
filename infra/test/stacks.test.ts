@@ -59,19 +59,17 @@ describe('SiteStack', () => {
     }),
   );
 
-  it('forwards /api/* to the HTTP API uncached, with every viewer header but Host', () => {
+  it('forwards /api/* and /mcp to the HTTP API uncached, with every viewer header but Host', () => {
+    const behavior = (pattern: string) =>
+      Match.objectLike({
+        PathPattern: pattern,
+        AllowedMethods: ['GET', 'HEAD', 'OPTIONS', 'PUT', 'PATCH', 'POST', 'DELETE'],
+        CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad',
+        OriginRequestPolicyId: 'b689b0a8-53d0-40ab-baf2-68738e2966ac',
+        ViewerProtocolPolicy: 'https-only',
+      });
     template.hasResourceProperties('AWS::CloudFront::Distribution', {
-      DistributionConfig: {
-        CacheBehaviors: [
-          Match.objectLike({
-            PathPattern: '/api/*',
-            AllowedMethods: ['GET', 'HEAD', 'OPTIONS', 'PUT', 'PATCH', 'POST', 'DELETE'],
-            CachePolicyId: '4135ea2d-6df8-44a3-9df3-4b5a84be39ad',
-            OriginRequestPolicyId: 'b689b0a8-53d0-40ab-baf2-68738e2966ac',
-            ViewerProtocolPolicy: 'https-only',
-          }),
-        ],
-      },
+      DistributionConfig: { CacheBehaviors: [behavior('/api/*'), behavior('/mcp')] },
     });
   });
 
@@ -215,8 +213,12 @@ describe('ApiStack', () => {
     template.resourceCountIs('AWS::ApiGatewayV2::Authorizer', 2);
     template.hasResourceProperties('AWS::ApiGatewayV2::Authorizer', { AuthorizerType: 'JWT' });
     const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
-    expect(routes).toHaveLength(19);
-    const members = routes.filter((r) => !String(r.Properties.RouteKey).includes('/api/agent/'));
+    expect(routes).toHaveLength(20);
+    const members = routes.filter(
+      (r) =>
+        /\/api\//.test(String(r.Properties.RouteKey)) &&
+        !/\/api\/agent\//.test(String(r.Properties.RouteKey)),
+    );
     expect(members).toHaveLength(12);
     for (const route of members) {
       expect(route.Properties.AuthorizationType).toBe('JWT');
@@ -246,8 +248,17 @@ describe('ApiStack', () => {
     for (const route of agents) expect(route.Properties.AuthorizationType).toBe('CUSTOM');
   });
 
+  it('serves MCP at ANY /mcp behind the same agent authorizer', () => {
+    const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
+    const mcp = routes.filter((r) => r.Properties.RouteKey === 'ANY /mcp');
+    expect(mcp).toHaveLength(1);
+    expect(mcp[0]!.Properties.AuthorizationType).toBe('CUSTOM');
+    const fns = Object.values(template.findResources('AWS::Lambda::Function'));
+    expect(fns.some((f) => String(f.Properties.Description).includes('MCP server'))).toBe(true);
+  });
+
   it('runs one Lambda per resource, outside the VPC, with Data API access', () => {
-    template.resourceCountIs('AWS::Lambda::Function', 5);
+    template.resourceCountIs('AWS::Lambda::Function', 6);
     const fns = Object.values(template.findResources('AWS::Lambda::Function'));
     for (const fn of fns) {
       expect(fn.Properties.VpcConfig).toBeUndefined();
@@ -256,7 +267,7 @@ describe('ApiStack', () => {
     }
     const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
     expect(policies).toContain('rds-data:ExecuteStatement');
-    template.resourceCountIs('AWS::Logs::LogGroup', 5);
+    template.resourceCountIs('AWS::Logs::LogGroup', 6);
     template.allResourcesProperties('AWS::Logs::LogGroup', { RetentionInDays: 30 });
   });
 

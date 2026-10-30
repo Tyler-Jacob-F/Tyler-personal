@@ -58,6 +58,17 @@ function handler(event) {
 }`),
     });
 
+    const apiBehavior: cloudfront.BehaviorOptions = {
+      origin: new origins.HttpOrigin(props.apiDomainName, {
+        protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+      }),
+      viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
+      allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+      cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+      originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+      compress: true,
+    };
+
     const distribution = new cloudfront.Distribution(this, 'Distribution', {
       comment: `${config.siteName} (${domainName})`,
       domainNames: [domainName, www],
@@ -75,21 +86,10 @@ function handler(event) {
           { function: spaRewrite, eventType: cloudfront.FunctionEventType.VIEWER_REQUEST },
         ],
       },
-      additionalBehaviors: {
-        // One origin for browsers: the API rides the same domain, so no CORS. Nothing is
-        // cached and every viewer header except Host (the Authorization bearer included)
-        // reaches API Gateway.
-        '/api/*': {
-          origin: new origins.HttpOrigin(props.apiDomainName, {
-            protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
-          }),
-          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.HTTPS_ONLY,
-          allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-          originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-          compress: true,
-        },
-      },
+      // One origin for browsers and agents alike: the API and the MCP server ride the same
+      // domain, so no CORS. Nothing is cached and every viewer header except Host (the
+      // Authorization bearer and the MCP Accept header included) reaches API Gateway.
+      additionalBehaviors: { '/api/*': apiBehavior, '/mcp': apiBehavior },
     });
 
     for (const [name, recordName] of [

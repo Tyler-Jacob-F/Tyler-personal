@@ -1,0 +1,285 @@
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { build as buildAuthorizer } from '../../src/auth/agent-authorizer.js';
+import {
+  createAgentToken,
+  getDocument,
+  listVersions,
+  revokeAgentToken,
+} from '../../src/db/repositories.js';
+import { build as buildMcp, fromResponse, toRequest } from '../../src/handlers/mcp.js';
+import { generateAgentSecret, hashAgentSecret } from '../../src/lib/token.js';
+import { adminId, testDb, type TestDb } from '../helpers/db.js';
+import { fakeAuthorizerEvent, fakeEvent } from '../helpers/event.js';
+
+const MCP_URL = 'https://tylerfuqua.com/mcp';
+
+let t: TestDb;
+let secrets: Record<'importer' | 'reader' | 'revoked', string>;
+
+/**
+ * The whole door, in process: the Lambda authorizer decides, then the MCP Lambda answers,
+ * with the request and response going through the same conversions production uses.
+ */
+function lambdaFetch(): typeof fetch {
+  const authorize = buildAuthorizer(t.db);
+  const mcp = buildMcp(t.db);
+  return async (input, init) => {
+    const request = new Request(input, init);
+    const url = new URL(request.url);
+    expect(url.pathname).toBe('/mcp');
+    const headers: Record<string, string> = {};
+    request.headers.forEach((value, name) => {
+      headers[name] = value;
+    });
+    const decision = await authorize(
+      fakeAuthorizerEvent(headers.authorization, `${request.method} /mcp`),
+    );
+    if (!decision.isAuthorized || !('context' in decision)) {
+      return new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401 });
+    }
+    const context = decision.context;
+    const result = await mcp(
+      fakeEvent({
+        method: request.method,
+        route: '/mcp',
+        headers,
+        rawBody: request.method === 'POST' ? await request.text() : undefined,
+        agent: { id: context.id, name: context.name, scopes: JSON.parse(context.scopes) },
+      }),
+    );
+    return new Response(result.body ?? null, {
+      status: result.statusCode!,
+      headers: result.headers as Record<string, string>,
+    });
+  };
+}
+
+async function connect(secret: string): Promise<Client> {
+  const client = new Client({ name: 'vitest', version: '0' });
+  const transport = new StreamableHTTPClientTransport(new URL(MCP_URL), {
+    fetch: lambdaFetch(),
+    requestInit: { headers: { authorization: `Bearer ${secret}` } },
+  });
+  await client.connect(transport);
+  return client;
+}
+
+const chili = {
+  title: 'Chili',
+  ingredients: [{ heading: 'Meats', items: ['2 lb ground chuck'] }, { items: ['1 onion, diced'] }],
+};
+
+function textOf(result: CallToolResult): string {
+  return result.content.map((c) => (c.type === 'text' ? c.text : '')).join('\n');
+}
+
+beforeEach(async () => {
+  t = await testDb();
+  secrets = {
+    importer: generateAgentSecret(),
+    reader: generateAgentSecret(),
+    revoked: generateAgentSecret(),
+  };
+  await createAgentToken(t.db, {
+    name: 'importer',
+    scopes: ['read:documents', 'write:recipes'],
+    secretHash: hashAgentSecret(secrets.importer),
+  });
+  await createAgentToken(t.db, {
+    name: 'reader',
+    scopes: ['read:documents'],
+    secretHash: hashAgentSecret(secrets.reader),
+  });
+  const old = await createAgentToken(t.db, {
+    name: 'old',
+    scopes: ['write:recipes'],
+    secretHash: hashAgentSecret(secrets.revoked),
+  });
+  await revokeAgentToken(t.db, old.id);
+});
+afterEach(() => t.close());
+
+describe('MCP server', () => {
+  it('initializes and lists four tools, each with a description and an input schema', async () => {
+    const client = await connect(secrets.importer);
+    expect(client.getServerVersion()).toMatchObject({ name: 'the-keep' });
+    expect(client.getInstructions()).toMatch(/private by default/);
+    const { tools } = await client.listTools();
+    expect(tools.map((tool) => tool.name).sort()).toEqual([
+      'create_document',
+      'create_version',
+      'get_document',
+      'list_documents',
+    ]);
+    for (const tool of tools) {
+      expect(tool.description!.length).toBeGreaterThan(80);
+      expect(tool.inputSchema.type).toBe('object');
+    }
+    const create = tools.find((tool) => tool.name === 'create_document')!;
+    expect(create.description).toContain('ingredients');
+    expect(Object.keys(create.inputSchema.properties ?? {}).sort()).toEqual([
+      'authoredAt',
+      'body',
+      'frontmatter',
+      'summary',
+      'tags',
+      'type',
+    ]);
+    expect(create.inputSchema.required).toEqual(['type', 'frontmatter', 'body']);
+    const version = tools.find((tool) => tool.name === 'create_version')!;
+    expect(version.inputSchema.required).toEqual(
+      expect.arrayContaining(['id', 'frontmatter', 'body']),
+    );
+    expect(tools.find((tool) => tool.name === 'list_documents')!.annotations).toMatchObject({
+      readOnlyHint: true,
+    });
+    await client.close();
+  });
+
+  it('creates a recipe, saves a dated version, reads it back and lists it, all as the token', async () => {
+    const client = await connect(secrets.importer);
+
+    const created = (await client.callTool({
+      name: 'create_document',
+      arguments: {
+        type: 'recipe',
+        frontmatter: chili,
+        body: '# Chili\n\nBrown the beef.',
+        summary: 'from the 2014 card',
+        authoredAt: '2014-03-03',
+      },
+    })) as CallToolResult;
+    expect(created.isError).toBeFalsy();
+    expect(textOf(created)).toMatch(/^Created recipe "Chili" as [0-9a-f-]{36}, version 1\./);
+    const view = created.structuredContent as { id: string; author: string; ring: string };
+    expect(view.author).toBe('importer');
+    expect(view.ring).toBe('me');
+
+    const stored = await getDocument(t.db, view.id);
+    expect(stored?.document.owner).toBe(await adminId(t.db));
+    expect(stored?.version.author).toMatchObject({ kind: 'agent', name: 'importer' });
+    expect(stored?.version.authoredAt).toBe('2014-03-03T00:00:00.000Z');
+
+    const saved = (await client.callTool({
+      name: 'create_version',
+      arguments: {
+        id: view.id,
+        frontmatter: { ...chili, servings: 8 },
+        body: '# Chili\n\nBrown the beef. Add cumin.',
+        summary: 'added cumin',
+        authoredAt: '2023-11-06',
+      },
+    })) as CallToolResult;
+    expect(saved.isError).toBeFalsy();
+    expect(textOf(saved)).toMatch(/^Saved version 2 of /);
+    expect((await listVersions(t.db, view.id)).map((v) => v.number)).toEqual([2, 1]);
+
+    const got = (await client.callTool({
+      name: 'get_document',
+      arguments: { id: view.id },
+    })) as CallToolResult;
+    expect(got.structuredContent).toMatchObject({
+      version: 2,
+      summary: 'added cumin',
+      frontmatter: { servings: 8 },
+      body: '# Chili\n\nBrown the beef. Add cumin.',
+    });
+
+    const listed = (await client.callTool({
+      name: 'list_documents',
+      arguments: { type: 'recipe' },
+    })) as CallToolResult;
+    expect(listed.structuredContent).toMatchObject({ count: 1 });
+    expect(JSON.parse(textOf(listed)).items[0]).toMatchObject({ id: view.id, version: 2 });
+    expect(JSON.parse(textOf(listed)).items[0]).not.toHaveProperty('body');
+    await client.close();
+  });
+
+  it('reports a validation failure as a tool error the model can fix', async () => {
+    const client = await connect(secrets.importer);
+    const result = (await client.callTool({
+      name: 'create_document',
+      arguments: {
+        type: 'recipe',
+        frontmatter: { title: 'Chili', ingredients: [], servings: 'eight' },
+        body: '',
+      },
+    })) as CallToolResult;
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toMatch(/bad_request: invalid frontmatter/);
+    expect(textOf(result)).toMatch(/ingredients/);
+    expect(textOf(result)).toMatch(/servings/);
+
+    const unknown = (await client.callTool({
+      name: 'get_document',
+      arguments: { id: '00000000-0000-0000-0000-000000000000' },
+    })) as CallToolResult;
+    expect(unknown.isError).toBe(true);
+    expect(textOf(unknown)).toMatch(/not_found/);
+    await client.close();
+  });
+
+  it('holds a token to its scopes inside the tools', async () => {
+    const client = await connect(secrets.reader);
+    const result = (await client.callTool({
+      name: 'create_document',
+      arguments: { type: 'recipe', frontmatter: chili, body: '' },
+    })) as CallToolResult;
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toMatch(/forbidden: cannot write a recipe/);
+    expect((await listVersions(t.db, '00000000-0000-0000-0000-000000000000')).length).toBe(0);
+    await client.close();
+  });
+
+  it('never gets past the authorizer with a revoked or unknown token', async () => {
+    await expect(connect(secrets.revoked)).rejects.toThrow(/Unauthorized/);
+    await expect(connect(generateAgentSecret())).rejects.toThrow(/Unauthorized/);
+  });
+
+  it('answers GET and DELETE with 405 (stateless) and converts events both ways', async () => {
+    const mcp = buildMcp(t.db);
+    const agent = {
+      id: '9b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
+      name: 'importer',
+      scopes: ['read:documents'],
+    };
+    const get = await mcp(
+      fakeEvent({ method: 'GET', route: '/mcp', agent, headers: { accept: 'text/event-stream' } }),
+    );
+    expect(get.statusCode).toBe(405);
+    expect(get.headers).toMatchObject({ allow: 'POST' });
+    const del = await mcp(fakeEvent({ method: 'DELETE', route: '/mcp', agent }));
+    expect(del.statusCode).toBe(405);
+
+    const noToken = await mcp(
+      fakeEvent({ method: 'POST', route: '/mcp', agent: null, rawBody: '{}' }),
+    );
+    expect(noToken.statusCode).toBe(401);
+
+    const request = toRequest(
+      fakeEvent({
+        method: 'POST',
+        route: '/mcp',
+        query: { a: '1' },
+        rawBody: Buffer.from('{"x":1}').toString('base64'),
+        headers: { 'x-test': 'yes' },
+        agent,
+      }),
+    );
+    // fakeEvent marks nothing base64; make sure a plain body round-trips and the URL is whole.
+    expect(request.method).toBe('POST');
+    expect(request.url).toBe('https://tylerfuqua.com/mcp?a=1');
+    expect(request.headers.get('x-test')).toBe('yes');
+    const back = await fromResponse(
+      new Response('{"ok":true}', { status: 201, headers: { 'content-type': 'application/json' } }),
+    );
+    expect(back).toEqual({
+      statusCode: 201,
+      headers: { 'content-type': 'application/json' },
+      body: '{"ok":true}',
+    });
+    expect((await fromResponse(new Response(null, { status: 202 }))).body).toBeUndefined();
+  });
+});

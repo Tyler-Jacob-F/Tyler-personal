@@ -158,7 +158,7 @@ export function createApi<TIdentity>({
   };
 }
 
-function errorResponse(error: unknown, log: Logger, started: number): ApiResult {
+export function errorResponse(error: unknown, log: Logger, started: number): ApiResult {
   if (error instanceof HttpError) {
     log.info('refused', { status: error.status, code: error.code, ms: Date.now() - started });
     return json(error.status, { error: error.code, message: error.message, issues: error.issues });

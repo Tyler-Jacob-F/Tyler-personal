@@ -33,7 +33,7 @@ export class ApiStack extends cdk.Stack {
   /** Hostname of the API's default endpoint, for the CloudFront origin. */
   readonly apiDomainName: string;
   readonly functions: Record<
-    'me' | 'documents' | 'versions' | 'adminTokens' | 'agentAuthorizer',
+    'me' | 'documents' | 'versions' | 'adminTokens' | 'agentAuthorizer' | 'mcp',
     lambda.IFunction
   >;
   /** The agents' door, for the MCP route to share. */
@@ -81,7 +81,20 @@ export class ApiStack extends cdk.Stack {
       environment,
       timeout,
     });
-    this.functions = { me, documents, versions, adminTokens, agentAuthorizer: agentAuthorizerFn };
+    const mcp = apiFunction(this, 'McpFunction', {
+      entry: 'handlers/mcp.ts',
+      description: `${config.siteName}: MCP server at /mcp (Streamable HTTP, stateless)`,
+      environment,
+      timeout,
+    });
+    this.functions = {
+      me,
+      documents,
+      versions,
+      adminTokens,
+      agentAuthorizer: agentAuthorizerFn,
+      mcp,
+    };
     for (const fn of Object.values(this.functions)) cluster.grantDataApiAccess(fn);
 
     const authorizer = new HttpUserPoolAuthorizer('CognitoAuthorizer', userPool, {
@@ -102,7 +115,7 @@ export class ApiStack extends cdk.Stack {
       createDefaultStage: true,
     });
 
-    const { GET, POST, DELETE } = apigwv2.HttpMethod;
+    const { GET, POST, DELETE, ANY } = apigwv2.HttpMethod;
     const routes: Array<[string, apigwv2.HttpMethod[], lambda.IFunction]> = [
       ['/api/me', [GET], me],
       ['/api/documents', [GET, POST], documents],
@@ -120,6 +133,9 @@ export class ApiStack extends cdk.Stack {
       ['/api/agent/documents/{id}/versions', [GET, POST], versions],
       ['/api/agent/documents/{id}/versions/{number}', [GET], versions],
       ['/api/agent/documents/{id}/diff', [GET], versions],
+      // One MCP endpoint, same door. Streamable HTTP uses POST for messages; GET and
+      // DELETE get the transport's 405 in stateless mode.
+      ['/mcp', [ANY], mcp],
     ];
     for (const [path, methods, fn] of routes) {
       this.httpApi.addRoutes({

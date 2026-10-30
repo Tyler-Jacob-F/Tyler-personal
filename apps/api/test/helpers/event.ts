@@ -9,7 +9,7 @@ export interface FakeAgent {
 }
 
 export interface FakeRequest {
-  method: 'GET' | 'POST' | 'DELETE';
+  method: string;
   /** The HTTP API route template, e.g. `/api/documents/{id}`. */
   route: string;
   params?: Record<string, string>;
@@ -20,6 +20,8 @@ export interface FakeRequest {
   /** Set for a request through `/api/agent/*`: what the Lambda authorizer attached. */
   agent?: FakeAgent | null;
   rawBody?: string;
+  /** Extra request headers, lowercased as HTTP API delivers them. */
+  headers?: Record<string, string>;
 }
 
 /** An API Gateway HTTP API (payload 2.0) event as the JWT authorizer would deliver it. */
@@ -32,6 +34,7 @@ export function fakeEvent({
   email = 'tyler.fuqua@icloud.com',
   agent,
   rawBody,
+  headers = {},
 }: FakeRequest): ApiEvent {
   const path = route.replace(/\{(\w+)\}/g, (_m, name: string) => params[name] ?? '');
   const routeKey = `${method} ${route}`;
@@ -40,7 +43,7 @@ export function fakeEvent({
     routeKey,
     rawPath: path,
     rawQueryString: new URLSearchParams(query).toString(),
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', host: 'tylerfuqua.com', ...headers },
     queryStringParameters: Object.keys(query).length ? query : undefined,
     pathParameters: Object.keys(params).length ? params : undefined,
     body: rawBody ?? (body === undefined ? undefined : JSON.stringify(body)),

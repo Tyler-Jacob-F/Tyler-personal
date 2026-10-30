@@ -1,21 +1,10 @@
-import {
-  createDocumentRequestSchema,
-  type ListDocumentsResponse,
-  listDocumentsQuerySchema,
-  parseFrontmatter,
-  schemaFor,
-} from '@the-keep/shared';
 import { z } from 'zod';
 import { type Db, getDb } from '../db/client.js';
-import {
-  createDocument,
-  getDocument,
-  listDocuments,
-  softDeleteDocument,
-} from '../db/repositories.js';
+import { getDocument, softDeleteDocument } from '../db/repositories.js';
 import { type ApiHandler, createApi, json, noContent, notFound, parse } from '../lib/http.js';
 import { agentIdentity, cognitoIdentity } from '../middleware/identity.js';
 import { authorize } from '../middleware/permission.js';
+import { createDocumentFor, getDocumentFor, listDocumentsFor } from '../services/documents.js';
 
 const idSchema = z.uuid();
 
@@ -24,51 +13,17 @@ export function build(db: Db): ApiHandler {
     service: 'documents',
     identify: { member: cognitoIdentity(db), agent: agentIdentity(db) },
     routes: {
-      'GET /api/documents': async ({ identity, query }) => {
-        const { type, limit } = parse(listDocumentsQuerySchema, query, 'query');
-        const items = await listDocuments(db, { type, limit });
-        const visible = items.filter((item) =>
-          authorizeQuietly(identity.caller, 'read', item.document),
-        );
-        const body: ListDocumentsResponse = { items: visible };
-        return json(200, body);
-      },
+      'GET /api/documents': async ({ identity, query }) =>
+        json(200, await listDocumentsFor(db, identity, query)),
 
-      'POST /api/documents': async ({ identity, body, log }) => {
-        const input = parse(createDocumentRequestSchema, body, 'document');
-        const frontmatter = parse(schemaFor(input.type).schema, input.frontmatter, 'frontmatter');
-        const ring = schemaFor(input.type).defaultRing;
-        authorize(identity.caller, 'write', { ring, type: input.type });
-        const created = await createDocument(db, {
-          type: input.type,
-          title: frontmatter.title,
-          ring,
-          owner: identity.owner,
-          tags: input.tags,
-          body: input.body,
-          frontmatter,
-          summary: input.summary,
-          author: { kind: identity.caller.kind, id: identity.caller.id },
-          authoredAt: input.authoredAt ?? null,
-        });
-        log.info('document created', {
-          documentId: created.document.id,
-          type: input.type,
-          slug: created.document.slug,
-        });
-        return json(201, created);
-      },
+      'POST /api/documents': async ({ identity, body, log }) =>
+        json(201, await createDocumentFor(db, identity, body, log)),
 
-      'GET /api/documents/{id}': async ({ identity, params }) => {
-        const id = parse(idSchema, params.id, 'id');
-        const found = await getDocument(db, id);
-        if (!found) throw notFound('document');
-        authorize(identity.caller, 'read', found.document);
-        // Stored frontmatter is already validated; re-parse so a later schema change surfaces here.
-        parseFrontmatter(found.document.type, found.version.frontmatter);
-        return json(200, found);
-      },
+      'GET /api/documents/{id}': async ({ identity, params }) =>
+        json(200, await getDocumentFor(db, identity, params.id)),
 
+      // Delete has no agent counterpart: the agent door never exposes it, and the
+      // permission middleware refuses it regardless.
       'DELETE /api/documents/{id}': async ({ identity, params, log }) => {
         const id = parse(idSchema, params.id, 'id');
         const found = await getDocument(db, id);
@@ -80,15 +35,6 @@ export function build(db: Db): ApiHandler {
       },
     },
   });
-}
-
-function authorizeQuietly(...args: Parameters<typeof authorize>): boolean {
-  try {
-    authorize(...args);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 let instance: ApiHandler | undefined;
