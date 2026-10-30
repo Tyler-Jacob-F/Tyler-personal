@@ -77,14 +77,16 @@ You write Tyler's morning brief for The Keep. Today is the date in America/New_Y
           "body": "...", "summary": "morning brief"}'
    Write the JSON to a file and pass it with -d @file so quoting cannot bite.
 4. The response is 201 with the document (or version). A 400 names the field that is
-   wrong: fix it and post again. A 401 means the token is revoked: stop and say so. A 5xx
-   or a timeout: wait thirty seconds and try once more (the database wakes from a pause on
-   the first request).
+   wrong: fix it and post again. A 401 means the token is revoked: stop and say so. A 500
+   {"message":"Internal Server Error"} or a timeout on the first call means the database
+   was paused and is waking: wait thirty seconds and repeat the call, up to three times.
 5. Reply with one line: the date, the section headings, and the document id.
 ```
 
-The first request after the database has paused can take up to a minute; `--max-time 60`
-covers it, and the retry in step 4 covers the rare longer one.
+The first request after the database has paused can take up to a minute. At 06:10 it will
+always have paused, so the first call of every run is the slow one: it may succeed slowly,
+or fail with a 500 when the authorizer's 25 seconds run out, and the retry in step 4 is
+what makes the run reliable.
 
 ## Checking it worked
 

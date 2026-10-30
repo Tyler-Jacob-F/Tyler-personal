@@ -43,8 +43,8 @@ claude mcp list          # keep … ✔ Connected
 
 `✘ Failed to connect` with a 401 in the detail means the token is revoked or wrong; a
 missing-variable warning means `KEEP_IMPORTER_TOKEN` is not set in the shell that ran
-`claude`. The first call after the database has paused can take up to a minute; run the
-list again if the first try times out.
+`claude`. A 500 on the first try after the site has sat idle means the database was
+paused and is now waking; run the list again.
 
 ## 3. Read the files
 
@@ -130,8 +130,13 @@ Review the plan at step 3; that is where a wrong grouping is cheap to fix.
   reissue with both scopes.
 - **A duplicate document** (`chili-2`): the session skipped step 1. Delete the duplicate
   from its page (soft delete; versions stay) and re-run with the plan corrected.
-- **The first call is slow**: the cluster wakes from a pause on the first request, up to
-  a minute. The MCP Lambda waits for it; so should you.
+- **`{"message":"Internal Server Error"}` on the first call**, after the site has been idle
+  for more than five minutes: the cluster was paused, the token authorizer waited its 25
+  seconds for the resume and gave up, and API Gateway reports that as a 500. Nothing is
+  wrong and nothing is cached; the second call finds the cluster awake. Seen on Oct 30 after
+  twenty idle minutes.
+- **The first call is slow** even when it succeeds: the cluster wakes on the first request.
+  The MCP Lambda waits for it; so should you.
 
 ## Afterwards
 
