@@ -37,3 +37,11 @@ export function authorize(caller: Caller, action: Action, target: Target): void 
   if (!can(caller, action, target))
     throw forbidden(`cannot ${action} a ${target.type} in the ${target.ring} ring`);
 }
+
+/**
+ * Member and token management belong to the admin alone: not to the group role, not to
+ * any agent scope (docs/DESIGN.md "Auth and access rings").
+ */
+export function requireAdmin(caller: Caller): void {
+  if (caller.kind !== 'member' || caller.role !== 'admin') throw forbidden('admin only');
+}

@@ -1,4 +1,4 @@
-import type { DiffResponse, DocumentWithVersion, Version } from '@the-keep/shared';
+import type { AgentToken, DiffResponse, DocumentWithVersion, Version } from '@the-keep/shared';
 
 export const ids = {
   doc: '9b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
@@ -100,4 +100,23 @@ export const diff12: DiffResponse = {
       ],
     },
   ],
+};
+
+export const tokens: Record<'importer' | 'cowork', AgentToken> = {
+  importer: {
+    id: '4b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
+    name: 'importer',
+    scopes: ['read:documents', 'write:recipes'],
+    createdAt: '2026-10-30T12:00:00.000Z',
+    lastUsedAt: '2026-10-30T13:30:00.000Z',
+    revokedAt: null,
+  },
+  cowork: {
+    id: '5b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
+    name: 'cowork',
+    scopes: ['read:documents', 'write:recipes', 'write:notes'],
+    createdAt: '2026-10-29T12:00:00.000Z',
+    lastUsedAt: null,
+    revokedAt: '2026-10-30T09:00:00.000Z',
+  },
 };
