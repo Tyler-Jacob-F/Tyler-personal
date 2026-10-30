@@ -2,6 +2,8 @@ import { Navigate, Route, Routes } from 'react-router';
 import { RequireAuth } from '@/auth/RequireAuth';
 import { AppShell } from '@/components/AppShell';
 import { TokensPage } from '@/routes/admin/TokensPage';
+import { BriefDetail } from '@/routes/briefs/BriefDetail';
+import { Home } from '@/routes/home/Home';
 import { EditRecipe } from '@/routes/recipes/EditRecipe';
 import { NewRecipe } from '@/routes/recipes/NewRecipe';
 import { RecipeDetail } from '@/routes/recipes/RecipeDetail';
@@ -18,7 +20,8 @@ export function App() {
       <Route path="/sign-in" element={<SignIn />} />
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
-          <Route index element={<Navigate to="/recipes" replace />} />
+          <Route index element={<Home />} />
+          <Route path="/briefs/:id" element={<BriefDetail />} />
           <Route path="/recipes" element={<RecipeList />} />
           <Route path="/recipes/new" element={<NewRecipe />} />
           <Route path="/recipes/:id" element={<RecipeDetail />} />

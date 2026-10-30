@@ -5,4 +5,5 @@ export * from './registry.js';
 export * from './scopes.js';
 export * from './slug.js';
 export * from './types/base.js';
+export * from './types/brief.js';
 export * from './types/recipe.js';

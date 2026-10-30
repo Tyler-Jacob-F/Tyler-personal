@@ -5,8 +5,8 @@ export const rings = ['me', 'group', 'public'] as const;
 export const ringSchema = z.enum(rings);
 export type Ring = z.infer<typeof ringSchema>;
 
-/** Document types the registry knows. Phase 1 ships `recipe` only; later types append here. */
-export const documentTypes = ['recipe'] as const;
+/** Document types the registry knows, in the order they arrived. Later types append here. */
+export const documentTypes = ['recipe', 'brief'] as const;
 export const documentTypeSchema = z.enum(documentTypes);
 export type DocumentType = z.infer<typeof documentTypeSchema>;
 

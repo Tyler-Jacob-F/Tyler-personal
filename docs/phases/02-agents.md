@@ -118,7 +118,7 @@ Each is one PR, in this order.
       (same `/api/*` behavior). Handler tests with fake authorizer events; snapshot.
 - [x] **MCP server.** The `mcp` Lambda, four tools, `/mcp` route and CloudFront behavior.
       In-process MCP client tests. Snapshot.
-- [ ] **Brief type.** Schema, home-screen renderer, `write:briefs` on the scope map,
+- [x] **Brief type.** Schema, home-screen renderer, `write:briefs` on the scope map,
       the scheduled-task runbook. Tests.
 - [ ] **Agent activity.** The admin view. MSW test.
 - [ ] **Importer runbook and tool.** `docs/runbooks/import-recipes.md`,

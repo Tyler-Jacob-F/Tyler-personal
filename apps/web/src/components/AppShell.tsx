@@ -15,6 +15,15 @@ export function AppShell() {
           </Link>
           <nav className="flex items-center gap-4 text-sm">
             <NavLink
+              to="/"
+              end
+              className={({ isActive }) =>
+                cn('text-muted-foreground hover:text-foreground', isActive && 'text-foreground')
+              }
+            >
+              Home
+            </NavLink>
+            <NavLink
               to="/recipes"
               className={({ isActive }) =>
                 cn('text-muted-foreground hover:text-foreground', isActive && 'text-foreground')

@@ -120,3 +120,43 @@ export const tokens: Record<'importer' | 'cowork', AgentToken> = {
     revokedAt: '2026-10-30T09:00:00.000Z',
   },
 };
+
+export const briefFrontmatter = {
+  title: 'Brief for 2026-10-30',
+  date: '2026-10-30',
+  sections: [
+    { heading: 'Today', body: '- 9:00 standup\n- 14:00 dentist' },
+    { heading: 'Waiting on you', body: 'Two emails from the small group.' },
+  ],
+};
+
+export function briefDoc(
+  date = '2026-10-30',
+  id = '6b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
+): DocumentWithVersion {
+  const version: Version = {
+    id: `7${id.slice(1)}`,
+    documentId: id,
+    number: 1,
+    body: 'A quiet Thursday.',
+    frontmatter: { ...briefFrontmatter, date, title: `Brief for ${date}` },
+    author: { kind: 'agent', id: '8b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b', name: 'brief-writer' },
+    createdAt: `${date}T10:10:00.000Z`,
+    authoredAt: null,
+    summary: 'morning brief',
+  };
+  return {
+    document: {
+      id,
+      type: 'brief',
+      slug: `brief-for-${date}`,
+      ring: 'me',
+      owner: ids.owner,
+      createdAt: version.createdAt,
+      currentVersionId: version.id,
+      tags: [],
+      deletedAt: null,
+    },
+    version,
+  };
+}
