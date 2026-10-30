@@ -9,7 +9,7 @@ import {
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { useCreateToken, useRevokeToken, useTokens } from '@/api/tokens';
+import { useCreateToken, useRevokeToken, useTokens, useUpdateToken } from '@/api/tokens';
 import { Alert } from '@/components/Alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,7 +34,8 @@ type TokenFormValues = z.infer<typeof tokenFormSchema>;
 
 /**
  * Agent tokens: issue one (the secret is shown exactly once), see when each was last used,
- * revoke. Nothing here edits a token; revoke and reissue is the whole lifecycle.
+ * change its scopes, revoke. The name and the secret never change; a scope edit reaches
+ * every client holding the token on its next request.
  */
 export function TokensPage() {
   const tokens = useTokens();
@@ -76,6 +77,57 @@ export function TokensPage() {
           </ul>
         )}
       </section>
+    </div>
+  );
+}
+
+function ScopePicker({
+  value,
+  onChange,
+  name,
+  onBlur,
+}: {
+  value: AgentScope[];
+  onChange(scopes: AgentScope[]): void;
+  name?: string;
+  onBlur?(): void;
+}) {
+  return (
+    <div className="grid gap-2 md:grid-cols-2" role="group" aria-label="Scopes">
+      {agentScopes.map((scope) => {
+        const checked = value.includes(scope);
+        return (
+          <label
+            key={scope}
+            className={cn(
+              'flex cursor-pointer items-start gap-3 rounded-control border px-3 py-2 text-sm',
+              checked ? 'border-foreground bg-muted' : 'border-border',
+            )}
+          >
+            <input
+              type="checkbox"
+              className="mt-1 accent-foreground"
+              name={name}
+              value={scope}
+              checked={checked}
+              onBlur={onBlur}
+              onChange={(e) =>
+                onChange(
+                  e.target.checked
+                    ? agentScopes.filter((s) => s === scope || value.includes(s))
+                    : value.filter((s: AgentScope) => s !== scope),
+                )
+              }
+            />
+            <span>
+              <span className="font-mono text-xs">{scope}</span>
+              <span className="block text-xs text-muted-foreground">
+                {scopeDescriptions[scope]}
+              </span>
+            </span>
+          </label>
+        );
+      })}
     </div>
   );
 }
@@ -128,42 +180,12 @@ function CreateTokenForm({ onCreated }: { onCreated(issued: CreateAgentTokenResp
           render={({ field }) => (
             <FormItem>
               <FormLabel>Scopes</FormLabel>
-              <div className="grid gap-2 md:grid-cols-2" role="group" aria-label="Scopes">
-                {agentScopes.map((scope) => {
-                  const checked = field.value.includes(scope);
-                  return (
-                    <label
-                      key={scope}
-                      className={cn(
-                        'flex cursor-pointer items-start gap-3 rounded-control border px-3 py-2 text-sm',
-                        checked ? 'border-foreground bg-muted' : 'border-border',
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        className="mt-1 accent-foreground"
-                        name={field.name}
-                        value={scope}
-                        checked={checked}
-                        onBlur={field.onBlur}
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.checked
-                              ? agentScopes.filter((s) => s === scope || field.value.includes(s))
-                              : field.value.filter((s: AgentScope) => s !== scope),
-                          )
-                        }
-                      />
-                      <span>
-                        <span className="font-mono text-xs">{scope}</span>
-                        <span className="block text-xs text-muted-foreground">
-                          {scopeDescriptions[scope]}
-                        </span>
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
+              <ScopePicker
+                value={field.value}
+                onChange={field.onChange}
+                name={field.name}
+                onBlur={field.onBlur}
+              />
               <FormMessage />
             </FormItem>
           )}
@@ -236,7 +258,44 @@ function TokenRow({
   };
 }) {
   const revoke = useRevokeToken();
+  const update = useUpdateToken();
+  const [editing, setEditing] = useState<AgentScope[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const revoked = token.revokedAt !== null;
+  if (editing) {
+    return (
+      <li className="grid gap-3 px-4 py-3 text-sm">
+        <div className="flex items-baseline gap-2">
+          <span className="font-mono font-medium">{token.name}</span>
+          <span className="text-xs text-muted-foreground">
+            scopes take effect on the token&apos;s next request
+          </span>
+        </div>
+        {error && <Alert tone="danger">{error}</Alert>}
+        <ScopePicker value={editing} onChange={setEditing} />
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            disabled={editing.length === 0 || update.isPending}
+            onClick={async () => {
+              setError(null);
+              try {
+                await update.mutateAsync({ id: token.id, scopes: editing });
+                setEditing(null);
+              } catch (e) {
+                setError(e instanceof Error ? e.message : 'Could not save the scopes.');
+              }
+            }}
+          >
+            Save scopes
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setEditing(null)}>
+            Cancel
+          </Button>
+        </div>
+      </li>
+    );
+  }
   return (
     <li className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 text-sm">
       <div className="grid gap-1">
@@ -264,19 +323,24 @@ function TokenRow({
         </p>
       </div>
       {!revoked && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-destructive"
-          disabled={revoke.isPending}
-          onClick={() => {
-            if (!window.confirm(`Revoke ${token.name}? Anything holding it stops working now.`))
-              return;
-            revoke.mutate(token.id);
-          }}
-        >
-          Revoke
-        </Button>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="sm" onClick={() => setEditing(token.scopes)}>
+            Edit scopes
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive"
+            disabled={revoke.isPending}
+            onClick={() => {
+              if (!window.confirm(`Revoke ${token.name}? Anything holding it stops working now.`))
+                return;
+              revoke.mutate(token.id);
+            }}
+          >
+            Revoke
+          </Button>
+        </div>
       )}
     </li>
   );

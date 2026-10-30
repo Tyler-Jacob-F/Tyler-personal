@@ -140,6 +140,23 @@ export async function revokeAgentToken(db: Db, id: string): Promise<AgentToken |
   return rows[0] ? toAgentToken(rows[0]) : null;
 }
 
+/**
+ * Change a token's scopes in place. The name and the secret never change, so every client
+ * holding the token keeps working with the new set on its next request (the authorizer
+ * caches nothing). A revoked token is not edited: it is history.
+ */
+export async function updateAgentTokenScopes(
+  db: Db,
+  id: string,
+  scopes: AgentScope[],
+): Promise<AgentToken | null> {
+  const current = await db.select().from(agentToken).where(eq(agentToken.id, id)).limit(1);
+  if (!current[0]) return null;
+  if (current[0].revokedAt) throw new ConflictError(`a revoked token's scopes`);
+  const rows = await db.update(agentToken).set({ scopes }).where(eq(agentToken.id, id)).returning();
+  return toAgentToken(rows[0]!);
+}
+
 /** Record a use. Called by the authorizer on every accepted request. */
 export async function touchAgentToken(db: Db, id: string): Promise<void> {
   await db

@@ -88,7 +88,8 @@ The three items the first draft reserved for Tyler, answered as proposed:
   calendar. Phase 3.
 - The public read path, CloudFront caching, SEO, the resume, design values. Phase 4.
 - Hardcover, Ishar, any feed. Phase 5.
-- Token expiry, rotation or scope editing. Revoke and reissue is the whole lifecycle.
+- Token expiry or rotation. The lifecycle is issue, edit scopes, revoke (scope editing
+  was added Oct 30 at Tyler's request, below).
 - MCP resources, prompts, sampling, or the legacy SSE transport. Tools only.
 - Rate limiting beyond API Gateway's defaults.
 - Attachments and recipe photos; structured ingredient quantities.
@@ -162,6 +163,13 @@ Each is reversible unless marked.
   header values, allowlists header names, and probes without headers before saving (the
   "requires sign-in" warning). The import ran under the `cowork` token for that reason;
   `importer` was issued, reissued after its secret was pasted into a chat, and never used.
+- **Scopes are editable in place** (`PATCH /api/admin/tokens/{id}`, "Edit scopes" on the
+  Tokens screen), at Tyler's request after the one-token decision: with one token for
+  every Claude surface, a new scope would otherwise mean revoke, reissue and reconnect.
+  The name and the secret never change; because the authorizer caches nothing, the new
+  set applies on the token's next request. A revoked token's scopes cannot be edited.
+  The brief reserves token management for the admin, and this is admin token management
+  in the admin UI.
 - **One token for every Claude surface.** Because an account has one connector per URL
   and Duet shares the account's connectors, Cowork, Duet and Claude Code on the web all
   present the same token. Tyler chose one token named `claude` with the four agent scopes

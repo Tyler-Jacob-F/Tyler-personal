@@ -1,7 +1,9 @@
 import {
+  agentTokenSchema,
   type CreateAgentTokenRequest,
   createAgentTokenResponseSchema,
   listAgentTokensResponseSchema,
+  type UpdateAgentTokenRequest,
 } from '@the-keep/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
@@ -26,6 +28,17 @@ export function useCreateToken() {
   return useMutation({
     mutationFn: (body: CreateAgentTokenRequest) =>
       api('/api/admin/tokens', { method: 'POST', body, schema: createAgentTokenResponseSchema }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: tokenKeys.all }),
+  });
+}
+
+/** Change a token's scopes in place; every client holding it sees the new set at once. */
+export function useUpdateToken() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: UpdateAgentTokenRequest & { id: string }) =>
+      api(`/api/admin/tokens/${id}`, { method: 'PATCH', body, schema: agentTokenSchema }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: tokenKeys.all }),
   });
 }

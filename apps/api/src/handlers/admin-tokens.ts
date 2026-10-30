@@ -1,11 +1,18 @@
 import {
+  type AgentToken,
   createAgentTokenRequestSchema,
   type CreateAgentTokenResponse,
   type ListAgentTokensResponse,
+  updateAgentTokenRequestSchema,
 } from '@the-keep/shared';
 import { z } from 'zod';
 import { type Db, getDb } from '../db/client.js';
-import { createAgentToken, listAgentTokens, revokeAgentToken } from '../db/repositories.js';
+import {
+  createAgentToken,
+  listAgentTokens,
+  revokeAgentToken,
+  updateAgentTokenScopes,
+} from '../db/repositories.js';
 import { type ApiHandler, createApi, json, noContent, notFound, parse } from '../lib/http.js';
 import { generateAgentSecret, hashAgentSecret } from '../lib/token.js';
 import { cognitoIdentity } from '../middleware/identity.js';
@@ -46,6 +53,21 @@ export function build(db: Db): ApiHandler {
         });
         const response: CreateAgentTokenResponse = { token, secret };
         return json(201, response);
+      },
+
+      'PATCH /api/admin/tokens/{id}': async ({ identity, params, body, log }) => {
+        requireAdmin(identity.caller);
+        const id = parse(idSchema, params.id, 'id');
+        const input = parse(updateAgentTokenRequestSchema, body, 'token');
+        const updated = await updateAgentTokenScopes(db, id, input.scopes);
+        if (!updated) throw notFound('token');
+        log.info('agent token scopes changed', {
+          tokenId: id,
+          name: updated.name,
+          scopes: updated.scopes,
+        });
+        const response: AgentToken = updated;
+        return json(200, response);
       },
 
       'DELETE /api/admin/tokens/{id}': async ({ identity, params, log }) => {

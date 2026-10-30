@@ -113,6 +113,71 @@ describe('GET and DELETE /api/admin/tokens', () => {
   });
 });
 
+describe('PATCH /api/admin/tokens/{id}', () => {
+  it('changes the scopes in place, keeping the name and the secret', async () => {
+    const { token, secret } = await createImporter();
+    const res = await api(
+      fakeEvent({
+        method: 'PATCH',
+        route: '/api/admin/tokens/{id}',
+        params: { id: token.id },
+        body: { scopes: ['write:briefs', 'read:documents', 'write:briefs'] },
+      }),
+    );
+    expect(res.statusCode).toBe(200);
+    expect(bodyOf<AgentToken>(res)).toMatchObject({
+      id: token.id,
+      name: 'importer',
+      scopes: ['read:documents', 'write:briefs'],
+    });
+    const stored = await findAgentTokenByHash(t.db, hashAgentSecret(secret));
+    expect(stored?.scopes).toEqual(['read:documents', 'write:briefs']);
+  });
+
+  it('refuses an empty set, an unknown scope, a revoked token and an unknown id', async () => {
+    const { token } = await createImporter();
+    const empty = await api(
+      fakeEvent({
+        method: 'PATCH',
+        route: '/api/admin/tokens/{id}',
+        params: { id: token.id },
+        body: { scopes: [] },
+      }),
+    );
+    expect(empty.statusCode).toBe(400);
+    const unknownScope = await api(
+      fakeEvent({
+        method: 'PATCH',
+        route: '/api/admin/tokens/{id}',
+        params: { id: token.id },
+        body: { scopes: ['write:documents'] },
+      }),
+    );
+    expect(unknownScope.statusCode).toBe(400);
+    await api(
+      fakeEvent({ method: 'DELETE', route: '/api/admin/tokens/{id}', params: { id: token.id } }),
+    );
+    const revoked = await api(
+      fakeEvent({
+        method: 'PATCH',
+        route: '/api/admin/tokens/{id}',
+        params: { id: token.id },
+        body: { scopes: ['read:documents'] },
+      }),
+    );
+    expect(revoked.statusCode).toBe(409);
+    const missing = await api(
+      fakeEvent({
+        method: 'PATCH',
+        route: '/api/admin/tokens/{id}',
+        params: { id: '00000000-0000-0000-0000-000000000000' },
+        body: { scopes: ['read:documents'] },
+      }),
+    );
+    expect(missing.statusCode).toBe(404);
+  });
+});
+
 describe('who may manage tokens', () => {
   it('refuses a non-member and a group member alike', async () => {
     await t.db
@@ -122,8 +187,17 @@ describe('who may manage tokens', () => {
       for (const [method, route] of [
         ['GET', '/api/admin/tokens'],
         ['POST', '/api/admin/tokens'],
+        ['PATCH', '/api/admin/tokens/{id}'],
       ] as const) {
-        const res = await api(fakeEvent({ method, route, body: importer, email }));
+        const res = await api(
+          fakeEvent({
+            method,
+            route,
+            params: { id: '00000000-0000-0000-0000-000000000000' },
+            body: importer,
+            email,
+          }),
+        );
         expect(res.statusCode, `${email} ${method}`).toBe(403);
       }
     }

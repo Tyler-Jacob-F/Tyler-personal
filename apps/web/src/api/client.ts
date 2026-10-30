@@ -22,7 +22,7 @@ export class ApiRequestError extends Error {
 }
 
 export interface ApiRequest<T> {
-  method?: 'GET' | 'POST' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
   /** Response schema from @the-keep/shared; the client never trusts a body it has not parsed. */
   schema: z.ZodType<T>;

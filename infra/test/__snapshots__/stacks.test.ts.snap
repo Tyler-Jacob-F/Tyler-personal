@@ -1304,29 +1304,13 @@ exports[`ApiStack > matches the snapshot 1`] = `
             [
               "integrations/",
               {
-                "Ref": "HttpApiDELETEapiadmintokensidAdminTokensFunctionapiadmintokensidCD7C1CEE",
+                "Ref": "HttpApiPATCHapiadmintokensidAdminTokensFunctionapiadmintokensid930E390D",
               },
             ],
           ],
         },
       },
       "Type": "AWS::ApiGatewayV2::Route",
-    },
-    "HttpApiDELETEapiadmintokensidAdminTokensFunctionapiadmintokensidCD7C1CEE": {
-      "Properties": {
-        "ApiId": {
-          "Ref": "HttpApiF5A9A8A7",
-        },
-        "IntegrationType": "AWS_PROXY",
-        "IntegrationUri": {
-          "Fn::GetAtt": [
-            "AdminTokensFunction644C1C58",
-            "Arn",
-          ],
-        },
-        "PayloadFormatVersion": "2.0",
-      },
-      "Type": "AWS::ApiGatewayV2::Integration",
     },
     "HttpApiDELETEapiadmintokensidAdminTokensFunctionapiadmintokensidPermissionEB4C48A7": {
       "Properties": {
@@ -2319,6 +2303,75 @@ exports[`ApiStack > matches the snapshot 1`] = `
                 "Ref": "HttpApiF5A9A8A7",
               },
               "/*/*/api/me",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiPATCHapiadmintokensid1467C151": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "HttpApiCognitoAuthorizer935FA0F6",
+        },
+        "RouteKey": "PATCH /api/admin/tokens/{id}",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiPATCHapiadmintokensidAdminTokensFunctionapiadmintokensid930E390D",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiPATCHapiadmintokensidAdminTokensFunctionapiadmintokensid930E390D": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "AdminTokensFunction644C1C58",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiPATCHapiadmintokensidAdminTokensFunctionapiadmintokensidPermission6C363A8D": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "AdminTokensFunction644C1C58",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/admin/tokens/{id}",
             ],
           ],
         },

@@ -213,16 +213,16 @@ describe('ApiStack', () => {
     template.resourceCountIs('AWS::ApiGatewayV2::Authorizer', 2);
     template.hasResourceProperties('AWS::ApiGatewayV2::Authorizer', { AuthorizerType: 'JWT' });
     const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
-    expect(routes).toHaveLength(21);
+    expect(routes).toHaveLength(22);
     const members = routes.filter(
       (r) =>
         /\/api\//.test(String(r.Properties.RouteKey)) &&
         !/\/api\/agent\//.test(String(r.Properties.RouteKey)),
     );
-    expect(members).toHaveLength(13);
+    expect(members).toHaveLength(14);
     for (const route of members) {
       expect(route.Properties.AuthorizationType).toBe('JWT');
-      expect(route.Properties.RouteKey).toMatch(/^(GET|POST|DELETE) \/api\//);
+      expect(route.Properties.RouteKey).toMatch(/^(GET|POST|PATCH|DELETE) \/api\//);
     }
   });
 
@@ -278,6 +278,7 @@ describe('ApiStack', () => {
       'DELETE /api/admin/tokens/{id}',
       'GET /api/admin/activity',
       'GET /api/admin/tokens',
+      'PATCH /api/admin/tokens/{id}',
       'POST /api/admin/tokens',
     ]);
     for (const route of admin) expect(route.Properties.AuthorizationType).toBe('JWT');
