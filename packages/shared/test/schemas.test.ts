@@ -3,6 +3,7 @@ import {
   agentScopeSchema,
   agentTokenNameSchema,
   agentTokenSecretSchema,
+  briefFrontmatterSchema,
   callerSchema,
   createAgentTokenRequestSchema,
   createDocumentRequestSchema,
@@ -78,6 +79,42 @@ describe('recipe frontmatter', () => {
   it('rejects fractional minutes and non-integer servings', () => {
     expect(recipeFrontmatterSchema.safeParse({ ...chili, prepMinutes: 1.5 }).success).toBe(false);
     expect(recipeFrontmatterSchema.safeParse({ ...chili, servings: '8' }).success).toBe(false);
+  });
+});
+
+describe('brief frontmatter', () => {
+  const brief = {
+    date: '2026-10-30',
+    sections: [
+      { heading: 'Today', body: '- 9:00 standup\n- 14:00 dentist' },
+      { heading: 'Waiting on you', body: 'Two emails from the small group.' },
+    ],
+  };
+
+  it('accepts a dated brief with sections and titles it from the date', () => {
+    const parsed = briefFrontmatterSchema.parse(brief);
+    expect(parsed.title).toBe('Brief for 2026-10-30');
+    expect(parsed.sections).toHaveLength(2);
+    expect(briefFrontmatterSchema.parse({ ...brief, title: 'Thursday' }).title).toBe('Thursday');
+  });
+
+  it('insists on a calendar date and at least one section with a heading', () => {
+    expect(briefFrontmatterSchema.safeParse({ ...brief, date: 'today' }).success).toBe(false);
+    expect(
+      briefFrontmatterSchema.safeParse({ ...brief, date: '2026-10-30T06:00:00Z' }).success,
+    ).toBe(false);
+    expect(briefFrontmatterSchema.safeParse({ ...brief, sections: [] }).success).toBe(false);
+    expect(
+      briefFrontmatterSchema.safeParse({ ...brief, sections: [{ heading: ' ', body: 'x' }] })
+        .success,
+    ).toBe(false);
+  });
+
+  it('is registered with the me ring, the write:briefs scope and a guide', () => {
+    expect(schemaFor('brief').defaultRing).toBe('me');
+    expect(writeScopeFor('brief')).toBe('write:briefs');
+    expect(typeGuides()).toMatch(/brief: frontmatter/);
+    expect(parseFrontmatter('brief', brief).title).toBe('Brief for 2026-10-30');
   });
 });
 

@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 import { type DocumentType, documentTypeSchema, type Ring } from './document.js';
 import type { FrontmatterBase } from './types/base.js';
+import { briefFrontmatterSchema } from './types/brief.js';
 import { recipeFrontmatterSchema } from './types/recipe.js';
 
 export interface TypeDefinition {
@@ -23,6 +24,17 @@ const registry: Record<DocumentType, TypeDefinition> = {
       '"1½ Tbsp toasted cumin" with the amount kept in the text. Leave servings and the minutes ' +
       'out unless the source states them; never invent a number. The body is the method in ' +
       'markdown, with any notes as prose.',
+  },
+  brief: {
+    schema: briefFrontmatterSchema,
+    defaultRing: 'me',
+    guide:
+      'brief: frontmatter is { date, sections, title? }. `date` is the day the brief is for ' +
+      '(YYYY-MM-DD, local to Tyler in America/New_York); `sections` is a list of ' +
+      '{ heading, body } with the body in markdown, one section per theme such as "Today", ' +
+      '"Waiting on you", "Reading"; title defaults to "Brief for <date>". The version body ' +
+      'is an optional lead paragraph. One brief per day: list_documents with type brief ' +
+      'first, and add a version to today\u2019s if it already exists.',
   },
 };
 

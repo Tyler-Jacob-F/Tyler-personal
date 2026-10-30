@@ -170,6 +170,57 @@ describe('/api/agent/documents', () => {
     expect(del.statusCode).toBe(403);
   });
 
+  it('lets write:briefs post a brief and nothing else, titled from its date', async () => {
+    const documents = buildDocuments(t.db);
+    const res = await documents(
+      fakeEvent({
+        method: 'POST',
+        route: '/api/agent/documents',
+        body: {
+          type: 'brief',
+          frontmatter: {
+            date: '2026-10-30',
+            sections: [{ heading: 'Today', body: '- 9:00 standup' }],
+          },
+          body: 'A quiet Thursday.',
+          summary: 'morning brief',
+        },
+        agent: briefWriter,
+      }),
+    );
+    expect(res.statusCode).toBe(201);
+    const created = bodyOf<DocumentWithVersion>(res);
+    expect(created.document).toMatchObject({
+      type: 'brief',
+      ring: 'me',
+      slug: 'brief-for-2026-10-30',
+    });
+    expect(created.version.frontmatter.title).toBe('Brief for 2026-10-30');
+    expect(created.version.author.name).toBe('brief-writer');
+    const recipe = await documents(
+      fakeEvent({
+        method: 'POST',
+        route: '/api/agent/documents',
+        body: create,
+        agent: briefWriter,
+      }),
+    );
+    expect(recipe.statusCode).toBe(403);
+    const importerBrief = await documents(
+      fakeEvent({
+        method: 'POST',
+        route: '/api/agent/documents',
+        body: {
+          type: 'brief',
+          frontmatter: { date: '2026-10-30', sections: [{ heading: 'x', body: '' }] },
+          body: '',
+        },
+        agent: importer,
+      }),
+    );
+    expect(importerBrief.statusCode).toBe(403);
+  });
+
   it('refuses a request at the agent door without authorizer context, and closes doors a handler lacks', async () => {
     const noContext = await buildDocuments(t.db)(
       fakeEvent({ method: 'GET', route: '/api/agent/documents', agent: null }),

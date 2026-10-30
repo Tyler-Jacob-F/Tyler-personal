@@ -22,6 +22,7 @@ export type AgentScope = z.infer<typeof agentScopeSchema>;
  */
 export const writeScopeByType: Record<DocumentType, AgentScope | null> = {
   recipe: 'write:recipes',
+  brief: 'write:briefs',
 };
 
 export function writeScopeFor(type: DocumentType): AgentScope | null {
