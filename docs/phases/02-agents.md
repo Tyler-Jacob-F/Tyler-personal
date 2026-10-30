@@ -26,8 +26,10 @@ token is recorded as author, and the admin UI's agent activity view shows the ru
   producer for the morning brief is a scheduled Claude Code task holding a
   `write:briefs` token; Duet takes over the same token the day it can present a bearer
   header to a custom connector, which is the first thing to check once the MCP server is
-  up. If it cannot, that is the one reason to revisit OAuth, in a later phase. (Oct 30:
-  in a claude.ai connector the header is `Authorization` with the bare token as value.)
+  up. If it cannot, that is the one reason to revisit OAuth, in a later phase. **Checked
+  Oct 30: it can.** Duet uses the account's connectors, so it reaches the MCP server
+  through the same custom connector Cowork does. Duet owns the brief; the scheduled task
+  is the fallback; OAuth stays off the list.
 - **The refresh token is remembered in the browser** (decided Oct 29, after a week of
   typing codes): a reload restores the session silently, sign-out revokes the token at
   Cognito and forgets it, and the sign-in form prefills the last email. The id and access
@@ -160,6 +162,14 @@ Each is reversible unless marked.
   header values, allowlists header names, and probes without headers before saving (the
   "requires sign-in" warning). The import ran under the `cowork` token for that reason;
   `importer` was issued, reissued after its secret was pasted into a chat, and never used.
+- **One token for every Claude surface.** Because an account has one connector per URL
+  and Duet shares the account's connectors, Cowork, Duet and Claude Code on the web all
+  present the same token. Tyler chose one token named `claude` with the four agent scopes
+  over a second path (`/mcp/duet`) that would separate their trails: the history already
+  says a machine wrote a version, no scope grants promotion or management, and other
+  agents, when they come, get their own tokens. `cowork`, `importer` and `brief-writer`
+  are revoked once `claude` exists. Reversible: a second route on the same Lambda is a
+  few lines if per-surface attribution ever matters.
 - **The first request after a pause can be a 500**, not only slow: the authorizer's 25
   seconds run out before the cluster resumes. Both runbooks say "try again".
 - **Agent activity's window** is a timestamp computed in code, not `make_interval` in SQL:

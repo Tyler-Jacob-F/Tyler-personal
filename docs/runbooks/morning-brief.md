@@ -1,10 +1,16 @@
 # Runbook · the morning brief
 
-The "always on" producer for the `brief` type is a scheduled Claude Code task holding the
-`brief-writer` token (`write:briefs`). Nothing in this runbook is code: the prompt below is
-the whole program, and the schedule is a setting on claude.ai. Duet takes over the same
-token the day it can present a bearer header to a custom connector
-(`docs/phases/02-agents.md`, "Duet arrived Oct 30").
+**Duet writes the brief** (checked Oct 30): it reaches the MCP server through the account's
+custom connector, the same one Cowork uses, with the `claude` token, which carries
+`write:briefs`. Ask Duet for the brief as part of its morning routine; the type guide in
+the `create_document` tool description tells it the shape, and the server's instructions
+tell it to add a version to today's brief rather than a second document. Nothing below is
+needed while that works.
+
+The rest of this runbook is the fallback: a scheduled Claude Code task holding a
+`brief-writer` token (`write:briefs`), for the day Duet cannot run or the connector is
+down. Nothing in it is code: the prompt below is the whole program, and the schedule is a
+setting on claude.ai.
 
 ## What a brief is
 
@@ -87,6 +93,13 @@ The first request after the database has paused can take up to a minute. At 06:1
 always have paused, so the first call of every run is the slow one: it may succeed slowly,
 or fail with a 500 when the authorizer's 25 seconds run out, and the retry in step 4 is
 what makes the run reliable.
+
+## Asking Duet
+
+Once, in Duet: "Each morning, post my brief to The Keep as a `brief` document: sections
+Today, Waiting on you, Due soon, and A line for the day, with a one-sentence lead as the
+body. One brief per day: if today's exists, add a version." Then check the home screen the
+next morning. The Activity screen lists it under `claude`.
 
 ## Checking it worked
 
