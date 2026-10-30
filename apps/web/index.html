@@ -2,8 +2,31 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <!-- The bar above the page on a phone, before any CSS arrives. The theme module keeps
+         these in step with the chosen theme afterwards; the values are the `bg` token. -->
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#171310" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F7F2E9" />
     <title>The Keep</title>
+    <script>
+      // Before paint: the remembered theme, else the system's. Mirrors src/theme/theme.ts.
+      (function () {
+        var theme = null;
+        try {
+          theme = window.localStorage.getItem('keep.theme');
+        } catch (e) {
+          theme = null;
+        }
+        if (theme !== 'dark' && theme !== 'light') {
+          theme =
+            window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+              ? 'light'
+              : 'dark';
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
