@@ -267,13 +267,15 @@ free for a year.
 **Design values** (the token architecture is inherited; these are the numbers that make it
 yours):
 
-- [ ] Primary color and its hover/active steps
-- [ ] Body typeface: keep Source Sans 3, or something warmer
-- [ ] Long-form typeface for essays and book notes: serif or not, and which
-- [ ] Radius scale: one value for controls, one for cards
-- [ ] Dark palette designed as its own thing: background, surface, text, muted, border
-- [ ] Logged-in home: what the first screen shows (recommended: recent documents + a text
-      box, not widgets)
+- [x] Primary color and its hover/active steps: brass, `#D9A441` on dark and `#8A5E18`
+      on paper, with hover and active steps (Oct 30, 2026; `docs/DESIGN-VALUES.md`)
+- [x] Body typeface: Source Sans 3 stays, for the UI
+- [x] Long-form typeface for essays and book notes: Literata, variable, optical sizes on
+- [x] Radius scale: 2px tags, 4px controls, 8px cards; avatars alone are round
+- [x] Dark palette designed as its own thing: warm near-black, cream text, designed first;
+      light is paper, not an inversion; ship the system preference with a toggle
+- [x] Logged-in home: a morning page, one column, read top to bottom: the day, the Office,
+      the brief, the day's shape. Not widgets.
 
 **Open questions** (not blocking Phase 0 or 1):
 
