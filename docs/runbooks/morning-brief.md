@@ -21,19 +21,29 @@ version to it rather than a second document.
    scope `write:briefs` (and `read:documents` if the writer should check for an existing
    brief first; the prompt below handles both). Copy the secret; it is shown once.
 2. **Environment.** In Claude Code on the web (claude.ai/code), create an environment named
-   `the-keep-brief`. Add one environment secret, `KEEP_BRIEF_TOKEN`, with the secret. Enable
-   the connectors the brief should draw on (Google Calendar and Gmail are the two that earn
-   a section; add others only when they would). The environment needs no repository: the
-   writer posts over HTTPS and never touches this code.
+   `the-keep-brief` on this repository (so a session can read this runbook; nothing in the
+   code is needed to post). Give it the token as a **network secret**, which is what the
+   docs recommend for an API key: name `KEEP_BRIEF_TOKEN`, allowed website
+   `tylerfuqua.com`, custom header `Authorization` with prefix `Bearer`. The agent proxy
+   adds the header to requests for that host after they leave the session, so the secret
+   never sits in the VM. Enable the connectors the brief should draw on (Google Calendar
+   and Gmail are the two that earn a section; add others only when they would).
 3. **Scheduled task.** Create a scheduled task in that environment: fresh session on each
    firing, daily, `CRON_TZ=America/New_York 10 6 * * *` (06:10 Eastern, before the
    06:00–09:00 Pacific window the platform warns is busy). Paste the prompt below verbatim.
    Push notification on completion if you want the phone to know.
+4. **First run, by hand.** Fire the task once and watch it. If the POST comes back 401,
+   the proxy did not add the header on that request: fall back to an environment variable
+   named `KEEP_BRIEF_TOKEN` holding the secret, and the prompt's `curl` lines add the
+   header themselves. (The docs describe network secrets for API hosts in general and say
+   nothing about this site in particular, so the first run is the test.)
 
 Decided and flagged: the writer posts through the REST agent door with `curl`, not through
 the MCP server. A scheduled task starts from nothing, so a one-line HTTPS call with the
-token from the environment is the shortest path with the fewest moving parts; the MCP server
-is the door for interactive sessions. Both run the same validation.
+token supplied by the environment is the shortest path with the fewest moving parts; the
+MCP server is the door for interactive sessions. Both run the same validation. Scheduled
+tasks on claude.ai are a research preview; if they go away, the same prompt runs anywhere
+`claude -p` runs on a cron.
 
 ## The prompt
 
@@ -50,17 +60,19 @@ You write Tyler's morning brief for The Keep. Today is the date in America/New_Y
    - "Due soon": tasks or dates in the next week.
    - "A line for the day": one sentence, plain, no quotation marks, no motivational tone.
    The version body is one lead sentence on the shape of the day.
-3. Check whether today's brief exists:
-   curl -sS --max-time 60 -H "Authorization: Bearer $KEEP_BRIEF_TOKEN" \
+3. Authentication: the environment adds "Authorization: Bearer …" to requests for
+   tylerfuqua.com itself. Only if the environment variable KEEP_BRIEF_TOKEN is set, add
+   -H "Authorization: Bearer $KEEP_BRIEF_TOKEN" to each curl below; never print its value.
+   Check whether today's brief exists:
+   curl -sS --max-time 60 \
      "https://tylerfuqua.com/api/agent/documents?type=brief&limit=5"
    If an item's version.frontmatter.date equals today, POST a new version to it:
-   curl -sS --max-time 60 -X POST -H "Authorization: Bearer $KEEP_BRIEF_TOKEN" \
-     -H "content-type: application/json" \
+   curl -sS --max-time 60 -X POST -H "content-type: application/json" \
      "https://tylerfuqua.com/api/agent/documents/<id>/versions" \
      -d '{"frontmatter": {...}, "body": "...", "summary": "updated brief"}'
    Otherwise create it:
-   curl -sS --max-time 60 -X POST -H "Authorization: Bearer $KEEP_BRIEF_TOKEN" \
-     -H "content-type: application/json" "https://tylerfuqua.com/api/agent/documents" \
+   curl -sS --max-time 60 -X POST -H "content-type: application/json" \
+     "https://tylerfuqua.com/api/agent/documents" \
      -d '{"type": "brief", "frontmatter": {"date": "YYYY-MM-DD", "sections": [...]},
           "body": "...", "summary": "morning brief"}'
    Write the JSON to a file and pass it with -d @file so quoting cannot bite.
@@ -89,5 +101,5 @@ covers it, and the retry in step 4 covers the rare longer one.
 - **A section is wrong.** Edit nothing by hand: adjust the prompt and let tomorrow's run
   or a manual firing add a version. Versions are the point.
 - **Revoke and reissue.** On the Tokens screen revoke `brief-writer`, create it again with
-  the same scope, and replace `KEEP_BRIEF_TOKEN` in the environment. A revoked token stops
-  working within a minute.
+  the same scope, and replace the `KEEP_BRIEF_TOKEN` network secret in the environment. A
+  revoked token stops working within a minute.

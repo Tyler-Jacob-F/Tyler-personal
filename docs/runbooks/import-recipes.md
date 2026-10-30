@@ -38,12 +38,13 @@ claude mcp add --transport http --scope project keep https://tylerfuqua.com/mcp 
 Check it before importing anything:
 
 ```sh
-claude mcp list          # keep: https://tylerfuqua.com/mcp (HTTP) - ✓ Connected
+claude mcp list          # keep … ✔ Connected
 ```
 
-A `401` here means the header did not arrive (the variable is unset in this shell) or the
-token is revoked. The first call after the database has paused can take up to a minute;
-`claude mcp list` may say connecting for that long, once.
+`✘ Failed to connect` with a 401 in the detail means the token is revoked or wrong; a
+missing-variable warning means `KEEP_IMPORTER_TOKEN` is not set in the shell that ran
+`claude`. The first call after the database has paused can take up to a minute; run the
+list again if the first try times out.
 
 ## 3. Read the files
 
