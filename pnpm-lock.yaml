@@ -84,6 +84,12 @@ importers:
       '@aws-sdk/client-cognito-identity-provider':
         specifier: 3.1157.0
         version: 3.1157.0
+      '@fontsource-variable/literata':
+        specifier: 5.3.0
+        version: 5.3.0
+      '@fontsource-variable/source-code-pro':
+        specifier: 5.3.1
+        version: 5.3.1
       '@fontsource-variable/source-sans-3':
         specifier: 5.3.1
         version: 5.3.1
@@ -632,6 +638,12 @@ packages:
     peerDependenciesMeta:
       '@noble/hashes':
         optional: true
+
+  '@fontsource-variable/literata@5.3.0':
+    resolution: {integrity: sha512-1Jw7xvOcoGyB83lxB2nG4bfNbqtX2/TTbdh9sHAOmU064SvmSdulDtA5RBu5JYWf64fdaKX7xU+z3GO1T2bCHA==}
+
+  '@fontsource-variable/source-code-pro@5.3.1':
+    resolution: {integrity: sha512-N0nZDizh8CQ19+AHHA8Ssb1i/aQf4N2lpRl3qZVH4/9f1yNgWzTkBFpc26v+QQr2hm4By4aiv597BCoEg2SDQg==}
 
   '@fontsource-variable/source-sans-3@5.3.1':
     resolution: {integrity: sha512-u0p5Z/PM2e1uxYOMiodLM6NVzxHwULcB6Oi7QSr2WU/sdoLBFP/BeOZ3YYHeJ6rHsjPZA1nZweZVaV7sf2MAyQ==}
@@ -3460,6 +3472,10 @@ snapshots:
       levn: 0.4.1
 
   '@exodus/bytes@1.16.0': {}
+
+  '@fontsource-variable/literata@5.3.0': {}
+
+  '@fontsource-variable/source-code-pro@5.3.1': {}
 
   '@fontsource-variable/source-sans-3@5.3.1': {}
 

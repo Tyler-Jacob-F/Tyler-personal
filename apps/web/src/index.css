@@ -1,42 +1,144 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/source-sans-3';
+@import '@fontsource-variable/literata/standard.css';
+@import '@fontsource-variable/literata/standard-italic.css';
+@import '@fontsource-variable/source-code-pro';
 
 /*
- * Single token source. Semantic names only; components never use raw palette classes.
- * Values below are Tailwind's neutral ramp. Identity
- * (primary color, typefaces, radius, dark palette) is decided in Phase 4; see
- * docs/DESIGN.md "Yours to decide".
+ * The single token source (docs/DESIGN-VALUES.md "Tokens"). Semantic names only; no raw
+ * palette classes exist, because the default color namespace is cleared below. The hex
+ * values live in this file and nowhere else under apps/web/src; a test enforces it.
+ *
+ * Dark is designed first and is the default. Light is paper, not an inversion. The
+ * `data-theme` attribute is set before paint by the inline script in index.html; the
+ * media query below covers a browser with scripts off.
  */
-@theme {
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #171310;
+  --surface: #221d18;
+  --surface-raised: #2b2520;
+  --text: #ede4d8;
+  --text-strong: #faf4ea;
+  --muted: #a69a8a;
+  --border: #3a322a;
+  --border-strong: #4e443a;
+  --accent: #d9a441;
+  --accent-hover: #e6b556;
+  --accent-active: #c08f32;
+  --on-accent: #171310;
+  --wrong: #c2655c;
+  --success: #7fa66a;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f7f2e9;
+  --surface: #fffdf8;
+  --surface-raised: #ffffff;
+  --text: #221d18;
+  --text-strong: #171310;
+  --muted: #6b6156;
+  --border: #e2d9cc;
+  --border-strong: #c9beae;
+  --accent: #8a5e18;
+  --accent-hover: #a5711f;
+  --accent-active: #704c12;
+  --on-accent: #fffdf8;
+  --wrong: #7a2e28;
+  --success: #3f6b2e;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+    --bg: #f7f2e9;
+    --surface: #fffdf8;
+    --surface-raised: #ffffff;
+    --text: #221d18;
+    --text-strong: #171310;
+    --muted: #6b6156;
+    --border: #e2d9cc;
+    --border-strong: #c9beae;
+    --accent: #8a5e18;
+    --accent-hover: #a5711f;
+    --accent-active: #704c12;
+    --on-accent: #fffdf8;
+    --wrong: #7a2e28;
+    --success: #3f6b2e;
+  }
+}
+
+@theme inline {
   --font-sans: 'Source Sans 3 Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Literata Variable', Georgia, 'Times New Roman', serif;
+  --font-mono: 'Source Code Pro Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --color-background: var(--color-neutral-50);
-  --color-foreground: var(--color-neutral-900);
-  --color-muted: var(--color-neutral-100);
-  --color-muted-foreground: var(--color-neutral-500);
-  --color-border: var(--color-neutral-200);
-  --color-input: var(--color-neutral-200);
-  --color-disabled: var(--color-neutral-300);
+  --color-*: initial;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-text: var(--text);
+  --color-text-strong: var(--text-strong);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-active: var(--accent-active);
+  --color-on-accent: var(--on-accent);
+  /* The only error color. Also removed diff lines; `success` is kept for added lines alone. */
+  --color-wrong: var(--wrong);
+  --color-success: var(--success);
 
-  /* Tones Phase 1 needs: destructive (errors, delete, removed lines) and success (added
-   * lines). The other families and the real values land with the Phase 4 design pass. */
-  --color-destructive: var(--color-red-700);
-  --color-destructive-foreground: var(--color-white);
-  --color-destructive-subtle: var(--color-red-50);
-  --color-success: var(--color-green-700);
-  --color-success-subtle: var(--color-green-50);
-  /* Highlight: the thing being pointed at (a traced request on the Stack page). */
-  --color-highlight: var(--color-amber-700);
-  --color-highlight-subtle: var(--color-amber-50);
-
-  --radius-control: 0.375rem;
-  --radius-card: 0.75rem;
+  /* 2 / 4 / 8px: tags and chips, controls, cards. `rounded-full` is for avatars alone. */
+  --radius-*: initial;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
 }
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
+/* Eyebrows and section labels: Source Sans 3, 12px, 600, uppercase, 0.14em, muted. */
+@utility eyebrow {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--color-muted);
+}
+
+/* Page titles: Literata 30–36px, 500, text-strong, -0.01em. */
+@utility page-title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.875rem, 1.5rem + 1.2vw, 2.25rem);
+  line-height: 1.15;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--color-text-strong);
+}
+
+/* Long-form: Literata 18/1.6 with optical sizing, measure ≤ 65ch. */
+@utility reading {
+  font-family: var(--font-serif);
+  font-optical-sizing: auto;
+  font-size: 18px;
+  line-height: 1.6;
+  max-width: 42rem;
+}
+
 @layer base {
+  html {
+    font-optical-sizing: auto;
+  }
   body {
-    @apply bg-background font-sans text-foreground antialiased;
+    @apply bg-bg font-sans text-[15px] text-text antialiased;
+  }
+  ::selection {
+    background-color: var(--color-border-strong);
   }
 }

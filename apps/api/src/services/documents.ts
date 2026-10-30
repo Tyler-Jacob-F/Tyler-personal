@@ -4,13 +4,24 @@ import {
   type DocumentWithVersion,
   type ListDocumentsResponse,
   listDocumentsQuerySchema,
+  type SearchDocumentsResponse,
+  searchDocumentsQuerySchema,
   parseFrontmatter,
   schemaFor,
+  setTagsRequestSchema,
   type Version,
 } from '@the-keep/shared';
 import { z } from 'zod';
 import type { Db } from '../db/client.js';
-import { createDocument, createVersion, getDocument, listDocuments } from '../db/repositories.js';
+import {
+  countDocuments,
+  createDocument,
+  createVersion,
+  getDocument,
+  listDocuments,
+  searchDocuments,
+  setDocumentTags,
+} from '../db/repositories.js';
 import { notFound, parse } from '../lib/http.js';
 import type { Logger } from '../lib/logger.js';
 import type { Identity } from '../middleware/identity.js';
@@ -34,6 +45,24 @@ export async function listDocumentsFor(
   return { items: items.filter((item) => can(identity.caller, 'read', item.document)) };
 }
 
+export async function searchDocumentsFor(
+  db: Db,
+  identity: Identity,
+  query: unknown,
+): Promise<SearchDocumentsResponse> {
+  const { q, type, tags, limit } = parse(searchDocumentsQuerySchema, query ?? {}, 'query');
+  const [items, total] = await Promise.all([
+    searchDocuments(db, { q, type, tags, limit }),
+    countDocuments(db, type),
+  ]);
+  return {
+    items: items.filter((item) => can(identity.caller, 'read', item.document)),
+    total,
+    q,
+    tags,
+  };
+}
+
 export async function createDocumentFor(
   db: Db,
   identity: Identity,
@@ -42,6 +71,7 @@ export async function createDocumentFor(
 ): Promise<DocumentWithVersion> {
   const input = parse(createDocumentRequestSchema, body, 'document');
   const frontmatter = parse(schemaFor(input.type).schema, input.frontmatter, 'frontmatter');
+  const tags = parse(schemaFor(input.type).tags, input.tags, 'tags');
   const ring = schemaFor(input.type).defaultRing;
   authorize(identity.caller, 'write', { ring, type: input.type });
   const created = await createDocument(db, {
@@ -49,7 +79,7 @@ export async function createDocumentFor(
     title: frontmatter.title,
     ring,
     owner: identity.owner,
-    tags: input.tags,
+    tags,
     body: input.body,
     frontmatter,
     summary: input.summary,
@@ -104,4 +134,30 @@ export async function createVersionFor(
   });
   log.info('version created', { documentId: id, number: version.number });
   return version;
+}
+
+/**
+ * Replace a document's tags: the full set, validated against the type's vocabulary (a
+ * recipe's facets and flags), needing the write scope for the type, logged as a tag change
+ * rather than a version. The ring is untouched: tags say what a thing is, never who sees it.
+ */
+export async function setTagsFor(
+  db: Db,
+  identity: Identity,
+  rawId: unknown,
+  body: unknown,
+  log: Logger,
+): Promise<DocumentWithVersion> {
+  const id = parse(idSchema, rawId, 'id');
+  const found = await getDocument(db, id);
+  if (!found) throw notFound('document');
+  authorize(identity.caller, 'write', found.document);
+  const input = parse(setTagsRequestSchema, body, 'tags');
+  const tags = parse(schemaFor(found.document.type).tags, input.tags, 'tags');
+  const updated = await setDocumentTags(db, id, tags, {
+    kind: identity.caller.kind,
+    id: identity.caller.id,
+  });
+  log.info('tags set', { documentId: id, tags });
+  return updated;
 }

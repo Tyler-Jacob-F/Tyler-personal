@@ -29,16 +29,52 @@ const ingredientsSchema = z.preprocess(
   ingredientGroupsSchema,
 );
 
+const minutes = z.number().int().nonnegative().max(10_000);
+
 /**
- * Recipe frontmatter. Servings and times are optional: Tyler's recipes say "simmer
- * 2–3 hr", not "cook: 180", and an invented number is worse than none.
+ * "Proven" is a fact about a version: this one has been cooked (docs/DESIGN-VALUES.md
+ * "Recipe taxonomy"). The screen shows a check, the cook count and the last date; absent
+ * means untested. A bare `true` from a writer who only knows that much becomes one cook;
+ * `false` means untested.
  */
-export const recipeFrontmatterSchema = frontmatterBaseSchema.extend({
-  servings: z.number().int().positive().max(200).optional(),
-  prepMinutes: z.number().int().nonnegative().max(10_000).optional(),
-  cookMinutes: z.number().int().nonnegative().max(10_000).optional(),
-  ingredients: ingredientsSchema,
-});
+export const provenSchema = z.preprocess(
+  (value) =>
+    value === true ? { count: 1 } : value === false || value === null ? undefined : value,
+  z
+    .object({
+      count: z.number().int().min(1).max(10_000),
+      /** The last day it was cooked, as a calendar date. */
+      last: z.iso.date().optional(),
+    })
+    .optional(),
+);
+export type Proven = NonNullable<z.infer<typeof provenSchema>>;
+
+/**
+ * Recipe frontmatter, with the fields of the contract: active and total minutes, serves,
+ * provenance and proven. Every number is optional: Tyler's recipes say "simmer 2–3 hr",
+ * not "total: 180", and an invented number is worse than none. Facets and flags are not
+ * here; they are tags on the document, validated by recipeTagsSchema.
+ */
+export const recipeFrontmatterSchema = frontmatterBaseSchema
+  .extend({
+    /** Hands-on time. */
+    activeMinutes: minutes.optional(),
+    /** Start to table, the active time included. */
+    totalMinutes: minutes.optional(),
+    serves: z.number().int().positive().max(200).optional(),
+    /** Where it came from: "Steve's card, 2014", "adapted from Kenji". */
+    provenance: z.string().trim().min(1).max(300).optional(),
+    proven: provenSchema,
+    ingredients: ingredientsSchema,
+  })
+  .refine(
+    (recipe) =>
+      recipe.activeMinutes === undefined ||
+      recipe.totalMinutes === undefined ||
+      recipe.activeMinutes <= recipe.totalMinutes,
+    { path: ['activeMinutes'], message: 'active minutes cannot exceed total minutes' },
+  );
 export type RecipeFrontmatter = z.infer<typeof recipeFrontmatterSchema>;
 
 /** Every ingredient line, groups flattened, for search and quick display. */

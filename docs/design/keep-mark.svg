@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="The Keep">
+  <!-- The Keep mark. One path, fill with currentColor; always text-strong, never the accent.
+       Grid: 64 units. Body 18–46, merlons 18–24 / 29–35 / 40–46 at y 12–20, crosslet loophole centred at 32,32, door arch 28–36. -->
+  <path fill="currentColor" fill-rule="evenodd"
+        d="M18 12H24V20H29V12H35V20H40V12H46V58H18ZM31 26H33V31H36V33H33V40H31V33H28V31H31ZM28 58V48A4 4 0 0 1 36 48V58Z"/>
+</svg>

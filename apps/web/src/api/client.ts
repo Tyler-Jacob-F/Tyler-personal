@@ -22,7 +22,7 @@ export class ApiRequestError extends Error {
 }
 
 export interface ApiRequest<T> {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   /** Response schema from @the-keep/shared; the client never trusts a body it has not parsed. */
   schema: z.ZodType<T>;
@@ -82,7 +82,15 @@ export function createApiClient(getToken: TokenSource, base = config.apiBase) {
         `Request failed (${response.status})`,
       );
     }
-    return schema.parse(data);
+    const parsed = schema.safeParse(data);
+    if (!parsed.success) {
+      throw new ApiRequestError(
+        response.status,
+        'bad_response',
+        'The server answered in a shape this page does not understand. Reload; if it persists, the app and the API are out of step.',
+      );
+    }
+    return parsed.data;
   };
 }
 

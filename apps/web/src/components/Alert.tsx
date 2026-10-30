@@ -4,8 +4,8 @@ import { cn } from '@/lib/utils';
 type Tone = 'info' | 'danger';
 
 const tones: Record<Tone, string> = {
-  info: 'border-border bg-muted text-foreground',
-  danger: 'border-destructive/40 bg-destructive/10 text-destructive',
+  info: 'border-border bg-surface text-text',
+  danger: 'border-wrong/40 bg-wrong/10 text-wrong',
 };
 
 /** Composed from spec: a bordered message block with a tone. */
@@ -17,7 +17,7 @@ export function Alert({
   return (
     <div
       role={tone === 'danger' ? 'alert' : 'status'}
-      className={cn('rounded-card border px-4 py-3 text-sm', tones[tone], className)}
+      className={cn('rounded-lg border px-4 py-3 text-sm leading-relaxed', tones[tone], className)}
       {...props}
     />
   );

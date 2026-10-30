@@ -1,6 +1,6 @@
 /**
  * The content of the Stack page: what each piece of the system is, why it is there, what it
- * costs, where to find it, and the request traces. Written against the repo after Phase 1.
+ * costs, where to find it, and the request traces. Written against the repo after Phase 3.
  */
 export interface NodeInfo {
   kicker: string;
@@ -142,7 +142,7 @@ export const NODES: Record<string, NodeInfo> = {
   apigw: {
     kicker: 'TheKeepApi',
     title: 'API Gateway HTTP API',
-    what: 'The front door for data. Twenty routes: twelve under /api behind the JWT authorizer, seven under /api/agent behind the agent token authorizer, and ANY /mcp for the MCP server, each mapped to one of the route Lambdas. It is reachable directly at its execute-api hostname, but browsers and agents only ever reach it through CloudFront.',
+    what: 'The front door for data. Twenty-six routes: sixteen under /api behind the JWT authorizer, nine under /api/agent behind the agent token authorizer (search and set-tags among them since Phase 3), and ANY /mcp for the MCP server, each mapped to one of the route Lambdas. It is reachable directly at its execute-api hostname, but browsers and agents only ever reach it through CloudFront.',
     why: 'HTTP APIs are the cheap, simple flavor of API Gateway with a built-in JWT authorizer, which is why no Lambda has to validate a token itself.',
     cost: 'Free tier, then about a dollar per million requests.',
     where: 'API Gateway → APIs → TheKeepApi\ninfra/lib/api-stack.ts',
@@ -158,11 +158,11 @@ export const NODES: Record<string, NodeInfo> = {
   lambdas: {
     kicker: 'TheKeepApi',
     title: 'The API Lambdas',
-    what: "Four route functions, one per resource: me, documents, versions, admin-tokens. Each is bundled by esbuild with the SDK included, runs Node 22 on arm64 with 512 MB and a 30-second timeout (long enough to wait for a paused cluster), and has its own IAM role granting exactly the Data API and secret permissions. Inside, two middlewares run first: identity looks the verified email up in the member table, or reads the agent the authorizer identified; permission checks the document's ring and type against the caller's role or scopes.",
+    what: "Five route functions, one per resource: me, documents (list, search, create, read, tags, delete), versions, admin-tokens, admin-activity. Each is bundled by esbuild with the SDK included, runs Node 22 on arm64 with 512 MB and a 30-second timeout (long enough to wait for a paused cluster), and has its own IAM role granting exactly the Data API and secret permissions. Inside, two middlewares run first: identity looks the verified email up in the member table, or reads the agent the authorizer identified; permission checks the document's ring and type against the caller's role or scopes.",
     why: "One Lambda per resource keeps cold starts few and deploys small. Identity and permission are separate on purpose, which is why Phase 2's agent door needed no second set of handlers: the same code answers /api/documents and /api/agent/documents.",
     cost: 'A million requests and 400,000 GB-seconds a month are free.',
     where:
-      'Lambda → MeFunction, DocumentsFunction, VersionsFunction, AdminTokensFunction\napps/api/src/handlers · apps/api/src/middleware · apps/api/src/services',
+      'Lambda → MeFunction, DocumentsFunction, VersionsFunction, AdminTokensFunction, AdminActivityFunction\napps/api/src/handlers · apps/api/src/middleware · apps/api/src/services',
   },
   agents: {
     kicker: 'Outside AWS',
@@ -183,7 +183,7 @@ export const NODES: Record<string, NodeInfo> = {
   mcp: {
     kicker: 'TheKeepApi',
     title: 'MCP server',
-    what: 'A Lambda at /mcp speaking the Model Context Protocol over Streamable HTTP, stateless: each POST carries one JSON-RPC message, a fresh server answers it, and nothing is kept between requests. Four tools, list_documents, get_document, create_document and create_version, each described in a paragraph a model can read, each taking the shared zod schema as its input schema. The tools run the same service functions the REST routes run, as the agent the authorizer identified.',
+    what: 'A Lambda at /mcp speaking the Model Context Protocol over Streamable HTTP, stateless: each POST carries one JSON-RPC message, a fresh server answers it, and nothing is kept between requests. Six tools: list_documents, search_documents, get_document, create_document, create_version and set_tags, each described in a paragraph a model can read, each taking the shared zod schema as its input schema; set_tags replaces a document’s facets without writing a version and shows in Activity as a "tagged" row. The tools run the same service functions the REST routes run, as the agent the authorizer identified.',
     why: 'The brief wanted the MCP server to wrap the public API. Importing the same code keeps one validation path and one cold start instead of an HTTP hop to itself; the trade is flagged in the Phase 2 directive. Stateless because Lambda is.',
     cost: 'Free tier, like the other functions.',
     where:
@@ -233,7 +233,7 @@ export const NODES: Record<string, NodeInfo> = {
   migrations: {
     kicker: 'TheKeepData',
     title: 'Migrations',
-    what: 'SQL files in apps/api/migrations, applied in order by a small runner that goes through the Data API, each file in its own transaction, recorded in schema_migration so a rerun is a no-op. 0001 made the five tables and the trigger that makes version rows append-only; 0002 seeded the admin member; 0003 added authored_at; 0004 imported the chili lineage, the one content import, marked as the exception.',
+    what: 'SQL files in apps/api/migrations, applied in order by a small runner that goes through the Data API, each file in its own transaction, recorded in schema_migration so a rerun is a no-op. 0001 made the five tables and the trigger that makes version rows append-only; 0002 seeded the admin member; 0003 added authored_at; 0004 imported the chili lineage, the one content import, marked as the exception; 0005 added tag_change, the trail a tag edit leaves; 0006 added the search vector on document, its trigger and GIN index.',
     why: 'Migrations are append-only once shipped. Renames need a new file and your say-so.',
     cost: 'A few seconds of CI per deploy.',
     where: 'apps/api/migrations · apps/api/src/lib/migrate.ts · deploy.yml "Run migrations"',

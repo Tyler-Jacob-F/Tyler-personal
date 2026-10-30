@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512" role="img" aria-label="The Keep">
+  <!-- App icon / social tile: brass ground, dark mark, 8-unit corner radius (scales to radius-lg at 64px). -->
+  <rect width="64" height="64" rx="8" fill="#D9A441"/>
+  <g transform="translate(8 8) scale(0.75)">
+    <path fill="#171310" fill-rule="evenodd"
+          d="M18 12H24V20H29V12H35V20H40V12H46V58H18ZM31 26H33V31H36V33H33V40H31V33H28V31H31ZM28 58V48A4 4 0 0 1 36 48V58Z"/>
+  </g>
+</svg>

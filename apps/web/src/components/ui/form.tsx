@@ -72,7 +72,7 @@ export function FormLabel({ className, ...props }: ComponentProps<typeof Label>)
     <Label
       data-slot="form-label"
       data-error={!!error}
-      className={cn('data-[error=true]:text-destructive', className)}
+      className={cn('data-[error=true]:text-wrong', className)}
       htmlFor={formItemId}
       {...props}
     />
@@ -98,7 +98,7 @@ export function FormDescription({ className, ...props }: ComponentProps<'p'>) {
     <p
       data-slot="form-description"
       id={formDescriptionId}
-      className={cn('text-xs text-muted-foreground', className)}
+      className={cn('text-[13px] leading-snug text-muted', className)}
       {...props}
     />
   );
@@ -112,7 +112,7 @@ export function FormMessage({ className, children, ...props }: ComponentProps<'p
     <p
       data-slot="form-message"
       id={formMessageId}
-      className={cn('text-sm text-destructive', className)}
+      className={cn('text-sm text-wrong', className)}
       {...props}
     >
       {body}

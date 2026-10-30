@@ -15,9 +15,9 @@ export const ids = {
 
 export const chili = {
   title: 'Chili',
-  servings: 8,
-  prepMinutes: 20,
-  cookMinutes: 180,
+  serves: 8,
+  activeMinutes: 20,
+  totalMinutes: 180,
   ingredients: [
     { heading: 'Meats', items: ['2 lb ground chuck'] },
     { heading: null, items: ['1 onion, diced'] },
@@ -25,6 +25,8 @@ export const chili = {
 };
 export const chili2 = {
   ...chili,
+  provenance: 'Steve’s card, 2014',
+  proven: { count: 3, last: '2026-02-01' },
   ingredients: [
     { heading: 'Meats', items: ['2 lb ground chuck'] },
     { heading: null, items: ['1 onion, diced', '1 tsp smoked paprika'] },
@@ -56,7 +58,9 @@ export const version2: Version = {
   summary: 'added smoked paprika',
 };
 
-export function recipeDoc(version: Version = version1): DocumentWithVersion {
+export const chiliTags = ['course:main', 'main:beef', 'effort:project', 'occasion:cookoff'];
+
+export function recipeDoc(version: Version = version1, tags: string[] = []): DocumentWithVersion {
   return {
     document: {
       id: ids.doc,
@@ -66,7 +70,7 @@ export function recipeDoc(version: Version = version1): DocumentWithVersion {
       owner: ids.owner,
       createdAt: '2026-10-26T12:00:00.000Z',
       currentVersionId: version.id,
-      tags: [],
+      tags,
       deletedAt: null,
     },
     version,
@@ -131,7 +135,19 @@ export const briefFrontmatter = {
   title: 'Brief for 2026-10-30',
   date: '2026-10-30',
   sections: [
-    { heading: 'Today', body: '- 9:00 standup\n- 14:00 dentist' },
+    { heading: 'The day', body: 'Feria · Season after Pentecost · Sunrise 7:35 · 48° and clear' },
+    {
+      heading: 'Office',
+      body: '*The Lord is in his holy temple.*\n\n#### Venite · Psalm 95\n\nO come, let us sing unto the Lord.',
+    },
+    {
+      heading: 'The brief',
+      body: 'Eleven days left at Roundtrip.\n\nJimmy’s costume still needs a belt.\n\nSmall group is at ours Thursday.\n\nA fourth item the page will not show.',
+    },
+    {
+      heading: 'Today',
+      body: '- 9:00 · Standup\n- 14:00 · Dentist\n- Dinner · [Chili](/recipes/9b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b) · weeknight',
+    },
     { heading: 'Waiting on you', body: 'Two emails from the small group.' },
   ],
 };
@@ -169,6 +185,19 @@ export function briefDoc(
 
 export const activity: AgentActivityItem[] = [
   {
+    kind: 'tagged',
+    changeId: 'cb2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
+    documentId: ids.doc,
+    documentType: 'recipe',
+    slug: 'chili',
+    title: 'Chili',
+    tags: chiliTags,
+    previousTags: [],
+    token: { id: '8b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b', name: 'claude' },
+    createdAt: '2026-10-31T09:00:00.000Z',
+  },
+  {
+    kind: 'version',
     versionId: 'ab2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
     documentId: '6b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
     documentType: 'brief',
@@ -181,6 +210,7 @@ export const activity: AgentActivityItem[] = [
     authoredAt: null,
   },
   {
+    kind: 'version',
     versionId: 'bb2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
     documentId: ids.doc,
     documentType: 'recipe',

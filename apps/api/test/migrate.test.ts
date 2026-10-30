@@ -17,6 +17,8 @@ describe('migration runner', () => {
       '0002_admin_member.sql',
       '0003_version_authored_at.sql',
       '0004_import_chili_lineage.sql',
+      '0005_tag_change.sql',
+      '0006_search.sql',
     ];
     expect(files.map((f) => f.name)).toEqual(names);
 
@@ -40,6 +42,7 @@ describe('migration runner', () => {
       'document',
       'member',
       'schema_migration',
+      'tag_change',
       'version',
     ]);
     await pg.close();

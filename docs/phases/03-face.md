@@ -126,41 +126,43 @@ CI.
 
 Each is one PR, in this order. Later ones depend on earlier ones.
 
-- [ ] **Tokens and fonts.** The `@theme` block with the contract's names and both palettes
+- [x] **Tokens and fonts.** The `@theme` block with the contract's names and both palettes
       (dark on `:root` and under `[data-theme="dark"]`, light under `[data-theme="light"]`
       and as the `prefers-color-scheme: light` default), radii, font families; Literata and
       Source Code Pro added through fontsource with `font-display: swap`; a `tabular-nums`
       utility; every component's classes migrated per the table above; the hex-literal
       test and the contrast test. Snapshot of nothing: this is web only. Visual check
       against `docs/design/*-dark-*.png` and `*-light-*.png` by hand.
-- [ ] **Theme switching.** The inline script before paint, the toggle component, the
+- [x] **Theme switching.** The inline script before paint, the toggle component, the
       `localStorage` key (guarded, like the refresh token), MSW/RTL tests for default,
       toggle and persistence.
-- [ ] **Primitives.** Button variants, icon buttons, Input, Textarea, Label, Form, Chip,
+- [x] **Primitives.** Button variants, icon buttons, Input, Textarea, Label, Form, Chip,
       focus rings, 44px targets. Tests per primitive.
-- [ ] **Nav.** The top bar and the phone sheet of the contract; role-gated Admin; ⌘K
+- [x] **Nav.** The top bar and the phone sheet of the contract; role-gated Admin; ⌘K
       opens search (the search screen lands two PRs later; until then it focuses the
       Recipes search field); "New" split by type. Tests for both widths and the gating.
-- [ ] **Recipe schema.** `packages/shared`: the facet vocabulary, tag validation, the new
+- [x] **Recipe schema.** `packages/shared`: the facet vocabulary, tag validation, the new
       fields, `proven`; the recipe guide for the MCP tools; the form; the server rejecting
       an unknown facet value; the `set_tags` MCP tool and its REST twin
       (`PUT /api/documents/{id}/tags`, both doors), logged as agent activity without a
       version. Tests, MCP client tests included. A `docs/runbooks/tag-recipes.md` with
       the session prompt that tags the Phase 2 import through the MCP server.
-- [ ] **Search.** Migration `0005_search` (a `tsvector` column on `version` maintained by
+- [x] **Search.** Migration `0005_search` (a `tsvector` column on `version` maintained by
       trigger, a GIN index), `GET /api/documents/search?q=&type=&tags=` on the documents
       Lambda and through the agent door and as a sixth MCP tool `search_documents`, the
       Recipes list of the contract with facet filters and inverted active chips. Handler,
       repository (PGlite supports `tsvector`), MSW and MCP tests.
-- [ ] **Morning page.** The contract's four parts from the brief's sections, the accent
+- [x] **Morning page.** The contract's four parts from the brief's sections, the accent
       exactly once, the "never" list honored, the reading measure. Replaces the Phase 2
       home. MSW tests, including a day with no brief.
-- [ ] **Recipe page, history and diff.** The contract's recipe screen; "Changed in vN";
+- [x] **Recipe page, history and diff.** The contract's recipe screen; "Changed in vN";
       proven and untested states; history and diff restyled with the two diff hues. MSW
       tests.
-- [ ] **Stack, Tokens, Activity, sign-in.** Restyled with the primitives; the Stack page's
+- [x] **Stack, Tokens, Activity, sign-in.** Restyled with the primitives; the Stack page's
       agents lane copy updated for whatever this phase changed. Tests already exist.
-- [ ] **Gate check.** On a phone, in the morning. Record the date here.
+- [ ] **Gate check.** On a phone, in the morning. Record the date here. Before it: merge,
+      run `docs/runbooks/tag-recipes.md` so the import carries its facets, let Duet post a
+      brief with the four headings, then the Lighthouse run.
 
 ## Ask versus decide
 
@@ -175,7 +177,90 @@ session put it): spacing, breakpoints, copy, the exact light `accent-hover` for 
 (underline, per the contract), the search ranking, the `localStorage` key, font subsetting,
 which SVG paths the icons use.
 
-## Handoff
+## Decided during implementation (Oct 30, 2026)
+
+Routine calls made while building, recorded here so no later session relitigates them.
+Each is reversible unless marked. Built on one branch as nine commits in the directive's
+order rather than nine PRs; the commit messages carry what each PR description would have.
+
+- **Tokens.** Tailwind's default color and radius namespaces are cleared in the `@theme`
+  block, so a raw palette class does not compile. Three utilities encode the recurring
+  recipes: `eyebrow`, `page-title`, `reading` (Literata 18/1.6, measure 42rem). The
+  contract's `success` had no value; dark `#7FA66A` and paper `#3F6B2E` were chosen for
+  added diff lines and sit in `index.css` with the rest. The contrast test asserts the
+  contract's own numbers; `wrong` on the raised surfaces and `on-accent` on the paper
+  `accent-hover` fall under 4.5:1, as the contract itself notes, so those two are held to
+  the 3:1 UI ratio. The hex-literal test covers `.ts`, `.tsx`, `.css` and `.html` under
+  `apps/web/src`; `index.html` and `public/` sit outside it and carry the `bg` values in
+  the theme-color metas, the favicon and the manifest, because a meta cannot read a CSS
+  variable.
+- **Theme.** `localStorage` key `keep.theme`; the inline script and the module apply the
+  same rule; the module also rewrites the theme-color metas from the live `--bg`. In the
+  phone sheet the toggle is a switch labelled "Paper", per the nav render.
+- **Primitives.** Every button size is 44px tall (`sm` tightens padding and type only);
+  icon buttons require an `aria-label` at the type level. A chip that does something is a
+  real button whose hit area is stretched to the target with a pseudo-element. Focus rings
+  are `border-strong`, two pixels, offset on `bg`.
+- **Nav.** Admin is a menu of Tokens, Activity and Stack (the Stack page has no place in
+  the contract, so it lives under Admin, with a second row on those three screens). The
+  desktop search is a field-shaped button with ⌘K; ⌘K and both search entries land on the
+  Recipes field until a search screen exists. "New" has one creatable type today; the
+  split caret lists whatever `CREATABLE` in `nav.ts` holds. The mark sits beside the
+  wordmark at 20px; the nav render had none, the logo arrived after it.
+- **Recipe schema.** `proven` is `{ count, last? }`, because the screen shows a cook count
+  and a last date; a bare `true` is read as one cook and `false` as untested. Facet
+  namespaces are `course`, `main`, `effort`, `technique`, `season`, `occasion` and `flag`,
+  values kebab-case (`soup-stew`, `fish-shellfish`); a namespaced tag outside the
+  vocabulary is refused with the list of what is allowed, one value per facet, and tags
+  with no namespace stay free text. Tag changes are recorded in a new `tag_change` table
+  (migration `0005_tag_change`, append-only), which is what lets the activity view show a
+  "tagged" row without a version. The agent-activity DTO became a union on `kind`. Editing
+  a recipe saves tags through `PUT …/tags` only when the set changed.
+- **Search.** The vector lives on `document`, not `version`: title and body come from the
+  current version, tags from the document, and `version` rows are append-only, so a tag
+  change could not refresh a vector stored there. One trigger fires on insert and on
+  `update of current_version_id, tags`; weights are title A, tag words B (`course:soup-stew`
+  searches as "course soup stew"), provenance and ingredient lines C, body D; ranking is
+  `ts_rank_cd` then newest; `websearch_to_tsquery` syntax. The response carries the type's
+  total for the list's "6 of 12". Still one column and one index.
+- **Morning page.** The four parts are read from the brief by heading ("The day",
+  "Office", "The brief", "Today", with a few aliases in `morning.ts`); other sections fold
+  into the brief and count toward its cap of three. The Phase 2 home's recent list is
+  gone, since the page is the contract's four parts and nothing else; past briefs are
+  reached from Activity. The date heading is the viewer's today; when the brief shown is
+  an earlier day's, one italic line says so.
+- **Recipe page.** The headnote is the body's prose before its first heading. Ingredient
+  lines stay free text in the schema; the two-column layout of the render comes from a
+  reading-aid split of a leading quantity (`splitIngredient` in `format.ts`) that leaves a
+  line whole when it starts with no amount. The render shows History as the page's one
+  accented element and no Edit; Edit is an outline button beside the back link, Delete a
+  quiet ghost at the foot.
+- **Copy and fonts.** Literata ships as the `standard` fontsource build (wght + opsz,
+  roman and italic); Source Code Pro as wght. Fontsource's unicode-range subsets mean only
+  the latin files load. Icons are hand-drawn 24-unit paths in `components/icons.tsx`.
+
+## Handoff (Oct 30, 2026)
+
+What a fresh session should know that the files alone do not say.
+
+- **State of the world.** Every deliverable but the gate is built and tested on the branch
+  `claude/sweet-pascal-ndxg9l`; nothing is deployed until it merges. The web suite is 100
+  tests, the API 118 (search, tags and the six MCP tools included), shared 37, the CDK
+  snapshots 26. `cdk synth` bundles.
+- **Only Tyler does,** in this order once it is live: run the tagging session
+  (`docs/runbooks/tag-recipes.md`, with the `claude` token); tell Duet the four headings
+  (`docs/runbooks/morning-brief.md`, "Asking Duet"); the Lighthouse run on the home page;
+  the gate on his phone, and the date in the checkbox above.
+- **Renders.** All four screens now have renders in `docs/design/`, plus the tokens sheet
+  and the mark; the README there says which came from PDFs and how they were stitched.
+  History, diff, Tokens, Activity, Stack and sign-in have none.
+- **Loose ends worth knowing.** The `dark` custom variant is wired but unused: every
+  component reads the palette through the tokens. `disabled` as a token is gone; controls
+  use opacity. The brief writer's older section names ("Waiting on you", "Due soon") still
+  render, folded into the brief, until Duet is told the new ones. Phase 4's group ring
+  will want the `me` query the shell already fetches once.
+
+## Handoff from the directive (Oct 30, 2026, before the work)
 
 - Start from `main`; Phase 2's handoff still describes the deploy, the doors and the
   tokens. The Phase 2 import left 20 recipes with no facets; the tagging pass in the

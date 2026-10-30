@@ -79,7 +79,7 @@ dependencies. `pdftotext -layout` keeps columns in order, which recipes tend to 
   day it entered The Keep; the history screens show both.
 - **The summary says what changed**, in one line: "Steve's card, 2014", "Guinness out,
   Negra Modelo in". Version 1's summary says where it came from.
-- **Numbers only when the file states them.** Servings and minutes stay out otherwise.
+- **Numbers only when the file states them.** Serves and the minutes stay out otherwise.
 - **Ingredients keep their groups.** A heading in the file ("Meats", "Core spice blend")
   becomes a group heading; amounts stay in the line text.
 
@@ -109,8 +109,10 @@ from the Tyler-personal checkout at <path> and follow its ordering rule exactly.
 4. After I say go: for each recipe, create_document for the oldest file, then
    create_version for each later file, with authoredAt set to that file's date and a
    one-line summary of what changed. Frontmatter follows the recipe guide in the tool
-   description: title, ingredients as groups with the amounts in the text, servings and
-   minutes only when the file states them. The method is the body, as markdown.
+   description: title, ingredients as groups with the amounts in the text, serves and the
+   active and total minutes only when the file states them, provenance when the file says
+   where it came from. The method is the body, as markdown. Facets and flags (the tags) can
+   wait for docs/runbooks/tag-recipes.md, or be set with set_tags once the document exists.
 5. If a tool returns an error naming a field, fix the call and retry once; if it fails
    again, stop and show me.
 6. Finish with a table of what was created: recipe, document id, versions, dates.

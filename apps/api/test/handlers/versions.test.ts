@@ -12,9 +12,9 @@ import { bodyOf, fakeEvent } from '../helpers/event.js';
 
 const chili = {
   title: 'Chili',
-  servings: 8,
-  prepMinutes: 20,
-  cookMinutes: 180,
+  serves: 8,
+  activeMinutes: 20,
+  totalMinutes: 180,
   ingredients: [
     { heading: 'Meats', items: ['2 lb ground chuck'] },
     { heading: 'Liquids', items: ['2 tsp Worcestershire', '1 can Guinness'] },
@@ -22,7 +22,7 @@ const chili = {
 };
 const chili2 = {
   ...chili,
-  cookMinutes: 240,
+  totalMinutes: 240,
   ingredients: [
     { heading: 'Meats', items: ['2 lb ground chuck', '1 lb ground lamb'] },
     { heading: 'Liquids', items: ['1 can Guinness'] },
@@ -157,7 +157,7 @@ describe('GET /api/documents/{id}/diff', () => {
     expect(diff.body).not.toContain('-Brown the beef.');
     expect(diff.to.authoredAt).toBe('2025-01-31T22:12:15.000Z');
     expect(diff.frontmatter).toEqual([
-      { key: 'cookMinutes', change: 'changed', from: 180, to: 240 },
+      { key: 'totalMinutes', change: 'changed', from: 180, to: 240 },
     ]);
     expect(diff.ingredients).toEqual([
       {

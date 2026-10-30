@@ -18,10 +18,10 @@ function classify(line: string): Kind {
 }
 
 const styles: Record<Kind, string> = {
-  header: 'text-muted-foreground',
-  hunk: 'bg-muted text-muted-foreground',
-  added: 'bg-success-subtle text-success',
-  removed: 'bg-destructive-subtle text-destructive',
+  header: 'text-muted',
+  hunk: 'bg-surface text-muted',
+  added: 'bg-success/10 text-success',
+  removed: 'bg-wrong/10 text-wrong',
   context: '',
 };
 
@@ -33,10 +33,10 @@ export function DiffView({ patch }: { patch: string }) {
   const lines = patch.replace(/\n$/, '').split('\n');
   const body = lines.filter((line) => classify(line) !== 'header');
   if (body.length === 0 || body.every((line) => classify(line) === 'context')) {
-    return <p className="text-sm text-muted-foreground">No changes to the method.</p>;
+    return <p className="text-sm text-muted">No changes to the method.</p>;
   }
   return (
-    <pre className="overflow-x-auto rounded-card border border-border font-mono text-xs leading-5">
+    <pre className="overflow-x-auto rounded-lg border border-border font-mono text-xs leading-5">
       {body.map((line, i) => (
         <div key={i} className={cn('px-3 whitespace-pre', styles[classify(line)])}>
           {line || ' '}

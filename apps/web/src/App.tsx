@@ -5,6 +5,7 @@ import { ActivityPage } from '@/routes/admin/ActivityPage';
 import { TokensPage } from '@/routes/admin/TokensPage';
 import { BriefDetail } from '@/routes/briefs/BriefDetail';
 import { Home } from '@/routes/home/Home';
+import { NotYet } from '@/routes/NotYet';
 import { EditRecipe } from '@/routes/recipes/EditRecipe';
 import { NewRecipe } from '@/routes/recipes/NewRecipe';
 import { RecipeDetail } from '@/routes/recipes/RecipeDetail';
@@ -29,6 +30,8 @@ export function App() {
           <Route path="/recipes/:id/edit" element={<EditRecipe />} />
           <Route path="/recipes/:id/history" element={<RecipeHistory />} />
           <Route path="/recipes/:id/diff" element={<RecipeDiff />} />
+          <Route path="/writing" element={<NotYet place="Writing" phase="Phase 5" />} />
+          <Route path="/group" element={<NotYet place="Group" phase="Phase 4" />} />
           <Route path="/stack" element={<StackPage />} />
           <Route path="/admin/tokens" element={<TokensPage />} />
           <Route path="/admin/activity" element={<ActivityPage />} />

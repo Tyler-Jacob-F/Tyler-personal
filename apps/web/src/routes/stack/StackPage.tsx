@@ -1,4 +1,5 @@
 import { type ReactNode, useMemo, useState } from 'react';
+import { AdminNav } from '@/components/AdminNav';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { NODES, TRACES } from '@/routes/stack/data';
@@ -13,9 +14,7 @@ const traceLabels: Record<(typeof traceOrder)[number], string> = {
   deploy: 'Deploy',
 };
 
-const Eyebrow = ({ children }: { children: string }) => (
-  <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">{children}</p>
-);
+const Eyebrow = ({ children }: { children: string }) => <p className="eyebrow">{children}</p>;
 
 /**
  * How the site is put together, for the person who has to live with it. Click a piece for
@@ -45,10 +44,11 @@ export function StackPage() {
 
   return (
     <div className="grid gap-6">
+      <AdminNav />
       <div>
-        <Eyebrow>tylerfuqua.com · after Phase 2</Eyebrow>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">The Keep, under the hood</h1>
-        <p className="mt-2 max-w-prose text-muted-foreground">
+        <Eyebrow>tylerfuqua.com · after Phase 3</Eyebrow>
+        <h1 className="mt-1 page-title">The Keep, under the hood</h1>
+        <p className="mt-2 max-w-prose text-muted">
           Five CloudFormation stacks, one domain, two doors (people and agents), nothing always on
           except a database that sleeps. Click any box to learn what it is and why it is there, or
           trace a request to watch it move.
@@ -62,14 +62,12 @@ export function StackPage() {
             role="group"
             aria-label="Trace a request"
           >
-            <span className="mr-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Trace
-            </span>
+            <span className="mr-1 eyebrow">Trace</span>
             {traceOrder.map((name) => (
               <Button
                 key={name}
                 size="sm"
-                variant={trace === name ? 'default' : 'outline'}
+                variant={trace === name ? 'accent' : 'outline'}
                 aria-pressed={trace === name}
                 onClick={() => startTrace(trace === name ? null : name)}
               >
@@ -82,7 +80,7 @@ export function StackPage() {
               </Button>
             )}
           </div>
-          <div className="overflow-x-auto rounded-card border border-border bg-background">
+          <div className="overflow-x-auto rounded-lg border border-border bg-bg">
             <figure className="m-0 min-w-[54rem] p-3">
               <Diagram
                 selected={selected}
@@ -91,7 +89,7 @@ export function StackPage() {
                 tracing={Boolean(current)}
                 onSelect={select}
               />
-              <figcaption className="mt-2 text-xs text-muted-foreground">
+              <figcaption className="mt-2 text-xs text-muted">
                 Solid arrows carry data; dashed arrows carry trust or configuration. Highlights show
                 the request you are tracing.
               </figcaption>
@@ -99,7 +97,7 @@ export function StackPage() {
           </div>
         </section>
 
-        <aside className="min-w-0 rounded-card border border-border p-5" aria-live="polite">
+        <aside className="min-w-0 rounded-lg border border-border p-5" aria-live="polite">
           {current && currentStep ? (
             <div className="grid gap-4">
               <div>
@@ -123,7 +121,7 @@ export function StackPage() {
                 >
                   Next
                 </Button>
-                <span className="text-xs text-muted-foreground tabular-nums">
+                <span className="text-xs text-muted tabular-nums">
                   step {step + 1} of {current.steps.length}
                 </span>
               </div>
@@ -135,11 +133,11 @@ export function StackPage() {
                       aria-current={i === step ? 'step' : undefined}
                       onClick={() => setStep(i)}
                       className={cn(
-                        'w-full rounded-control border border-transparent px-3 py-2 text-left',
-                        i === step && 'border-highlight bg-highlight-subtle',
+                        'w-full rounded-md border border-transparent px-3 py-2 text-left',
+                        i === step && 'border-accent bg-surface',
                       )}
                     >
-                      <span className="mr-2 font-mono text-xs text-muted-foreground">{i + 1}</span>
+                      <span className="mr-2 font-mono text-xs text-muted">{i + 1}</span>
                       {s.text}
                     </button>
                   </li>
@@ -157,7 +155,7 @@ export function StackPage() {
               <Section title="What it costs">{node.cost}</Section>
               <div>
                 <Eyebrow>Where to find it</Eyebrow>
-                <pre className="mt-1 rounded-control border border-border bg-muted px-2 py-1.5 font-mono text-xs whitespace-pre-wrap">
+                <pre className="mt-1 rounded-md border border-border bg-surface px-2 py-1.5 font-mono text-xs whitespace-pre-wrap">
                   {node.where}
                 </pre>
               </div>
@@ -226,7 +224,7 @@ export function StackPage() {
               </tr>
             </tbody>
           </table>
-          <p className="mt-3 text-xs text-muted-foreground">
+          <p className="mt-3 text-xs text-muted">
             The budget alarm fires at $5. If it ever does, check first whether the cluster stopped
             pausing.
           </p>
@@ -287,7 +285,7 @@ function Section({ title, children }: { title: string; children: string }) {
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="min-w-0 rounded-card border border-border p-5 text-sm [&_p]:mb-2 [&_p:last-child]:mb-0">
+    <section className="min-w-0 rounded-lg border border-border p-5 text-sm [&_p]:mb-2 [&_p:last-child]:mb-0">
       <h2 className="mb-3 text-base font-semibold tracking-tight">{title}</h2>
       {children}
     </section>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="16" height="16" role="img" aria-label="The Keep">
+  <!-- 16px fallback for favicons and tab icons: same silhouette, loophole dropped so it doesn't blur. Use at 20px and below. -->
+  <path fill="currentColor" fill-rule="evenodd"
+        d="M18 12H24V20H29V12H35V20H40V12H46V58H18ZM28 58V48A4 4 0 0 1 36 48V58Z"/>
+</svg>

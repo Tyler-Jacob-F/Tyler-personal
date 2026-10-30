@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { useCreateVersion, useDocument } from '@/api/documents';
+import { useCreateVersion, useDocument, useSetTags } from '@/api/documents';
 import { Alert } from '@/components/Alert';
 import { RecipeForm } from '@/routes/recipes/RecipeForm';
 import { titleOf } from '@/routes/recipes/format';
-import { fromVersion, toFrontmatter } from '@/routes/recipes/recipe-form';
+import { fromVersion, sameTags, toFrontmatter, toTags } from '@/routes/recipes/recipe-form';
 
 /** Editing never overwrites: the form's values become the next version. */
 export function EditRecipe() {
@@ -12,25 +12,22 @@ export function EditRecipe() {
   const navigate = useNavigate();
   const recipe = useDocument(id);
   const save = useCreateVersion(id);
+  const setTags = useSetTags(id);
   const [error, setError] = useState<string | null>(null);
 
-  if (recipe.isPending) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (recipe.isPending) return <p className="text-sm text-muted">Loading…</p>;
   if (recipe.isError) return <Alert tone="danger">{recipe.error.message}</Alert>;
 
-  const { version } = recipe.data;
+  const { document, version } = recipe.data;
 
   return (
     <div className="grid gap-6">
       <div>
-        <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-          Editing v{version.number}
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-          {titleOf(version.frontmatter)}
-        </h1>
+        <p className="eyebrow">Editing v{version.number}</p>
+        <h1 className="mt-1 page-title">{titleOf(version.frontmatter)}</h1>
       </div>
       <RecipeForm
-        defaultValues={fromVersion(version.frontmatter, version.body)}
+        defaultValues={fromVersion(version.frontmatter, version.body, document.tags)}
         submitLabel={`Save as v${version.number + 1}`}
         withSummary
         error={error}
@@ -43,6 +40,9 @@ export function EditRecipe() {
               summary: values.summary,
               authoredAt: values.authoredAt,
             });
+            // Tags are the document's, not the version's: a separate write, only if changed.
+            const tags = toTags(values, document.tags);
+            if (!sameTags(tags, document.tags)) await setTags.mutateAsync(tags);
             navigate(`/recipes/${id}`);
           } catch (e) {
             setError(e instanceof Error ? e.message : 'Could not save.');

@@ -3,8 +3,8 @@ import { NODES, TRACES } from '@/routes/stack/data';
 import { render, screen, userEvent, within } from '@/test/render';
 
 describe('StackPage', () => {
-  it('is reachable from the nav and opens on the overview', async () => {
-    render(<App />, { route: '/' });
+  it('is reachable from the admin row and opens on the overview', async () => {
+    render(<App />, { route: '/admin/activity' });
     expect(await screen.findByRole('link', { name: 'Stack' })).toHaveAttribute('href', '/stack');
     render(<App />, { route: '/stack' });
     expect(
@@ -38,7 +38,7 @@ describe('StackPage', () => {
     const current = within(list).getByRole('button', { current: 'step' });
     expect(current).toHaveTextContent(steps[1]!.text);
     const apigw = screen.getByRole('button', { name: 'API Gateway HTTP API' });
-    expect(apigw.getAttribute('class')).toContain('fill-highlight-subtle');
+    expect(apigw.getAttribute('class')).toContain('fill-surface-raised');
   });
 
   it('traces an agent saving a recipe through the token authorizer and the MCP server', async () => {
@@ -49,10 +49,10 @@ describe('StackPage', () => {
     await user.click(screen.getByRole('button', { name: 'Next' }));
     expect(
       screen.getByRole('button', { name: 'Agent token authorizer' }).getAttribute('class'),
-    ).toContain('fill-highlight-subtle');
+    ).toContain('fill-surface-raised');
     await user.click(screen.getByRole('button', { name: 'Next' }));
     expect(screen.getByRole('button', { name: 'MCP server' }).getAttribute('class')).toContain(
-      'fill-highlight-subtle',
+      'fill-surface-raised',
     );
     await user.click(screen.getByRole('button', { name: 'MCP server' }));
     expect(screen.getByRole('heading', { name: NODES.mcp!.title })).toBeInTheDocument();

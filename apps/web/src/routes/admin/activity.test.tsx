@@ -22,21 +22,29 @@ describe('ActivityPage', () => {
       await screen.findByRole('heading', { name: 'Agent activity', level: 1 }),
     ).toBeInTheDocument();
     const rows = await screen.findAllByRole('listitem');
-    expect(rows).toHaveLength(2);
-    expect(within(rows[0]!).getByText('brief-writer')).toBeInTheDocument();
-    expect(within(rows[0]!).getByText('Brief')).toBeInTheDocument();
-    expect(within(rows[0]!).getByRole('link', { name: 'Brief for 2026-10-30' })).toHaveAttribute(
-      'href',
-      '/briefs/6b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
-    );
-    expect(within(rows[1]!).getByText('importer')).toBeInTheDocument();
-    expect(within(rows[1]!).getByRole('link', { name: 'Chili' })).toHaveAttribute(
+    expect(rows).toHaveLength(3);
+    expect(within(rows[0]!).getByText('claude')).toBeInTheDocument();
+    expect(within(rows[0]!).getByText('tagged')).toBeInTheDocument();
+    expect(within(rows[0]!).getByRole('link', { name: 'Chili' })).toHaveAttribute(
       'href',
       `/recipes/${ids.doc}`,
     );
-    expect(within(rows[1]!).getByText('v2')).toBeInTheDocument();
-    expect(within(rows[1]!).getByText(/written Mar 3, 2014 · entered/)).toBeInTheDocument();
-    expect(within(rows[1]!).getByText('from the 2014 card')).toBeInTheDocument();
+    expect(within(rows[0]!).getByText('Beef')).toBeInTheDocument();
+    expect(within(rows[0]!).getByText('Cookoff')).toBeInTheDocument();
+    expect(within(rows[1]!).getByText('brief-writer')).toBeInTheDocument();
+    expect(within(rows[1]!).getByText('Brief')).toBeInTheDocument();
+    expect(within(rows[1]!).getByRole('link', { name: 'Brief for 2026-10-30' })).toHaveAttribute(
+      'href',
+      '/briefs/6b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
+    );
+    expect(within(rows[2]!).getByText('importer')).toBeInTheDocument();
+    expect(within(rows[2]!).getByRole('link', { name: 'Chili' })).toHaveAttribute(
+      'href',
+      `/recipes/${ids.doc}`,
+    );
+    expect(within(rows[2]!).getByText('v2')).toBeInTheDocument();
+    expect(within(rows[2]!).getByText(/written Mar 3, 2014 · entered/)).toBeInTheDocument();
+    expect(within(rows[2]!).getByText('from the 2014 card')).toBeInTheDocument();
   });
 
   it('says so when no agent has written anything', async () => {

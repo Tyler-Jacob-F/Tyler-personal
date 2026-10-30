@@ -1,31 +1,108 @@
 import { http, HttpResponse } from 'msw/http';
 import { App } from '@/App';
-import { chili, diff12, ids, recipeDoc, version1, version2 } from '@/test/fixtures';
+import { chili, chiliTags, diff12, ids, recipeDoc, version1, version2 } from '@/test/fixtures';
 import { render, screen, userEvent, waitFor, within } from '@/test/render';
 import { server } from '@/test/server';
 
 describe('RecipeList', () => {
-  it('lists recipes with their current version and summary', async () => {
+  const searching = (handler: (url: URL) => unknown[] = () => [recipeDoc(version2, chiliTags)]) => {
+    const calls: URL[] = [];
     server.use(
-      http.get('/api/documents', ({ request }) => {
-        expect(new URL(request.url).searchParams.get('type')).toBe('recipe');
-        return HttpResponse.json({ items: [recipeDoc(version2)] });
+      http.get('/api/documents/search', ({ request }) => {
+        const url = new URL(request.url);
+        calls.push(url);
+        return HttpResponse.json({
+          items: handler(url),
+          total: 12,
+          q: url.searchParams.get('q') ?? '',
+          tags: (url.searchParams.get('tags') ?? '').split(',').filter(Boolean),
+        });
       }),
     );
+    return calls;
+  };
+
+  it('lists recipes with their facets, total time in tabular figures and a check for proven', async () => {
+    const calls = searching();
     render(<App />, { route: '/recipes' });
     const item = await screen.findByRole('link', { name: /Chili/ });
-    expect(within(item).getByText('v2')).toBeInTheDocument();
-    expect(within(item).getByText(/added smoked paprika/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'New recipe' })).toHaveAttribute(
+    expect(calls[0]!.searchParams.get('type')).toBe('recipe');
+    expect(calls[0]!.searchParams.has('q')).toBe(false);
+    expect(within(item).getByText('Main · Beef · Project · Cookoff')).toBeInTheDocument();
+    expect(within(item).getByText('3 h')).toHaveClass('tabular-nums');
+    expect(within(item).getByRole('img', { name: 'Proven' })).toBeInTheDocument();
+    expect(screen.getByText('12')).toHaveClass('tabular-nums');
+    expect(screen.getByRole('link', { name: /New recipe/ })).toHaveAttribute(
       'href',
       '/recipes/new',
     );
   });
 
-  it('says so when there is nothing yet', async () => {
-    server.use(http.get('/api/documents', () => HttpResponse.json({ items: [] })));
+  it('shows no check for an untested recipe and says so when there is nothing yet', async () => {
+    searching(() => [recipeDoc(version1)]);
+    render(<App />, { route: '/recipes' });
+    const item = await screen.findByRole('link', { name: /Chili/ });
+    expect(within(item).queryByRole('img', { name: 'Proven' })).toBeNull();
+    searching(() => []);
     render(<App />, { route: '/recipes' });
     expect(await screen.findByText(/Nothing yet/)).toBeInTheDocument();
+  });
+
+  it('searches by words from the field and by facet from the filters, keeping both in the URL', async () => {
+    const user = userEvent.setup();
+    const calls = searching((url) =>
+      url.searchParams.get('tags') === 'course:breakfast' ? [] : [recipeDoc(version2, chiliTags)],
+    );
+    render(<App />, { route: '/recipes' });
+    await screen.findByRole('link', { name: /Chili/ });
+
+    await user.type(screen.getByRole('searchbox', { name: 'Search recipes' }), 'saturday');
+    await waitFor(() => expect(calls.at(-1)!.searchParams.get('q')).toBe('saturday'));
+
+    const filters = screen.getByRole('navigation', { name: 'Filters' });
+    await user.click(within(filters).getByRole('button', { name: 'Breakfast', pressed: false }));
+    await waitFor(() => expect(calls.at(-1)!.searchParams.get('tags')).toBe('course:breakfast'));
+    expect(calls.at(-1)!.searchParams.get('q')).toBe('saturday');
+    expect(await screen.findByText('Nothing matches.')).toBeInTheDocument();
+    expect(screen.getByText('0 of 12')).toBeInTheDocument();
+
+    const active = screen.getByRole('list', { name: 'Active filters' });
+    expect(within(active).getByRole('button', { name: 'Remove Breakfast' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    // One value per facet: picking Main replaces Breakfast.
+    await user.click(within(filters).getByRole('button', { name: 'Main', pressed: false }));
+    await waitFor(() => expect(calls.at(-1)!.searchParams.get('tags')).toBe('course:main'));
+    // A flag adds to the set; removing from the active chips takes it away.
+    await user.click(within(filters).getByRole('button', { name: 'Vegetarian' }));
+    await waitFor(() =>
+      expect(calls.at(-1)!.searchParams.get('tags')).toBe('course:main,flag:vegetarian'),
+    );
+    await user.click(within(active).getByRole('button', { name: 'Remove Main' }));
+    await waitFor(() => expect(calls.at(-1)!.searchParams.get('tags')).toBe('flag:vegetarian'));
+    await user.click(screen.getByRole('button', { name: 'Clear' }));
+    // The words-only search is still cached, so no request goes out; the chips are gone.
+    await waitFor(() => expect(screen.queryByRole('list', { name: 'Active filters' })).toBeNull());
+    expect(screen.getByRole('searchbox', { name: 'Search recipes' })).toHaveValue('saturday');
+  }, 15_000);
+
+  it('reads the search from the URL, as the phone sheet sends it', async () => {
+    const calls = searching();
+    render(<App />, { route: '/recipes?q=breakfast&tags=course:breakfast' });
+    await screen.findByRole('link', { name: /Chili/ });
+    expect(screen.getByRole('searchbox', { name: 'Search recipes' })).toHaveValue('breakfast');
+    expect(calls[0]!.searchParams.get('q')).toBe('breakfast');
+    expect(calls[0]!.searchParams.get('tags')).toBe('course:breakfast');
+    const filters = screen.getByRole('navigation', { name: 'Filters' });
+    expect(within(filters).getByRole('button', { name: 'Breakfast' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(filters).getByRole('button', { name: /^Course/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
   });
 });
 
@@ -42,9 +119,12 @@ describe('NewRecipe', () => {
     );
     render(<App />, { route: '/recipes/new' });
     await user.type(await screen.findByLabelText('Title'), 'Chili');
-    await user.type(screen.getByLabelText('Servings'), '8');
-    await user.type(screen.getByLabelText('Prep minutes'), '20');
-    await user.type(screen.getByLabelText('Cook minutes'), '180');
+    await user.type(screen.getByLabelText('Serves'), '8');
+    await user.type(screen.getByLabelText('Active minutes'), '20');
+    await user.type(screen.getByLabelText('Total minutes'), '180');
+    await user.selectOptions(screen.getByLabelText('Course'), 'main');
+    await user.selectOptions(screen.getByLabelText('Main ingredient'), 'beef');
+    await user.click(screen.getByRole('checkbox', { name: 'Kid-approved' }));
     await user.type(
       screen.getByLabelText('Ingredients'),
       '1 onion, diced\nMeats:\n2 lb ground chuck',
@@ -65,7 +145,7 @@ describe('NewRecipe', () => {
         },
         body: '# Chili',
         summary: '',
-        tags: [],
+        tags: ['course:main', 'main:beef', 'flag:kid-approved'],
         authoredAt: '2023-11-06',
       }),
     );
@@ -77,14 +157,14 @@ describe('NewRecipe', () => {
     const post = vi.fn();
     server.use(http.post('/api/documents', post));
     render(<App />, { route: '/recipes/new' });
-    await user.type(await screen.findByLabelText('Servings'), 'eight');
+    await user.type(await screen.findByLabelText('Serves'), 'eight');
     await user.click(screen.getByRole('button', { name: 'Save recipe' }));
     expect(await screen.findByText(/whole number/)).toBeInTheDocument();
     expect(screen.getByText(/at least one ingredient/)).toBeInTheDocument();
     expect(post).not.toHaveBeenCalled();
   });
 
-  it('lets servings and times stay blank and sends no numbers for them', async () => {
+  it('lets serves and the minutes stay blank and sends no numbers for them', async () => {
     const user = userEvent.setup();
     let posted: { frontmatter: Record<string, unknown>; authoredAt: unknown } | undefined;
     server.use(
@@ -108,23 +188,76 @@ describe('NewRecipe', () => {
 });
 
 describe('RecipeDetail', () => {
-  it('shows the current version with its details, ingredients and method', async () => {
-    server.use(http.get(`/api/documents/${ids.doc}`, () => HttpResponse.json(recipeDoc(version2))));
+  it('shows the recipe of the contract: headnote, provenance, facets, times, proven, ingredients beside the method, Changed in vN, the version line', async () => {
+    server.use(
+      http.get(`/api/documents/${ids.doc}`, () =>
+        HttpResponse.json(
+          recipeDoc(
+            {
+              ...version2,
+              body: 'A pot for a cold Saturday.\n\n# Chili\n\nBrown the beef.\nStir in smoked paprika.\n',
+            },
+            [...chiliTags, 'flag:kid-approved'],
+          ),
+        ),
+      ),
+    );
     render(<App />, { route: `/recipes/${ids.doc}` });
     expect(await screen.findByRole('heading', { name: 'Chili', level: 1 })).toBeInTheDocument();
-    expect(screen.getByText(/v2 · Tyler · written Jan 31, 2025 · entered/)).toBeInTheDocument();
+    expect(screen.getByText('A pot for a cold Saturday.').closest('div')).toHaveClass('italic');
+    expect(screen.getByText('Provenance · Steve’s card, 2014')).toBeInTheDocument();
+    const facets = screen.getByRole('list', { name: 'Facets' });
+    expect(
+      within(facets)
+        .getAllByRole('link')
+        .map((a) => a.textContent),
+    ).toEqual(['Main', 'Beef', 'Project', 'Cookoff', 'Kid-approved']);
+    expect(within(facets).getByRole('link', { name: 'Beef' })).toHaveAttribute(
+      'href',
+      '/recipes?tags=main%3Abeef',
+    );
+    expect(screen.getByText('Active').nextSibling).toHaveTextContent('20 min');
+    expect(screen.getByText('Total').nextSibling).toHaveTextContent('3 h');
+    expect(screen.getByText('Serves').nextSibling).toHaveTextContent('8');
+    expect(screen.getByText('Proven')).toHaveClass('text-text-strong');
+    expect(screen.getByText(/cooked 3 times · last 1 Feb/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Meats' })).toBeInTheDocument();
-    expect(screen.getByText('1 tsp smoked paprika')).toBeInTheDocument();
+    const paprika = screen.getByText('smoked paprika');
+    expect(paprika.previousSibling).toHaveTextContent('1 tsp');
     expect(screen.getByRole('heading', { name: 'Chili', level: 2 })).toBeInTheDocument();
     expect(screen.getByText(/Stir in smoked paprika/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
-      'href',
-      `/recipes/${ids.doc}/edit`,
-    );
+    expect(screen.getByText('Changed in v2')).toBeInTheDocument();
+    expect(screen.getByText('added smoked paprika')).toBeInTheDocument();
+    expect(
+      screen.getByText(/v2 · Tyler · written Jan 2025 · entered Oct 2026/),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'History' })).toHaveAttribute(
       'href',
       `/recipes/${ids.doc}/history`,
     );
+    expect(screen.getByRole('link', { name: 'History' })).toHaveClass('text-accent');
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'href',
+      `/recipes/${ids.doc}/edit`,
+    );
+    const article = screen.getByRole('article');
+    expect(within(article).getByRole('link', { name: 'Recipes' })).toHaveAttribute(
+      'href',
+      '/recipes',
+    );
+    // The accent appears once on the page.
+    expect(article.querySelectorAll('.text-accent, .bg-accent, .border-accent')).toHaveLength(1);
+  });
+
+  it('says Untested, in italic muted, for a version never cooked, and shows no provenance line without one', async () => {
+    server.use(http.get(`/api/documents/${ids.doc}`, () => HttpResponse.json(recipeDoc(version1))));
+    render(<App />, { route: `/recipes/${ids.doc}` });
+    await screen.findByRole('heading', { name: 'Chili', level: 1 });
+    expect(screen.getByText('Untested')).toHaveClass('italic');
+    expect(screen.queryByText('Proven')).toBeNull();
+    expect(screen.queryByText(/Provenance/)).toBeNull();
+    expect(screen.queryByText(/Changed in/)).toBeNull();
+    expect(screen.queryByRole('list', { name: 'Facets' })).toBeNull();
   });
 
   it('shows the API error for a missing recipe', async () => {
@@ -142,23 +275,32 @@ describe('EditRecipe', () => {
   it('prefills from the current version and saves a new version with a summary', async () => {
     const user = userEvent.setup();
     let posted: unknown;
-    let current = recipeDoc(version1);
+    let put: unknown;
+    let current = recipeDoc(version1, ['course:main', 'camping']);
     server.use(
       http.get(`/api/documents/${ids.doc}`, () => HttpResponse.json(current)),
       http.post(`/api/documents/${ids.doc}/versions`, async ({ request }) => {
         posted = await request.json();
-        current = recipeDoc(version2);
+        current = recipeDoc(version2, current.document.tags);
         return HttpResponse.json(version2, { status: 201 });
+      }),
+      http.put(`/api/documents/${ids.doc}/tags`, async ({ request }) => {
+        put = await request.json();
+        current = recipeDoc(version2, (put as { tags: string[] }).tags);
+        return HttpResponse.json(current);
       }),
     );
     render(<App />, { route: `/recipes/${ids.doc}/edit` });
     const ingredients = await screen.findByLabelText('Ingredients');
     expect(ingredients).toHaveValue('Meats:\n2 lb ground chuck\n1 onion, diced');
-    expect(screen.getByLabelText('Cook minutes')).toHaveValue('180');
+    expect(screen.getByLabelText('Total minutes')).toHaveValue('180');
+    expect(screen.getByLabelText('Course')).toHaveValue('main');
+    expect(screen.getByRole('checkbox', { name: 'Vegetarian' })).not.toBeChecked();
 
     await user.type(ingredients, '\n1 tsp smoked paprika');
     await user.type(screen.getByLabelText('Method'), 'Stir in smoked paprika.\n');
     await user.type(screen.getByLabelText('What changed'), 'added smoked paprika');
+    await user.selectOptions(screen.getByLabelText('Season'), 'winter');
     await user.click(screen.getByRole('button', { name: 'Save as v2' }));
 
     await waitFor(() =>
@@ -177,7 +319,27 @@ describe('EditRecipe', () => {
         authoredAt: null,
       }),
     );
-    expect(await screen.findByText(/v2 · Tyler/)).toBeInTheDocument();
+    await waitFor(() => expect(put).toEqual({ tags: ['course:main', 'season:winter', 'camping'] }));
+    expect(await screen.findByText(/v2 · Tyler · /)).toBeInTheDocument();
+  });
+
+  it('writes no tag change when the set is unchanged', async () => {
+    const user = userEvent.setup();
+    const put = vi.fn();
+    server.use(
+      http.get(`/api/documents/${ids.doc}`, () =>
+        HttpResponse.json(recipeDoc(version1, ['course:main'])),
+      ),
+      http.post(`/api/documents/${ids.doc}/versions`, () =>
+        HttpResponse.json(version2, { status: 201 }),
+      ),
+      http.put(`/api/documents/${ids.doc}/tags`, put),
+    );
+    render(<App />, { route: `/recipes/${ids.doc}/edit` });
+    await user.type(await screen.findByLabelText('What changed'), 'nothing much');
+    await user.click(screen.getByRole('button', { name: 'Save as v2' }));
+    await screen.findByRole('heading', { name: 'Chili', level: 1 });
+    expect(put).not.toHaveBeenCalled();
   });
 });
 

@@ -9,8 +9,7 @@ export function RecipeHistory() {
   const recipe = useDocument(id);
   const versions = useVersions(id);
 
-  if (recipe.isPending || versions.isPending)
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (recipe.isPending || versions.isPending) return <p className="text-sm text-muted">Loading…</p>;
   if (recipe.isError) return <Alert tone="danger">{recipe.error.message}</Alert>;
   if (versions.isError) return <Alert tone="danger">{versions.error.message}</Alert>;
 
@@ -21,10 +20,8 @@ export function RecipeHistory() {
     <div className="grid gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-            History
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+          <p className="eyebrow">History</p>
+          <h1 className="mt-1 page-title">
             <Link to={`/recipes/${id}`} className="hover:underline">
               {titleOf(recipe.data.version.frontmatter)}
             </Link>
@@ -39,29 +36,24 @@ export function RecipeHistory() {
         )}
       </div>
 
-      <ol className="divide-y divide-border rounded-card border border-border">
+      <ol className="divide-y divide-border border-y border-border">
         {items.map((version) => (
-          <li
-            key={version.id}
-            className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3 text-sm"
-          >
-            <div>
-              <span className="font-medium">v{version.number}</span>
-              <span className="ml-2 text-muted-foreground">{version.summary || 'no summary'}</span>
-            </div>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span>
+          <li key={version.id} className="grid gap-1 py-4 text-[15px]">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <span className="font-semibold text-text-strong tabular-nums">v{version.number}</span>
+              <span className="text-[13px] text-muted">
                 {version.author.name} · {dates(version)}
               </span>
-              {version.number > 1 && (
-                <Link
-                  to={`/recipes/${id}/diff?from=${version.number - 1}&to=${version.number}`}
-                  className="text-foreground hover:underline"
-                >
-                  Diff from v{version.number - 1}
-                </Link>
-              )}
             </div>
+            <p className="reading max-w-none text-[17px]">{version.summary || 'no summary'}</p>
+            {version.number > 1 && (
+              <Link
+                to={`/recipes/${id}/diff?from=${version.number - 1}&to=${version.number}`}
+                className="w-fit text-sm text-muted underline decoration-border-strong underline-offset-[3px] hover:text-text"
+              >
+                Diff from v{version.number - 1}
+              </Link>
+            )}
           </li>
         ))}
       </ol>

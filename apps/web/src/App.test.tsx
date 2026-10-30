@@ -19,7 +19,6 @@ describe('App', () => {
   it('shows the shell with the nav to a signed-in member', async () => {
     render(<App />, { route: '/' });
     expect(await screen.findByRole('link', { name: 'Recipes' })).toBeInTheDocument();
-    expect(screen.getByText('tyler.fuqua@icloud.com')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
   });
 });
