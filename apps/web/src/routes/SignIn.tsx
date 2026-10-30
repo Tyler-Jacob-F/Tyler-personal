@@ -105,6 +105,7 @@ export function SignIn() {
             />
             <Button
               type="submit"
+              variant="accent"
               autoFocus={Boolean(rememberedEmail)}
               disabled={emailForm.formState.isSubmitting}
             >
@@ -131,7 +132,7 @@ export function SignIn() {
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={codeForm.formState.isSubmitting}>
+            <Button type="submit" variant="accent" disabled={codeForm.formState.isSubmitting}>
               Sign in
             </Button>
             <Button

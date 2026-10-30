@@ -185,7 +185,7 @@ function CreateTokenForm({ onCreated }: { onCreated(issued: CreateAgentTokenResp
           )}
         />
         <div>
-          <Button type="submit" disabled={form.formState.isSubmitting}>
+          <Button type="submit" variant="accent" disabled={form.formState.isSubmitting}>
             Create token
           </Button>
         </div>
@@ -225,7 +225,7 @@ function IssuedPanel({ issued, onDone }: { issued: CreateAgentTokenResponse; onD
         {issued.secret}
       </code>
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={copy}>
+        <Button size="sm" variant="accent" onClick={copy}>
           {copied ? 'Copied' : 'Copy secret'}
         </Button>
         <Button size="sm" variant="outline" onClick={onDone}>
@@ -268,6 +268,7 @@ function TokenRow({
         <div className="flex gap-2">
           <Button
             size="sm"
+            variant="accent"
             disabled={editing.length === 0 || update.isPending}
             onClick={async () => {
               setError(null);

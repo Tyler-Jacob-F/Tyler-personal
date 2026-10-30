@@ -36,7 +36,7 @@ export function RecipeDetail() {
           <Button asChild variant="outline" size="sm">
             <Link to={`/recipes/${document.id}/history`}>History</Link>
           </Button>
-          <Button asChild size="sm">
+          <Button asChild size="sm" variant="accent">
             <Link to={`/recipes/${document.id}/edit`}>Edit</Link>
           </Button>
         </div>

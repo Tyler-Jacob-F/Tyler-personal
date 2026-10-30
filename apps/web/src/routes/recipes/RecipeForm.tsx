@@ -158,7 +158,7 @@ export function RecipeForm({
         />
 
         <div>
-          <Button type="submit" disabled={form.formState.isSubmitting}>
+          <Button type="submit" variant="accent" disabled={form.formState.isSubmitting}>
             {submitLabel}
           </Button>
         </div>

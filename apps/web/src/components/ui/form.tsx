@@ -98,7 +98,7 @@ export function FormDescription({ className, ...props }: ComponentProps<'p'>) {
     <p
       data-slot="form-description"
       id={formDescriptionId}
-      className={cn('text-xs text-muted', className)}
+      className={cn('text-[13px] leading-snug text-muted', className)}
       {...props}
     />
   );

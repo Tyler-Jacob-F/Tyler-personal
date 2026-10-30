@@ -17,7 +17,7 @@ export function Alert({
   return (
     <div
       role={tone === 'danger' ? 'alert' : 'status'}
-      className={cn('rounded-lg border px-4 py-3 text-sm', tones[tone], className)}
+      className={cn('rounded-lg border px-4 py-3 text-sm leading-relaxed', tones[tone], className)}
       {...props}
     />
   );

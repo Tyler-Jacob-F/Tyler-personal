@@ -65,7 +65,7 @@ export function StackPage() {
               <Button
                 key={name}
                 size="sm"
-                variant={trace === name ? 'default' : 'outline'}
+                variant={trace === name ? 'accent' : 'outline'}
                 aria-pressed={trace === name}
                 onClick={() => startTrace(trace === name ? null : name)}
               >
