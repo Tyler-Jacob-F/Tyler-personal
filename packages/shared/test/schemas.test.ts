@@ -6,6 +6,7 @@ import {
   briefFrontmatterSchema,
   callerSchema,
   createAgentTokenRequestSchema,
+  updateAgentTokenRequestSchema,
   createDocumentRequestSchema,
   documentTypes,
   writeScopeByType,
@@ -269,6 +270,20 @@ describe('agent scopes and tokens', () => {
     expect(
       createAgentTokenRequestSchema.safeParse({ name: 'x', scopes: ['write:documents'] }).success,
     ).toBe(false);
+  });
+
+  it('edits take the same scope set rules as creation', () => {
+    expect(
+      updateAgentTokenRequestSchema.parse({ scopes: ['write:notes', 'read:documents'] }),
+    ).toEqual({
+      scopes: ['read:documents', 'write:notes'],
+    });
+    expect(updateAgentTokenRequestSchema.safeParse({ scopes: [] }).success).toBe(false);
+    expect(
+      updateAgentTokenRequestSchema.safeParse({ name: 'x', scopes: ['read:documents'] }).data,
+    ).toEqual({
+      scopes: ['read:documents'],
+    });
   });
 
   it('keeps token names short, lowercase and hyphenated', () => {

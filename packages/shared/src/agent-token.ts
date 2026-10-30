@@ -31,16 +31,22 @@ export const agentTokenSchema = z.object({
 });
 export type AgentToken = z.infer<typeof agentTokenSchema>;
 
+/** At least one scope; duplicates collapse and the order is the brief's. */
+export const scopeSetSchema = z
+  .array(agentScopeSchema)
+  .min(1)
+  .max(agentScopes.length)
+  .transform((scopes) => agentScopes.filter((scope) => scopes.includes(scope)));
+
 export const createAgentTokenRequestSchema = z.object({
   name: agentTokenNameSchema,
-  /** At least one scope; duplicates collapse and the order is the brief's. */
-  scopes: z
-    .array(agentScopeSchema)
-    .min(1)
-    .max(agentScopes.length)
-    .transform((scopes) => agentScopes.filter((scope) => scopes.includes(scope))),
+  scopes: scopeSetSchema,
 });
 export type CreateAgentTokenRequest = z.input<typeof createAgentTokenRequestSchema>;
+
+/** The one edit a token allows: its scope set. The name and the secret never change. */
+export const updateAgentTokenRequestSchema = z.object({ scopes: scopeSetSchema });
+export type UpdateAgentTokenRequest = z.input<typeof updateAgentTokenRequestSchema>;
 
 /** The one response that ever carries the secret. */
 export const createAgentTokenResponseSchema = z.object({

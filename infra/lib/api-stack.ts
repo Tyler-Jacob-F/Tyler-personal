@@ -128,7 +128,7 @@ export class ApiStack extends cdk.Stack {
       createDefaultStage: true,
     });
 
-    const { GET, POST, DELETE, ANY } = apigwv2.HttpMethod;
+    const { GET, POST, PATCH, DELETE, ANY } = apigwv2.HttpMethod;
     const routes: Array<[string, apigwv2.HttpMethod[], lambda.IFunction]> = [
       ['/api/me', [GET], me],
       ['/api/documents', [GET, POST], documents],
@@ -137,7 +137,7 @@ export class ApiStack extends cdk.Stack {
       ['/api/documents/{id}/versions/{number}', [GET], versions],
       ['/api/documents/{id}/diff', [GET], versions],
       ['/api/admin/tokens', [GET, POST], adminTokens],
-      ['/api/admin/tokens/{id}', [DELETE], adminTokens],
+      ['/api/admin/tokens/{id}', [PATCH, DELETE], adminTokens],
       ['/api/admin/activity', [GET], adminActivity],
     ];
     // The agents' door mirrors the document routes, minus delete: no agent deletes.

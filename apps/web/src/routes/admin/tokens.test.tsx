@@ -1,3 +1,4 @@
+import type { AgentToken } from '@the-keep/shared';
 import { http, HttpResponse } from 'msw/http';
 import { App } from '@/App';
 import { tokens } from '@/test/fixtures';
@@ -75,6 +76,57 @@ describe('TokensPage', () => {
     expect(await screen.findByText(/lowercase letters/)).toBeInTheDocument();
     expect(screen.getByText('Pick at least one scope.')).toBeInTheDocument();
     expect(post).not.toHaveBeenCalled();
+  });
+
+  it('edits a token\u2019s scopes in place and shows the new set', async () => {
+    const user = userEvent.setup();
+    let items = [tokens.importer];
+    let patched: unknown;
+    server.use(
+      http.get('/api/admin/tokens', () => HttpResponse.json({ items })),
+      http.patch(`/api/admin/tokens/${tokens.importer.id}`, async ({ request }) => {
+        patched = await request.json();
+        const updated: AgentToken = {
+          ...tokens.importer,
+          scopes: ['read:documents', 'write:recipes', 'write:briefs'],
+        };
+        items = [updated];
+        return HttpResponse.json(updated);
+      }),
+    );
+    render(<App />, { route: '/admin/tokens' });
+    await user.click(await screen.findByRole('button', { name: 'Edit scopes' }));
+    const row = screen.getByRole('listitem');
+    const briefs = within(row).getByRole('checkbox', { name: /write:briefs/ });
+    expect(within(row).getByRole('checkbox', { name: /write:recipes/ })).toBeChecked();
+    expect(briefs).not.toBeChecked();
+    await user.click(briefs);
+    await user.click(within(row).getByRole('button', { name: 'Save scopes' }));
+    await waitFor(() =>
+      expect(patched).toEqual({ scopes: ['read:documents', 'write:recipes', 'write:briefs'] }),
+    );
+    expect(
+      await within(screen.getByRole('listitem')).findByText('write:briefs'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Save scopes' })).toBeNull();
+  });
+
+  it('cannot save an empty scope set and can cancel an edit', async () => {
+    const user = userEvent.setup();
+    const patch = vi.fn();
+    server.use(
+      http.get('/api/admin/tokens', () => HttpResponse.json({ items: [tokens.importer] })),
+      http.patch(`/api/admin/tokens/${tokens.importer.id}`, patch),
+    );
+    render(<App />, { route: '/admin/tokens' });
+    await user.click(await screen.findByRole('button', { name: 'Edit scopes' }));
+    const row = screen.getByRole('listitem');
+    await user.click(within(row).getByRole('checkbox', { name: /read:documents/ }));
+    await user.click(within(row).getByRole('checkbox', { name: /write:recipes/ }));
+    expect(within(row).getByRole('button', { name: 'Save scopes' })).toBeDisabled();
+    await user.click(within(row).getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Edit scopes' })).toBeInTheDocument();
+    expect(patch).not.toHaveBeenCalled();
   });
 
   it('revokes after confirmation', async () => {
