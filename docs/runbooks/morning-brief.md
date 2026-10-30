@@ -17,8 +17,9 @@ setting on claude.ai.
 A `brief` document: `date` (the day it is for, `YYYY-MM-DD`), `sections[]` of
 `{ heading, body }` with markdown bodies, an optional `title` (defaults to
 `Brief for <date>`), and an optional lead paragraph in the version body. Default ring `me`.
-The logged-in home at https://tylerfuqua.com shows the brief dated today; if there is none,
-the latest one, labelled as such. One brief per day: a second run the same day adds a
+The logged-in home at https://tylerfuqua.com is the morning page: it renders the brief
+dated today as its four parts (the day line, the Office, the brief, the day's shape); if
+there is none, the latest one, with a line saying whose morning it was. One brief per day: a second run the same day adds a
 version to it rather than a second document.
 
 ## One-time setup (Tyler)
@@ -59,12 +60,23 @@ You write Tyler's morning brief for The Keep. Today is the date in America/New_Y
 1. Gather, briefly: today's calendar (times, titles, who with), unanswered email that is
    waiting on Tyler (sender, subject, one line on what it needs), and anything due or
    overdue you can see. Do not include newsletters, receipts or notifications.
-2. Write the brief as JSON for the API below. Sections, in this order, each with a markdown
-   body of a few lines; leave a section out when it would be empty:
-   - "Today": the calendar as a list, "9:00 standup · 14:00 dentist".
-   - "Waiting on you": one line per thread, newest first, at most eight.
-   - "Due soon": tasks or dates in the next week.
-   - "A line for the day": one sentence, plain, no quotation marks, no motivational tone.
+2. Write the brief as JSON for the API below. The morning page reads four sections by
+   heading, in this order, each with a markdown body; leave one out when it would be empty:
+   - "The day": one line, "All Hallows' Eve · Season after Pentecost · Sunrise 7:36 ·
+     52° and clear" (liturgical day and season from the lectionary you carry, sunrise and
+     weather for Richmond).
+   - "Office": Morning Prayer inline with the day's readings, in markdown: the opening
+     sentence in italics with its reference, the versicle and response, then each part
+     under a "#### Label" line ("#### Venite · Psalm 95", "#### First Lesson ·
+     Ecclesiasticus 44:1–15", "#### The Collect"), the collect last. The page shows it
+     whole, so include the text, not a link.
+   - "The brief": at most three short paragraphs, the things that matter today, plain,
+     no bullets, no counts, nothing from the inbox unless a reply is the day's work.
+   - "Today": a list, one line each, "9:00 · Pancakes with the kids"; after the timed
+     lines, "Thu · Small group at ours" and "Dinner · <recipe title> · weeknight · 40 min"
+     (link the recipe as [title](/recipes/<id>) when one is planned; list_documents or the
+     search endpoint finds the id).
+   Anything under another heading folds into "The brief" and counts toward its three.
    The version body is one lead sentence on the shape of the day.
 3. Authentication: the environment adds "Authorization: Bearer …" to requests for
    tylerfuqua.com itself. Only if the environment variable KEEP_BRIEF_TOKEN is set, add
@@ -96,14 +108,18 @@ what makes the run reliable.
 
 ## Asking Duet
 
-Once, in Duet: "Each morning, post my brief to The Keep as a `brief` document: sections
-Today, Waiting on you, Due soon, and A line for the day, with a one-sentence lead as the
-body. One brief per day: if today's exists, add a version." Then check the home screen the
-next morning. The Activity screen lists it under `claude`.
+Once, in Duet: "Each morning, post my brief to The Keep as a `brief` document with the
+sections the create_document guide names: The day, Office (Morning Prayer with the
+readings), The brief (at most three paragraphs) and Today (one line per entry,
+`time · what`), with a one-sentence lead as the body. One brief per day: if today's exists,
+add a version." Then check the home screen the next morning. The Activity screen lists it
+under `claude`. The lectionary source is still the brief's open question: Duet carries the
+readings as the Office section until a direct feed earns its place (Phase 6).
 
 ## Checking it worked
 
-- https://tylerfuqua.com shows "Today's brief" with the sections.
+- https://tylerfuqua.com shows the morning page with the day line, Morning Prayer and the
+  day's shape from the brief.
 - https://tylerfuqua.com/admin/activity lists the version under `brief-writer`.
 - The Tokens screen shows `brief-writer` as last used this morning.
 - CloudWatch, log group `/aws/lambda/TheKeepApi-DocumentsFunction…`: a `document created`

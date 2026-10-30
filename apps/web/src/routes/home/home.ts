@@ -19,7 +19,3 @@ export function pickBrief(
 }
 
 export const typeLabels: Record<string, string> = { recipe: 'Recipe', brief: 'Brief' };
-
-export function pathFor({ document }: DocumentWithVersion): string {
-  return document.type === 'brief' ? `/briefs/${document.id}` : `/recipes/${document.id}`;
-}

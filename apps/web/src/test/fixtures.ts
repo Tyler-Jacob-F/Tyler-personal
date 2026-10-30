@@ -135,7 +135,19 @@ export const briefFrontmatter = {
   title: 'Brief for 2026-10-30',
   date: '2026-10-30',
   sections: [
-    { heading: 'Today', body: '- 9:00 standup\n- 14:00 dentist' },
+    { heading: 'The day', body: 'Feria · Season after Pentecost · Sunrise 7:35 · 48° and clear' },
+    {
+      heading: 'Office',
+      body: '*The Lord is in his holy temple.*\n\n#### Venite · Psalm 95\n\nO come, let us sing unto the Lord.',
+    },
+    {
+      heading: 'The brief',
+      body: 'Eleven days left at Roundtrip.\n\nJimmy’s costume still needs a belt.\n\nSmall group is at ours Thursday.\n\nA fourth item the page will not show.',
+    },
+    {
+      heading: 'Today',
+      body: '- 9:00 · Standup\n- 14:00 · Dentist\n- Dinner · [Chili](/recipes/9b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b) · weeknight',
+    },
     { heading: 'Waiting on you', body: 'Two emails from the small group.' },
   ],
 };

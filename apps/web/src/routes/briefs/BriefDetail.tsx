@@ -1,12 +1,16 @@
 import { useParams } from 'react-router';
 import { useDocument } from '@/api/documents';
 import { Alert } from '@/components/Alert';
-import { BriefView } from '@/routes/briefs/BriefView';
+import { briefOf } from '@/routes/briefs/brief';
+import { Morning } from '@/routes/home/Morning';
 
+/** A past brief, laid out as the morning it was. */
 export function BriefDetail() {
   const { id = '' } = useParams();
-  const brief = useDocument(id);
-  if (brief.isPending) return <p className="text-sm text-muted">Loading…</p>;
-  if (brief.isError) return <Alert tone="danger">{brief.error.message}</Alert>;
-  return <BriefView item={brief.data} kicker="Brief" />;
+  const document = useDocument(id);
+  if (document.isPending) return <p className="text-sm text-muted">Loading…</p>;
+  if (document.isError) return <Alert tone="danger">{document.error.message}</Alert>;
+  const brief = briefOf(document.data.version.frontmatter);
+  if (!brief) return <Alert tone="danger">This document is not a brief.</Alert>;
+  return <Morning date={brief.date} brief={brief} version={document.data.version} />;
 }

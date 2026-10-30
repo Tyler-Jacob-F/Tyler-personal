@@ -15,7 +15,6 @@ import { useApi } from '@/api/context';
 export const documentKeys = {
   all: ['documents'] as const,
   list: (type: string) => [...documentKeys.all, 'list', type] as const,
-  recent: (limit: number) => [...documentKeys.all, 'recent', limit] as const,
   search: (type: string, q: string, tags: string[]) =>
     [...documentKeys.all, 'search', type, q, tags.join(',')] as const,
   detail: (id: string) => [...documentKeys.all, 'detail', id] as const,
@@ -43,15 +42,6 @@ export function useSearch({ type, q, tags }: { type: string; q: string; tags: st
         query: { type, q: q || undefined, tags: tags.length ? tags.join(',') : undefined },
       }),
     placeholderData: (previous) => previous,
-  });
-}
-
-/** The newest documents of every type, for the home screen. */
-export function useRecentDocuments(limit: number) {
-  const api = useApi();
-  return useQuery({
-    queryKey: documentKeys.recent(limit),
-    queryFn: () => api('/api/documents', { schema: listDocumentsResponseSchema, query: { limit } }),
   });
 }
 
