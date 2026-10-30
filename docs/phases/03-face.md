@@ -68,6 +68,15 @@ CI.
   list are the contract's.
 - **No UI library, icon package or CSS framework beyond Tailwind v4.** Icons are inline
   stroke SVG. shadcn-style primitives are written from spec, as before.
+- **A fifth MCP tool, `set_tags`** (Tyler, Oct 30): the tagging pass over the Phase 2
+  import changes document tags, not versions, and the brief's four tools cannot say that.
+  It takes a document id and the full tag set, validates facets against the vocabulary,
+  needs the write scope for the document's type, and is logged as agent activity without
+  a version (the admin view gains a "tagged" row kind). Agents still cannot touch the
+  ring.
+- **Renders:** the morning page exists in all four forms (`docs/design/`); the recipe
+  page, the recipes list and the nav have specs but no render. Build those from the spec
+  and the morning page's idiom; do not wait on a render.
 
 ## In scope
 
@@ -158,7 +167,6 @@ Each is one PR, in this order. Later ones depend on earlier ones.
 **Ask Tyler** (cannot be undone or is reserved by the brief):
 
 - A facet or flag value added or renamed after the tagging pass has run (tags are data).
-- A fifth MCP tool beyond the brief's four, if `set_tags` is needed.
 - Anything the renders in `docs/design/` and the contract disagree on: the renders win on
   layout, the contract on values, and Tyler decides a real conflict.
 
@@ -173,8 +181,8 @@ which SVG paths the icons use.
   tokens. The Phase 2 import left 20 recipes with no facets; the tagging pass in the
   Recipe schema deliverable is how they get them, and it needs the `cowork` token with
   `write:recipes` (it has it) and a Claude session on Tyler's account.
-- Reference renders: Tyler exports them from the Design canvas into `docs/design/` by the
-  names in that folder's README before the Tokens PR, so the visual check has something to
-  check against.
+- Reference renders: the morning page's four are in `docs/design/`; the other screens
+  have none and are built from the spec. If Tyler exports more, they go in by the README's
+  names and win on layout.
 - Only Tyler does: the tagging session (from Cowork or Claude Code, with the runbook's
   prompt), the Lighthouse run at the gate, and the gate itself on his phone.
