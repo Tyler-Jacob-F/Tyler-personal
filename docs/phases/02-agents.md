@@ -124,8 +124,13 @@ Each is one PR, in this order.
 - [x] **Agent activity.** The admin view. MSW test.
 - [x] **Importer runbook and tool.** `docs/runbooks/import-recipes.md`,
       `tools/pages-text.py`, the ordering rule.
-- [ ] **Gate check.** Import the archive from a Claude Code session; record the date
-      here.
+- [x] **Gate check.** Import the archive from a Claude Code session; record the date
+      here. **Gate true: Oct 30, 2026.** From a Claude Code session on Tyler's machine,
+      holding the `cowork` token (`write:recipes`, `read:documents`) through the MCP
+      server at the real domain: 18 new recipes and 3 later versions, each with the file's
+      own date in `authoredAt`, the chili files and four re-exports skipped by the plan
+      step, the token recorded as author. Ranges ("serves 4–6") stayed in the text because
+      the schema takes plain numbers, which is the schema working.
 
 ## Ask versus decide
 
@@ -148,6 +153,18 @@ Each is one PR, in this order.
 
 Routine calls made while building, recorded here so no later session relitigates them.
 Each is reversible unless marked.
+
+- **Cowork connected the same day**, through a claude.ai custom connector: URL
+  `https://tylerfuqua.com/mcp`, "No sign-in", one request header `Authorization` whose
+  value is the bare token. The dialog allows one connector per URL, strips whitespace from
+  header values, allowlists header names, and probes without headers before saving (the
+  "requires sign-in" warning). The import ran under the `cowork` token for that reason;
+  `importer` was issued, reissued after its secret was pasted into a chat, and never used.
+- **The first request after a pause can be a 500**, not only slow: the authorizer's 25
+  seconds run out before the cluster resumes. Both runbooks say "try again".
+- **Agent activity's window** is a timestamp computed in code, not `make_interval` in SQL:
+  the Data API binds a number as bigint and Postgres has no such overload. PGlite did not
+  catch it; the first production load of `/admin/activity` did.
 
 - **Hash: SHA-256, unsalted.** The secret carries 256 bits of entropy, so there is nothing
   to rainbow, and the hash doubles as the lookup key the authorizer needs. Token names
@@ -218,6 +235,8 @@ What a fresh session should know that the files alone do not say.
   his machine, where the recipe folder lives; set up the scheduled Claude Code task for
   the brief; and check whether Duet can present a header.
 - **Loose ends worth knowing.** `0004_import_chili_lineage` is the one content import by
-  migration and is marked the exception; do not add another. The Stack page
-  (`apps/web/src/routes/stack`) should gain an agents lane when the MCP Lambda exists.
-  The permission middleware's `write:documents` is a placeholder this phase replaces.
+  migration and is marked the exception; do not add another. The Stack page gained its
+  agents lane with the MCP PR. `write:documents` is gone. Left for a later phase, by
+  Tyler's call after the import: the admin UX (renaming a document's title, a document
+  list across types, gating the Tokens and Activity nav links by role when the group role
+  arrives), and whether Duet can present the header (checked next).

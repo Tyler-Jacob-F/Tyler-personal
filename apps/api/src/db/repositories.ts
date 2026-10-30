@@ -151,17 +151,25 @@ export async function touchAgentToken(db: Db, id: string): Promise<void> {
 export interface AgentActivityOptions {
   days: number;
   limit: number;
+  /** Injected by tests; production uses the clock. */
+  now?: Date;
 }
 
 /**
  * Versions written by agents, newest first, within a window. Deleted documents stay in
- * the list (an agent's work is history even after a soft delete), flagged by the join
- * below only through the document's own row, which the admin view can still link to.
+ * the list (an agent's work is history even after a soft delete); the admin view links to
+ * the document, which 404s if it is gone.
+ *
+ * The cutoff is computed here rather than as `now() - make_interval(days => $1)`: the
+ * Data API binds a JavaScript number as a bigint, and Postgres has no
+ * `make_interval(days => bigint)`, which PGlite's untyped text parameters never showed
+ * (found in production, Oct 30).
  */
 export async function listAgentActivity(
   db: Db,
-  { days, limit }: AgentActivityOptions,
+  { days, limit, now = new Date() }: AgentActivityOptions,
 ): Promise<AgentActivityItem[]> {
+  const since = new Date(now.getTime() - days * 86_400_000).toISOString();
   const rows = await db
     .select({
       versionId: version.id,
@@ -179,12 +187,7 @@ export async function listAgentActivity(
     .from(version)
     .innerJoin(agentToken, eq(agentToken.id, version.authorAgentTokenId))
     .innerJoin(document, eq(document.id, version.documentId))
-    .where(
-      and(
-        isNotNull(version.authorAgentTokenId),
-        gte(version.createdAt, sql`now() - make_interval(days => ${days})`),
-      ),
-    )
+    .where(and(isNotNull(version.authorAgentTokenId), gte(version.createdAt, since)))
     .orderBy(desc(version.createdAt), desc(version.id))
     .limit(limit);
   return rows.map((row) => ({
