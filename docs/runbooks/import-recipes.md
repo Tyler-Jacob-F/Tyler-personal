@@ -46,12 +46,12 @@ missing-variable warning means `KEEP_IMPORTER_TOKEN` is not set in the shell tha
 `claude`. A 500 on the first try after the site has sat idle means the database was
 paused and is now waking; run the list again.
 
-Cowork is the odd client: claude.ai sends an `Authorization` header of its own in place of
-the typed one, and the gateway requires some `Authorization` header to be present. Its
-connector therefore gets two request headers, `Authorization` with `Bearer keep_…` and
-`X-Keep-Token` with the bare `keep_…`, URL `https://tylerfuqua.com/mcp`, Authentication
-"No sign-in" (the dialog's first probe carries no headers, so it warns that the server
-wants a sign-in; save anyway). Claude Code's `--header` above is unaffected.
+Cowork is the odd client: claude.ai's connector dialog strips whitespace from a header
+value, so `Bearer keep_…` arrives as one glued word, and it allows no custom header names.
+Its connector gets one request header, `Authorization`, with the bare `keep_…` as the value
+(no `Bearer`), URL `https://tylerfuqua.com/mcp`, Authentication "No sign-in" (the dialog's
+first probe carries no headers, so it warns that the server wants a sign-in; save anyway).
+The door accepts the glued form too. Claude Code's `--header` above is unaffected.
 
 ## 3. Read the files
 
@@ -135,8 +135,8 @@ Review the plan at step 3; that is where a wrong grouping is cheap to fix.
   yourself and tell the session what the groups are.
 - **Cowork says "Connection issue"** with the cluster awake: open the
   `AgentAuthorizerFunction` log group; a `refused` line carries `shape`, the header and
-  scheme that arrived without the value. `authorization: empty` means the platform replaced
-  the typed header; add `X-Keep-Token` beside it.
+  scheme that arrived without the value. `bare value, length 54` is `Bearer` glued to a
+  token (accepted since Oct 30); `empty` means the platform replaced the typed header.
 - **`forbidden: cannot write a recipe`**: the token lacks `write:recipes`. Revoke and
   reissue with both scopes.
 - **A duplicate document** (`chili-2`): the session skipped step 1. Delete the duplicate

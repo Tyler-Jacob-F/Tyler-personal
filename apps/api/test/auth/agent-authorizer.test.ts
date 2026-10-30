@@ -18,6 +18,9 @@ describe('bearerToken', () => {
   it('reads the token out of a Bearer header and nothing else', () => {
     expect(bearerToken('Bearer keep_abc')).toBe('keep_abc');
     expect(bearerToken('bearer keep_abc')).toBe('keep_abc');
+    // claude.ai strips the space out of a typed header value.
+    expect(bearerToken('Bearerkeep_abc')).toBe('keep_abc');
+    expect(bearerToken('Bearer')).toBeUndefined();
     expect(bearerToken(' Bearer   keep_abc ')).toBe('keep_abc');
     expect(bearerToken('Basic dXNlcjpwYXNz')).toBeUndefined();
     expect(bearerToken('keep_abc')).toBeUndefined();
@@ -96,6 +99,8 @@ describe('agent authorizer', () => {
     }
     const bare = await authorize(fakeAuthorizerEvent(secret, 'POST /mcp'));
     expect(bare).toMatchObject({ isAuthorized: true });
+    const glued = await authorize(fakeAuthorizerEvent(`Bearer${secret}`, 'POST /mcp'));
+    expect(glued).toMatchObject({ isAuthorized: true });
   });
 
   it('refuses a revoked token, an unknown one, a malformed one and a missing header', async () => {

@@ -27,7 +27,7 @@ token is recorded as author, and the admin UI's agent activity view shows the ru
   `write:briefs` token; Duet takes over the same token the day it can present a bearer
   header to a custom connector, which is the first thing to check once the MCP server is
   up. If it cannot, that is the one reason to revisit OAuth, in a later phase. (Oct 30:
-  the header is `X-Keep-Token`, because claude.ai overwrites `Authorization`.)
+  in a claude.ai connector the header is `Authorization` with the bare token as value.)
 - **The refresh token is remembered in the browser** (decided Oct 29, after a week of
   typing codes): a reload restores the session silently, sign-out revokes the token at
   Cognito and forgets it, and the sign-in form prefills the last email. The id and access
@@ -160,11 +160,12 @@ Each is reversible unless marked.
   are **owned by the admin** (`document.owner` is a member); the version's author is the
   token. No agent route for delete exists.
 - **Authorizer:** simple responses, identity source `Authorization`, no result cache. It
-  accepts the token as `Authorization: Bearer keep_…` or bare (Claude Code, curl) or as
-  `X-Keep-Token: keep_…` (Cowork): claude.ai's connector sends an `Authorization` header
-  that is not the one typed into it (found Oct 30 from the authorizer log: the header
-  arrived, the token did not), and API Gateway can key a cache on one header only, so the
-  cache went. The identity source stays, because a request with no `Authorization` at all
+  accepts the token as `Authorization: Bearer keep_…`, as `Authorization: Bearerkeep_…`
+  (claude.ai's connector dialog strips whitespace from header values, found Oct 30 from a
+  logged shape of "bare value, length 54"), as a bare `Authorization: keep_…`, or as
+  `X-Keep-Token: keep_…` for a future client whose platform rewrites `Authorization`
+  (claude.ai allowlists header names and refused it). The cache went because a cache keyed
+  on one header would serve the other's answer. The identity source stays, because a request with no `Authorization` at all
   must get the gateway's 401, not a simple-response 403: MCP clients and the connector
   dialog read 401 as "needs a credential" and 403 as "no server here" (tried briefly on
   Oct 30; the dialog said "server not found"). A revoke takes effect at once and
@@ -211,9 +212,9 @@ What a fresh session should know that the files alone do not say.
 - **Only Tyler does these,** and the directive should ask at the right moment: create
   the three tokens in the admin UI after the Admin tokens PR deploys; add the Cowork
   custom connector (URL `https://tylerfuqua.com/mcp`, Authentication "No sign-in",
-  two request headers: `Authorization` with `Bearer keep_…` and `X-Keep-Token` with the
-  bare `keep_…`, because the platform rewrites the first and the gateway requires it);
-  run the import from
+  one request header, `Authorization`, with the bare `keep_…` as its value: the dialog
+  strips whitespace, so `Bearer keep_…` arrives glued, and it allows no custom header
+  names); run the import from
   his machine, where the recipe folder lives; set up the scheduled Claude Code task for
   the brief; and check whether Duet can present a header.
 - **Loose ends worth knowing.** `0004_import_chili_lineage` is the one content import by
