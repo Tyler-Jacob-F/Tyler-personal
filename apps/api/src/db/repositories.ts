@@ -1,4 +1,5 @@
 import type {
+  AgentActivityItem,
   AgentScope,
   AgentToken,
   Author,
@@ -8,7 +9,7 @@ import type {
   Version,
 } from '@the-keep/shared';
 import { slugify } from '@the-keep/shared';
-import { and, desc, eq, isNull, like, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNotNull, isNull, like, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Db } from './client.js';
 import { agentToken, document, member, version } from './schema.js';
@@ -145,6 +146,59 @@ export async function touchAgentToken(db: Db, id: string): Promise<void> {
     .update(agentToken)
     .set({ lastUsedAt: sql`now()` })
     .where(eq(agentToken.id, id));
+}
+
+export interface AgentActivityOptions {
+  days: number;
+  limit: number;
+}
+
+/**
+ * Versions written by agents, newest first, within a window. Deleted documents stay in
+ * the list (an agent's work is history even after a soft delete), flagged by the join
+ * below only through the document's own row, which the admin view can still link to.
+ */
+export async function listAgentActivity(
+  db: Db,
+  { days, limit }: AgentActivityOptions,
+): Promise<AgentActivityItem[]> {
+  const rows = await db
+    .select({
+      versionId: version.id,
+      documentId: version.documentId,
+      documentType: document.type,
+      slug: document.slug,
+      frontmatter: version.frontmatter,
+      number: version.number,
+      summary: version.summary,
+      tokenId: agentToken.id,
+      tokenName: agentToken.name,
+      createdAt: version.createdAt,
+      authoredAt: version.authoredAt,
+    })
+    .from(version)
+    .innerJoin(agentToken, eq(agentToken.id, version.authorAgentTokenId))
+    .innerJoin(document, eq(document.id, version.documentId))
+    .where(
+      and(
+        isNotNull(version.authorAgentTokenId),
+        gte(version.createdAt, sql`now() - make_interval(days => ${days})`),
+      ),
+    )
+    .orderBy(desc(version.createdAt), desc(version.id))
+    .limit(limit);
+  return rows.map((row) => ({
+    versionId: row.versionId,
+    documentId: row.documentId,
+    documentType: row.documentType,
+    slug: row.slug,
+    title: typeof row.frontmatter.title === 'string' ? row.frontmatter.title : row.slug,
+    number: row.number,
+    summary: row.summary,
+    token: { id: row.tokenId, name: row.tokenName },
+    createdAt: toIso(row.createdAt),
+    authoredAt: row.authoredAt ? toIso(row.authoredAt) : null,
+  }));
 }
 
 // ---------- shaping ----------
