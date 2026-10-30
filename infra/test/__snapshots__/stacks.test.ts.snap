@@ -1196,7 +1196,7 @@ exports[`ApiStack > matches the snapshot 1`] = `
           "Ref": "HttpApiF5A9A8A7",
         },
         "AuthorizerPayloadFormatVersion": "2.0",
-        "AuthorizerResultTtlInSeconds": 60,
+        "AuthorizerResultTtlInSeconds": 0,
         "AuthorizerType": "REQUEST",
         "AuthorizerUri": {
           "Fn::Join": [
@@ -1218,9 +1218,6 @@ exports[`ApiStack > matches the snapshot 1`] = `
           ],
         },
         "EnableSimpleResponses": true,
-        "IdentitySource": [
-          "$request.header.Authorization",
-        ],
         "Name": "AgentAuthorizer",
       },
       "Type": "AWS::ApiGatewayV2::Authorizer",

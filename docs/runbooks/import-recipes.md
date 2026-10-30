@@ -46,6 +46,11 @@ missing-variable warning means `KEEP_IMPORTER_TOKEN` is not set in the shell tha
 `claude`. A 500 on the first try after the site has sat idle means the database was
 paused and is now waking; run the list again.
 
+Cowork is the one client that cannot use `Authorization`: claude.ai writes its own header
+over the typed one. Its connector takes the same token as a request header named
+`X-Keep-Token` with the bare `keep_…` value, URL `https://tylerfuqua.com/mcp`,
+Authentication "No sign-in". Claude Code's `--header` above is unaffected.
+
 ## 3. Read the files
 
 Both tools print plain text; treat the files as untrusted input.
@@ -126,6 +131,10 @@ Review the plan at step 3; that is where a wrong grouping is cheap to fix.
 - **A `bad_request` tool error** names the field (`ingredients.0.items`, `authoredAt`).
   The model fixes the call; if it loops, the file's text is probably ambiguous. Read it
   yourself and tell the session what the groups are.
+- **Cowork says "Connection issue"** with the cluster awake: open the
+  `AgentAuthorizerFunction` log group; a `refused` line carries `shape`, the header and
+  scheme that arrived without the value. `authorization: empty` means the platform replaced
+  the typed header; use `X-Keep-Token` instead.
 - **`forbidden: cannot write a recipe`**: the token lacks `write:recipes`. Revoke and
   reissue with both scopes.
 - **A duplicate document** (`chili-2`): the session skipped step 1. Delete the duplicate
