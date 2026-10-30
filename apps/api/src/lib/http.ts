@@ -4,7 +4,7 @@ import type {
   Context,
 } from 'aws-lambda';
 import { ZodError, type z } from 'zod';
-import { NotFoundError } from '../db/repositories.js';
+import { ConflictError, NotFoundError } from '../db/repositories.js';
 import { createLogger, type Logger } from './logger.js';
 
 export type ApiEvent = APIGatewayProxyEventV2WithJWTAuthorizer;
@@ -139,6 +139,9 @@ function errorResponse(error: unknown, log: Logger, started: number): ApiResult 
   }
   if (error instanceof NotFoundError) {
     return json(404, { error: 'not_found', message: error.message });
+  }
+  if (error instanceof ConflictError) {
+    return json(409, { error: 'conflict', message: error.message });
   }
   log.error('unhandled', { error, ms: Date.now() - started });
   return json(500, { error: 'internal', message: 'something went wrong' });

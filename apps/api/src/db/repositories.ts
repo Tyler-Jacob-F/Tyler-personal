@@ -1,4 +1,12 @@
-import type { Author, Document, DocumentWithVersion, Ring, Version } from '@the-keep/shared';
+import type {
+  AgentScope,
+  AgentToken,
+  Author,
+  Document,
+  DocumentWithVersion,
+  Ring,
+  Version,
+} from '@the-keep/shared';
 import { slugify } from '@the-keep/shared';
 import { and, desc, eq, isNull, like, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
@@ -45,6 +53,87 @@ export class NotFoundError extends Error {
 export async function findMemberByEmail(db: Db, email: string): Promise<MemberRow | null> {
   const rows = await db.select().from(member).where(eq(member.email, email.toLowerCase())).limit(1);
   return rows[0] ?? null;
+}
+
+// ---------- agent tokens ----------
+
+type AgentTokenRow = typeof agentToken.$inferSelect;
+
+function toAgentToken(row: AgentTokenRow): AgentToken {
+  return {
+    id: row.id,
+    name: row.name,
+    scopes: row.scopes as AgentScope[],
+    createdAt: toIso(row.createdAt),
+    lastUsedAt: row.lastUsedAt ? toIso(row.lastUsedAt) : null,
+    revokedAt: row.revokedAt ? toIso(row.revokedAt) : null,
+  };
+}
+
+export interface NewAgentToken {
+  name: string;
+  scopes: AgentScope[];
+  /** SHA-256 of the secret; the secret itself never reaches the data layer. */
+  secretHash: string;
+}
+
+export class ConflictError extends Error {
+  constructor(what: string) {
+    super(`${what} already exists`);
+    this.name = 'ConflictError';
+  }
+}
+
+/** Issue a token. Names are unique for life: a revoked `importer` keeps its name in history. */
+export async function createAgentToken(db: Db, input: NewAgentToken): Promise<AgentToken> {
+  const taken = await db
+    .select({ id: agentToken.id })
+    .from(agentToken)
+    .where(eq(agentToken.name, input.name))
+    .limit(1);
+  if (taken.length > 0) throw new ConflictError(`agent token ${input.name}`);
+  const [row] = await db
+    .insert(agentToken)
+    .values({ name: input.name, scopes: input.scopes, secretHash: input.secretHash })
+    .returning();
+  return toAgentToken(row!);
+}
+
+/** Every token ever issued, newest first; revoked ones included so history stays legible. */
+export async function listAgentTokens(db: Db): Promise<AgentToken[]> {
+  const rows = await db
+    .select()
+    .from(agentToken)
+    .orderBy(desc(agentToken.createdAt), desc(agentToken.id));
+  return rows.map(toAgentToken);
+}
+
+/** The token for a presented secret's hash, revoked or not. The caller decides what revoked means. */
+export async function findAgentTokenByHash(db: Db, secretHash: string): Promise<AgentToken | null> {
+  const rows = await db
+    .select()
+    .from(agentToken)
+    .where(eq(agentToken.secretHash, secretHash))
+    .limit(1);
+  return rows[0] ? toAgentToken(rows[0]) : null;
+}
+
+/** Revoke: the only lifecycle event a token has. Idempotent; false if the id is unknown. */
+export async function revokeAgentToken(db: Db, id: string): Promise<AgentToken | null> {
+  const rows = await db
+    .update(agentToken)
+    .set({ revokedAt: sql`coalesce(${agentToken.revokedAt}, now())` })
+    .where(eq(agentToken.id, id))
+    .returning();
+  return rows[0] ? toAgentToken(rows[0]) : null;
+}
+
+/** Record a use. Called by the authorizer on every accepted request. */
+export async function touchAgentToken(db: Db, id: string): Promise<void> {
+  await db
+    .update(agentToken)
+    .set({ lastUsedAt: sql`now()` })
+    .where(eq(agentToken.id, id));
 }
 
 // ---------- shaping ----------

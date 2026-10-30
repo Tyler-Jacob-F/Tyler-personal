@@ -25,7 +25,7 @@ export function build(db: Db): ApiHandler {
         const id = parse(idSchema, params.id, 'id');
         const found = await getDocument(db, id);
         if (!found) throw notFound('document');
-        authorize(identity.caller, 'read', found.document.ring);
+        authorize(identity.caller, 'read', found.document);
         const body: ListVersionsResponse = { items: await listVersions(db, id) };
         return json(200, body);
       },
@@ -34,7 +34,7 @@ export function build(db: Db): ApiHandler {
         const id = parse(idSchema, params.id, 'id');
         const found = await getDocument(db, id);
         if (!found) throw notFound('document');
-        authorize(identity.caller, 'write', found.document.ring);
+        authorize(identity.caller, 'write', found.document);
         const input = parse(createVersionRequestSchema, body, 'version');
         const frontmatter = parse(
           schemaFor(found.document.type).schema,
@@ -57,7 +57,7 @@ export function build(db: Db): ApiHandler {
         const number = parse(numberSchema, params.number, 'version number');
         const found = await getDocument(db, id);
         if (!found) throw notFound('document');
-        authorize(identity.caller, 'read', found.document.ring);
+        authorize(identity.caller, 'read', found.document);
         const version = await getVersion(db, id, number);
         if (!version) throw notFound('version');
         return json(200, version);
@@ -68,7 +68,7 @@ export function build(db: Db): ApiHandler {
         const { from, to } = parse(diffQuerySchema, query, 'query');
         const found = await getDocument(db, id);
         if (!found) throw notFound('document');
-        authorize(identity.caller, 'read', found.document.ring);
+        authorize(identity.caller, 'read', found.document);
         const [a, b] = await Promise.all([getVersion(db, id, from), getVersion(db, id, to)]);
         if (!a) throw notFound(`version ${from}`);
         if (!b) throw notFound(`version ${to}`);
