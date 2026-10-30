@@ -151,7 +151,9 @@ Review the plan at step 3; that is where a wrong grouping is cheap to fix.
 
 ## Afterwards
 
-Revoke `importer` on the Tokens screen, or keep it for the next batch. A token that exists
+Revoke `importer` on the Tokens screen, or keep it for the next batch. If a later phase needs
+the token to do more, Edit scopes on its row changes what it may do without a reissue or a
+reconnect; the new set applies on its next request. A token that exists
 and is unused costs nothing; one that sits in a shell history is the thing to avoid, so
 `unset KEEP_IMPORTER_TOKEN` and remove the folder's `.mcp.json` if the folder is synced
 anywhere.

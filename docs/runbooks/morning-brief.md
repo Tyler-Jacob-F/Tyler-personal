@@ -115,6 +115,8 @@ next morning. The Activity screen lists it under `claude`.
   screen's recent list (it is a soft delete; the versions stay).
 - **A section is wrong.** Edit nothing by hand: adjust the prompt and let tomorrow's run
   or a manual firing add a version. Versions are the point.
-- **Revoke and reissue.** On the Tokens screen revoke `brief-writer`, create it again with
-  the same scope, and replace the `KEEP_BRIEF_TOKEN` network secret in the environment. A
-  revoked token stops working within a minute.
+- **The token lacks `write:briefs`.** Edit scopes on its row on the Tokens screen; no
+  reissue, no reconnect, effective on the next request.
+- **Revoke and reissue** only when a secret has leaked: on the Tokens screen revoke the
+  token, create it again, and replace the secret where it lives. A revoked token stops
+  working at once.
