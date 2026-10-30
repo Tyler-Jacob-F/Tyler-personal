@@ -1,17 +1,12 @@
-import {
-  createVersionRequestSchema,
-  type DiffResponse,
-  diffQuerySchema,
-  type ListVersionsResponse,
-  schemaFor,
-} from '@the-keep/shared';
+import { type DiffResponse, diffQuerySchema, type ListVersionsResponse } from '@the-keep/shared';
 import { z } from 'zod';
 import { type Db, getDb } from '../db/client.js';
-import { createVersion, getDocument, getVersion, listVersions } from '../db/repositories.js';
+import { getDocument, getVersion, listVersions } from '../db/repositories.js';
 import { diffVersions } from '../lib/diff.js';
 import { type ApiHandler, createApi, json, notFound, parse } from '../lib/http.js';
 import { agentIdentity, cognitoIdentity } from '../middleware/identity.js';
 import { authorize } from '../middleware/permission.js';
+import { createVersionFor } from '../services/documents.js';
 
 const idSchema = z.uuid();
 const numberSchema = z.coerce.number().int().positive();
@@ -30,27 +25,8 @@ export function build(db: Db): ApiHandler {
         return json(200, body);
       },
 
-      'POST /api/documents/{id}/versions': async ({ identity, params, body, log }) => {
-        const id = parse(idSchema, params.id, 'id');
-        const found = await getDocument(db, id);
-        if (!found) throw notFound('document');
-        authorize(identity.caller, 'write', found.document);
-        const input = parse(createVersionRequestSchema, body, 'version');
-        const frontmatter = parse(
-          schemaFor(found.document.type).schema,
-          input.frontmatter,
-          'frontmatter',
-        );
-        const version = await createVersion(db, id, {
-          body: input.body,
-          frontmatter,
-          summary: input.summary,
-          author: { kind: identity.caller.kind, id: identity.caller.id },
-          authoredAt: input.authoredAt ?? null,
-        });
-        log.info('version created', { documentId: id, number: version.number });
-        return json(201, version);
-      },
+      'POST /api/documents/{id}/versions': async ({ identity, params, body, log }) =>
+        json(201, await createVersionFor(db, identity, params.id, body, log)),
 
       'GET /api/documents/{id}/versions/{number}': async ({ identity, params }) => {
         const id = parse(idSchema, params.id, 'id');

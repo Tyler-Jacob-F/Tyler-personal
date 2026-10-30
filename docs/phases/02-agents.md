@@ -116,7 +116,7 @@ Each is one PR, in this order.
       name, scopes, create (secret shown once), revoke, last used. Handler and MSW tests.
 - [x] **Agent door.** Lambda authorizer, `/api/agent/*` routes, CloudFront unchanged
       (same `/api/*` behavior). Handler tests with fake authorizer events; snapshot.
-- [ ] **MCP server.** The `mcp` Lambda, four tools, `/mcp` route and CloudFront behavior.
+- [x] **MCP server.** The `mcp` Lambda, four tools, `/mcp` route and CloudFront behavior.
       In-process MCP client tests. Snapshot.
 - [ ] **Brief type.** Schema, home-screen renderer, `write:briefs` on the scope map,
       the scheduled-task runbook. Tests.

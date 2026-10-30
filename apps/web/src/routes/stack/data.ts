@@ -27,7 +27,7 @@ export const NODES: Record<string, NodeInfo> = {
     kicker: 'Outside AWS',
     title: 'Your browser',
     what: 'The React SPA served from S3 through CloudFront. It talks to Cognito directly to sign in and to the API through the same domain it loaded from, so there is no CORS.',
-    why: 'The brief chose a static SPA so there is no web server to run or patch. Tokens live in memory on purpose; a reload asks for a new code.',
+    why: 'The brief chose a static SPA so there is no web server to run or patch. The refresh token is remembered in the browser so a reload restores the session; the id and access tokens stay in memory.',
     cost: 'Nothing.',
     where: 'apps/web · tylerfuqua.com',
   },
@@ -52,7 +52,7 @@ export const NODES: Record<string, NodeInfo> = {
   cloudfront: {
     kicker: 'TheKeepSite',
     title: 'CloudFront distribution',
-    what: 'The single origin your browser ever talks to. It terminates TLS at an edge near the visitor, serves the SPA from S3 with hashed assets cached for a year and index.html never cached, and forwards anything under /api/* to API Gateway with caching disabled and every viewer header except Host passed through, so the Authorization bearer arrives.',
+    what: 'The single origin your browser, and every agent, ever talks to. It terminates TLS at an edge near the visitor, serves the SPA from S3 with hashed assets cached for a year and index.html never cached, and forwards anything under /api/* or at /mcp to API Gateway with caching disabled and every viewer header except Host passed through, so the Authorization bearer arrives.',
     why: 'One domain for the page and the API means no CORS and one certificate. The brief calls it "CloudFront is the single origin."',
     cost: 'The first terabyte out per month is free; you will not approach it.',
     where: 'CloudFront → Distributions → "The Keep (tylerfuqua.com)"\ninfra/lib/site-stack.ts',
@@ -142,7 +142,7 @@ export const NODES: Record<string, NodeInfo> = {
   apigw: {
     kicker: 'TheKeepApi',
     title: 'API Gateway HTTP API',
-    what: 'The front door for data. Nine routes under /api, each mapped to one of three Lambdas. It is reachable directly at its execute-api hostname, but the browser only ever reaches it through CloudFront.',
+    what: 'The front door for data. Twenty routes: twelve under /api behind the JWT authorizer, seven under /api/agent behind the agent token authorizer, and ANY /mcp for the MCP server, each mapped to one of the route Lambdas. It is reachable directly at its execute-api hostname, but browsers and agents only ever reach it through CloudFront.',
     why: 'HTTP APIs are the cheap, simple flavor of API Gateway with a built-in JWT authorizer, which is why no Lambda has to validate a token itself.',
     cost: 'Free tier, then about a dollar per million requests.',
     where: 'API Gateway → APIs → TheKeepApi\ninfra/lib/api-stack.ts',
@@ -158,11 +158,36 @@ export const NODES: Record<string, NodeInfo> = {
   lambdas: {
     kicker: 'TheKeepApi',
     title: 'The API Lambdas',
-    what: "Three functions, one per resource: me, documents, versions. Each is bundled by esbuild with the SDK included, runs Node 22 on arm64 with 512 MB and a 30-second timeout (long enough to wait for a paused cluster), and has its own IAM role granting exactly the Data API and secret permissions. Inside, two middlewares run first: identity looks the verified email up in the member table; permission checks the document's ring against the caller's role.",
-    why: "One Lambda per resource keeps cold starts few and deploys small. Identity and permission are separate on purpose, so Phase 2's agent tokens plug into the same handlers.",
+    what: "Four route functions, one per resource: me, documents, versions, admin-tokens. Each is bundled by esbuild with the SDK included, runs Node 22 on arm64 with 512 MB and a 30-second timeout (long enough to wait for a paused cluster), and has its own IAM role granting exactly the Data API and secret permissions. Inside, two middlewares run first: identity looks the verified email up in the member table, or reads the agent the authorizer identified; permission checks the document's ring and type against the caller's role or scopes.",
+    why: "One Lambda per resource keeps cold starts few and deploys small. Identity and permission are separate on purpose, which is why Phase 2's agent door needed no second set of handlers: the same code answers /api/documents and /api/agent/documents.",
     cost: 'A million requests and 400,000 GB-seconds a month are free.',
     where:
-      'Lambda → MeFunction, DocumentsFunction, VersionsFunction\napps/api/src/handlers · apps/api/src/middleware',
+      'Lambda → MeFunction, DocumentsFunction, VersionsFunction, AdminTokensFunction\napps/api/src/handlers · apps/api/src/middleware · apps/api/src/services',
+  },
+  agents: {
+    kicker: 'Outside AWS',
+    title: 'Agent clients',
+    what: 'Claude Code, Cowork and, the day it can present a header, Duet. Each holds a token issued on the Tokens screen (keep_ then 43 random characters), sent as Authorization: Bearer on every request to /api/agent/* or to the MCP server at /mcp. The token names the agent and carries its scopes; the site stores only its hash.',
+    why: 'Agents are first-class clients with a smaller blast radius: a token can write recipes without being able to delete one, promote one or see the member list. Revoke it on the Tokens screen and it stops working within a minute.',
+    cost: 'Nothing.',
+    where: '/admin/tokens · docs/runbooks/import-recipes.md',
+  },
+  agentauth: {
+    kicker: 'TheKeepApi',
+    title: 'Agent token authorizer',
+    what: "A Lambda API Gateway runs before any agent route. It takes the bearer, checks its shape, hashes it with SHA-256, looks the hash up in agent_token through the Data API, refuses a revoked or unknown token, records last_used_at, and returns the token's id, name and scopes as context for the handler. API Gateway caches the answer for a token for sixty seconds.",
+    why: 'Agent authentication is a hash lookup, not Cognito, so it is our code; but it runs at the gateway like the JWT authorizer does, so no handler ever sees a secret. The cache bounds how long a revoked token keeps working.',
+    cost: 'Free; at most one invocation per token per minute.',
+    where: 'Lambda → AgentAuthorizerFunction\napps/api/src/auth/agent-authorizer.ts',
+  },
+  mcp: {
+    kicker: 'TheKeepApi',
+    title: 'MCP server',
+    what: 'A Lambda at /mcp speaking the Model Context Protocol over Streamable HTTP, stateless: each POST carries one JSON-RPC message, a fresh server answers it, and nothing is kept between requests. Four tools, list_documents, get_document, create_document and create_version, each described in a paragraph a model can read, each taking the shared zod schema as its input schema. The tools run the same service functions the REST routes run, as the agent the authorizer identified.',
+    why: 'The brief wanted the MCP server to wrap the public API. Importing the same code keeps one validation path and one cold start instead of an HTTP hop to itself; the trade is flagged in the Phase 2 directive. Stateless because Lambda is.',
+    cost: 'Free tier, like the other functions.',
+    where:
+      'Lambda → McpFunction · https://tylerfuqua.com/mcp\napps/api/src/mcp/server.ts · apps/api/src/handlers/mcp.ts',
   },
   cloudwatch: {
     kicker: 'TheKeepApi',
@@ -361,6 +386,46 @@ export const TRACES: Record<string, Trace> = {
       {
         text: 'A 201 with the new version flows back; a structured log line lands in CloudWatch with the request id and timing.',
         nodes: ['lambdas', 'cloudwatch', 'browser'],
+        edges: ['e-lambdas-logs'],
+      },
+    ],
+  },
+  agent: {
+    title: 'An agent saves a recipe',
+    steps: [
+      {
+        text: 'A Claude Code session holding the importer token calls the create_version tool. Its MCP client POSTs one JSON-RPC message to https://tylerfuqua.com/mcp with Authorization: Bearer keep_… and Accept: application/json, text/event-stream.',
+        nodes: ['agents', 'cloudfront'],
+        edges: ['e-agents-cf'],
+      },
+      {
+        text: 'CloudFront matches the /mcp behavior, the twin of /api/*: nothing cached, every viewer header except Host forwarded to API Gateway.',
+        nodes: ['cloudfront', 'apigw'],
+        edges: ['e-cf-apigw'],
+      },
+      {
+        text: 'API Gateway runs the agent token authorizer: the bearer is hashed with SHA-256 and looked up in agent_token through the Data API. Revoked or unknown is a 401 and no handler runs. A live token has last_used_at touched and its id, name and scopes handed on; the answer is cached for a minute.',
+        nodes: ['agentauth', 'dataapi', 'aurora'],
+        edges: ['e-apigw-agentauth'],
+      },
+      {
+        text: 'The MCP Lambda builds a fresh, stateless server for this one request, decodes the JSON-RPC call, and runs create_version as the agent: the same service function the REST route runs, with the same identity shape the member path produces.',
+        nodes: ['mcp', 'lambdas'],
+        edges: ['e-agentauth-mcp', 'e-mcp-lambdas'],
+      },
+      {
+        text: 'Permission: a write on a recipe in the me ring needs write:recipes, which the importer carries. The frontmatter is validated against the shared zod schema; a failure goes back to the model as a tool error naming the field, so it can fix the call and try again.',
+        nodes: ['mcp'],
+        edges: [],
+      },
+      {
+        text: 'Inside a transaction over the Data API: a version row with author_agent_token_id set (never a member), number = max + 1, authored_at from the file’s own date; the document’s current pointer moves. History will say "importer".',
+        nodes: ['dataapi', 'aurora'],
+        edges: ['e-mcp-dataapi', 'e-dataapi-aurora'],
+      },
+      {
+        text: 'The tool result goes back as JSON. The admin UI’s agent activity view lists the version under the token’s name, apart from anything a person saved; a structured log line lands in CloudWatch.',
+        nodes: ['agents', 'cloudwatch'],
         edges: ['e-lambdas-logs'],
       },
     ],

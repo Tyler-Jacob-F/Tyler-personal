@@ -4,11 +4,12 @@ import { cn } from '@/lib/utils';
 import { NODES, TRACES } from '@/routes/stack/data';
 import { Diagram } from '@/routes/stack/Diagram';
 
-const traceOrder = ['page', 'signin', 'save', 'deploy'] as const;
+const traceOrder = ['page', 'signin', 'save', 'agent', 'deploy'] as const;
 const traceLabels: Record<(typeof traceOrder)[number], string> = {
   page: 'Load the page',
   signin: 'Sign in',
   save: 'Save a recipe',
+  agent: 'Agent saves a recipe',
   deploy: 'Deploy',
 };
 
@@ -45,12 +46,12 @@ export function StackPage() {
   return (
     <div className="grid gap-6">
       <div>
-        <Eyebrow>tylerfuqua.com · after Phase 1</Eyebrow>
+        <Eyebrow>tylerfuqua.com · after Phase 2</Eyebrow>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">The Keep, under the hood</h1>
         <p className="mt-2 max-w-prose text-muted-foreground">
-          Five CloudFormation stacks, one domain, nothing always on except a database that sleeps.
-          Click any box to learn what it is and why it is there, or trace a request to watch it
-          move.
+          Five CloudFormation stacks, one domain, two doors (people and agents), nothing always on
+          except a database that sleeps. Click any box to learn what it is and why it is there, or
+          trace a request to watch it move.
         </p>
       </div>
 
@@ -245,8 +246,9 @@ export function StackPage() {
             account stack, at the cost of one stack modifying a role another owns.
           </p>
           <p>
-            <strong>Tokens in memory only.</strong> A reload asks for a new code. Persisting the
-            refresh token is a Phase 2 question.
+            <strong>The MCP server imports the handlers.</strong> It runs the same service functions
+            in-process instead of calling its own REST API over HTTP: one validation path, one cold
+            start. An HTTP hop is a one-file change if a reason appears.
           </p>
         </Card>
         <Card title="Where to look">

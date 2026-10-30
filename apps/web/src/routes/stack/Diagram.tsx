@@ -35,10 +35,10 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
 
   return (
     <svg
-      viewBox="0 0 980 760"
+      viewBox="0 0 980 830"
       role="img"
       className="block h-auto max-w-full text-foreground"
-      aria-label="The Keep's five stacks and how a browser, GitHub Actions and the API Lambdas reach CloudFront, Cognito, API Gateway and Aurora"
+      aria-label="The Keep's five stacks and how a browser, agents with tokens, GitHub Actions and the API Lambdas reach CloudFront, Cognito, API Gateway, the MCP server and Aurora"
     >
       <defs>
         <marker
@@ -115,7 +115,7 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
         x="498"
         y="262"
         width="470"
-        height="150"
+        height="220"
         rx="10"
       ></rect>
       <text
@@ -128,7 +128,7 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
       <rect
         className="fill-none stroke-border [stroke-dasharray:3_4]"
         x="12"
-        y="438"
+        y="508"
         width="956"
         height="150"
         rx="10"
@@ -136,14 +136,14 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
       <text
         className="fill-muted-foreground text-[11px] font-semibold tracking-wider uppercase"
         x="24"
-        y="456"
+        y="526"
       >
         TheKeepData
       </text>
       <rect
         className="fill-none stroke-border [stroke-dasharray:3_4]"
         x="12"
-        y="614"
+        y="684"
         width="956"
         height="128"
         rx="10"
@@ -151,7 +151,7 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
       <text
         className="fill-muted-foreground text-[11px] font-semibold tracking-wider uppercase"
         x="24"
-        y="632"
+        y="702"
       >
         CDK bootstrap · created by `cdk bootstrap`, used by every deploy
       </text>
@@ -249,7 +249,7 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
       <path
         className={ec('e-lambdas-dataapi')}
         id="e-lambdas-dataapi"
-        d="M800,370 L800,400 L372,400 L372,478"
+        d="M800,370 L800,400 L372,400 L372,548"
         markerEnd={me('e-lambdas-dataapi')}
       ></path>
       <text className="fill-muted-foreground text-[10.5px]" x="420" y="396">
@@ -264,16 +264,16 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
       <path
         className={ec('e-dataapi-aurora')}
         id="e-dataapi-aurora"
-        d="M300,514 L250,514"
+        d="M300,584 L250,584"
         markerEnd={me('e-dataapi-aurora')}
       ></path>
       <path
         className={ec('e-aurora-secret', true)}
         id="e-aurora-secret"
-        d="M250,540 L250,560 L520,560 L520,540"
+        d="M250,610 L250,630 L520,630 L520,610"
         markerEnd={me('e-aurora-secret')}
       ></path>
-      <text className="fill-muted-foreground text-[10.5px]" x="300" y="556">
+      <text className="fill-muted-foreground text-[10.5px]" x="300" y="626">
         master password lives here, never in a Lambda
       </text>
       <path
@@ -294,13 +294,13 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
       <path
         className={ec('e-deploy-cfn')}
         id="e-deploy-cfn"
-        d="M900,206 L900,250 L950,250 L950,660 L880,660"
+        d="M900,206 L900,250 L950,250 L950,730 L880,730"
         markerEnd={me('e-deploy-cfn')}
       ></path>
       <text
         className="fill-muted-foreground text-[10.5px]"
         x="956"
-        y="450"
+        y="520"
         transform="rotate(90 956 450)"
         textAnchor="middle"
       >
@@ -309,10 +309,10 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
       <path
         className={ec('e-cfn-stacks')}
         id="e-cfn-stacks"
-        d="M760,660 L700,660 L700,420"
+        d="M760,730 L700,730 L700,486"
         markerEnd={me('e-cfn-stacks')}
       ></path>
-      <text className="fill-muted-foreground text-[10.5px]" x="706" y="640">
+      <text className="fill-muted-foreground text-[10.5px]" x="706" y="710">
         creates and updates every stack
       </text>
       <path
@@ -336,6 +336,52 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
       <text className="fill-muted-foreground text-[10.5px]" x="416" y="138">
         sync build, invalidate
       </text>
+
+      <path
+        className={ec('e-agents-cf')}
+        id="e-agents-cf"
+        d="M330,74 L330,120 L280,120 L280,158"
+        markerEnd={me('e-agents-cf')}
+      ></path>
+      <text className="fill-muted-foreground text-[10.5px]" x="336" y="112">
+        Bearer token
+      </text>
+      <path
+        className={ec('e-apigw-agentauth')}
+        id="e-apigw-agentauth"
+        d="M528,336 L528,420"
+        markerEnd={me('e-apigw-agentauth')}
+      ></path>
+      <text className="fill-muted-foreground text-[10.5px]" x="534" y="378">
+        /api/agent/*, /mcp
+      </text>
+      <path
+        className={ec('e-agentauth-mcp')}
+        id="e-agentauth-mcp"
+        d="M688,442 L724,442"
+        markerEnd={me('e-agentauth-mcp')}
+      ></path>
+      <path
+        className={ec('e-agentauth-lambdas')}
+        id="e-agentauth-lambdas"
+        d="M676,420 L676,408 L812,408 L812,370"
+        markerEnd={me('e-agentauth-lambdas')}
+      ></path>
+      <path
+        className={ec('e-mcp-lambdas', true)}
+        id="e-mcp-lambdas"
+        d="M840,420 L840,370"
+        markerEnd={me('e-mcp-lambdas')}
+      ></path>
+      <text className="fill-muted-foreground text-[10.5px]" x="848" y="412">
+        same code
+      </text>
+      <path
+        className={ec('e-mcp-dataapi')}
+        id="e-mcp-dataapi"
+        d="M760,464 L760,492 L420,492 L420,548"
+        markerEnd={me('e-mcp-dataapi')}
+      ></path>
 
       <g
         className={nc('browser', true)}
@@ -384,6 +430,75 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
         </text>
       </g>
 
+      <g
+        className={nc('agents', true)}
+        data-id="agents"
+        tabIndex={0}
+        role="button"
+        aria-label="Agent clients"
+        aria-pressed={selected === 'agents'}
+        onClick={() => onSelect('agents')}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onSelect('agents');
+          }
+        }}
+      >
+        <rect x="290" y="30" width="250" height="44" rx="8"></rect>
+        <text className="fill-foreground text-[12.5px]" x="415" y="49" textAnchor="middle">
+          Claude Code · Cowork
+        </text>
+        <text className="fill-muted-foreground text-[10.5px]" x="415" y="64" textAnchor="middle">
+          agents, each with a scoped token
+        </text>
+      </g>
+      <g
+        className={nc('agentauth')}
+        data-id="agentauth"
+        tabIndex={0}
+        role="button"
+        aria-label="Agent token authorizer"
+        aria-pressed={selected === 'agentauth'}
+        onClick={() => onSelect('agentauth')}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onSelect('agentauth');
+          }
+        }}
+      >
+        <rect x="512" y="420" width="176" height="44" rx="8"></rect>
+        <text className="fill-foreground text-[12.5px]" x="600" y="439" textAnchor="middle">
+          Agent token authorizer
+        </text>
+        <text className="fill-muted-foreground text-[10.5px]" x="600" y="454" textAnchor="middle">
+          Lambda · hashes the bearer, loads scopes
+        </text>
+      </g>
+      <g
+        className={nc('mcp')}
+        data-id="mcp"
+        tabIndex={0}
+        role="button"
+        aria-label="MCP server"
+        aria-pressed={selected === 'mcp'}
+        onClick={() => onSelect('mcp')}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onSelect('mcp');
+          }
+        }}
+      >
+        <rect x="724" y="420" width="160" height="44" rx="8"></rect>
+        <text className="fill-foreground text-[12.5px]" x="804" y="439" textAnchor="middle">
+          MCP server
+        </text>
+        <text className="fill-muted-foreground text-[10.5px]" x="804" y="454" textAnchor="middle">
+          Lambda · /mcp, four tools
+        </text>
+      </g>
       <g
         className={nc('route53')}
         data-id="route53"
@@ -756,8 +871,8 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
         </text>
       </g>
 
-      <rect className="fill-none stroke-border" x="24" y="470" width="246" height="106"></rect>
-      <text className="fill-muted-foreground text-[10.5px] italic" x="34" y="486">
+      <rect className="fill-none stroke-border" x="24" y="540" width="246" height="106"></rect>
+      <text className="fill-muted-foreground text-[10.5px] italic" x="34" y="556">
         VPC: two isolated subnets, no NAT, no internet
       </text>
       <g
@@ -775,14 +890,14 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
           }
         }}
       >
-        <rect x="40" y="494" width="210" height="64" rx="8"></rect>
-        <text className="fill-foreground text-[12.5px]" x="145" y="514" textAnchor="middle">
+        <rect x="40" y="564" width="210" height="64" rx="8"></rect>
+        <text className="fill-foreground text-[12.5px]" x="145" y="584" textAnchor="middle">
           Aurora Serverless v2
         </text>
-        <text className="fill-muted-foreground text-[10.5px]" x="145" y="530" textAnchor="middle">
+        <text className="fill-muted-foreground text-[10.5px]" x="145" y="600" textAnchor="middle">
           PostgreSQL 16, 0 to 2 ACU
         </text>
-        <text className="fill-muted-foreground text-[10.5px]" x="145" y="546" textAnchor="middle">
+        <text className="fill-muted-foreground text-[10.5px]" x="145" y="616" textAnchor="middle">
           pauses after 5 idle minutes
         </text>
       </g>
@@ -801,14 +916,14 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
           }
         }}
       >
-        <rect x="300" y="478" width="144" height="60" rx="8"></rect>
-        <text className="fill-foreground text-[12.5px]" x="372" y="500" textAnchor="middle">
+        <rect x="300" y="548" width="144" height="60" rx="8"></rect>
+        <text className="fill-foreground text-[12.5px]" x="372" y="570" textAnchor="middle">
           RDS Data API
         </text>
-        <text className="fill-muted-foreground text-[10.5px]" x="372" y="516" textAnchor="middle">
+        <text className="fill-muted-foreground text-[10.5px]" x="372" y="586" textAnchor="middle">
           https endpoint, IAM auth
         </text>
-        <text className="fill-muted-foreground text-[10.5px]" x="372" y="530" textAnchor="middle">
+        <text className="fill-muted-foreground text-[10.5px]" x="372" y="600" textAnchor="middle">
           the only way in
         </text>
       </g>
@@ -827,11 +942,11 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
           }
         }}
       >
-        <rect x="470" y="494" width="140" height="46" rx="8"></rect>
-        <text className="fill-foreground text-[12.5px]" x="540" y="514" textAnchor="middle">
+        <rect x="470" y="564" width="140" height="46" rx="8"></rect>
+        <text className="fill-foreground text-[12.5px]" x="540" y="584" textAnchor="middle">
           Secrets Manager
         </text>
-        <text className="fill-muted-foreground text-[10.5px]" x="540" y="530" textAnchor="middle">
+        <text className="fill-muted-foreground text-[10.5px]" x="540" y="600" textAnchor="middle">
           master credentials
         </text>
       </g>
@@ -850,11 +965,11 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
           }
         }}
       >
-        <rect x="640" y="494" width="140" height="46" rx="8"></rect>
-        <text className="fill-foreground text-[12.5px]" x="710" y="514" textAnchor="middle">
+        <rect x="640" y="564" width="140" height="46" rx="8"></rect>
+        <text className="fill-foreground text-[12.5px]" x="710" y="584" textAnchor="middle">
           SSM parameters
         </text>
-        <text className="fill-muted-foreground text-[10.5px]" x="710" y="530" textAnchor="middle">
+        <text className="fill-muted-foreground text-[10.5px]" x="710" y="600" textAnchor="middle">
           /the-keep/db/*
         </text>
       </g>
@@ -873,11 +988,11 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
           }
         }}
       >
-        <rect x="808" y="494" width="140" height="46" rx="8"></rect>
-        <text className="fill-foreground text-[12.5px]" x="878" y="514" textAnchor="middle">
+        <rect x="808" y="564" width="140" height="46" rx="8"></rect>
+        <text className="fill-foreground text-[12.5px]" x="878" y="584" textAnchor="middle">
           schema_migration
         </text>
-        <text className="fill-muted-foreground text-[10.5px]" x="878" y="530" textAnchor="middle">
+        <text className="fill-muted-foreground text-[10.5px]" x="878" y="600" textAnchor="middle">
           0001 to 0004 applied
         </text>
       </g>
@@ -897,11 +1012,11 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
           }
         }}
       >
-        <rect x="760" y="640" width="120" height="44" rx="8"></rect>
-        <text className="fill-foreground text-[12.5px]" x="820" y="659" textAnchor="middle">
+        <rect x="760" y="710" width="120" height="44" rx="8"></rect>
+        <text className="fill-foreground text-[12.5px]" x="820" y="729" textAnchor="middle">
           CloudFormation
         </text>
-        <text className="fill-muted-foreground text-[10.5px]" x="820" y="675" textAnchor="middle">
+        <text className="fill-muted-foreground text-[10.5px]" x="820" y="745" textAnchor="middle">
           diffs, applies, rolls back
         </text>
       </g>
@@ -920,11 +1035,11 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
           }
         }}
       >
-        <rect x="560" y="640" width="180" height="44" rx="8"></rect>
-        <text className="fill-foreground text-[12.5px]" x="650" y="659" textAnchor="middle">
+        <rect x="560" y="710" width="180" height="44" rx="8"></rect>
+        <text className="fill-foreground text-[12.5px]" x="650" y="729" textAnchor="middle">
           cdk-*-cfn-exec-role
         </text>
-        <text className="fill-muted-foreground text-[10.5px]" x="650" y="675" textAnchor="middle">
+        <text className="fill-muted-foreground text-[10.5px]" x="650" y="745" textAnchor="middle">
           the only admin, used only by CFN
         </text>
       </g>
@@ -943,11 +1058,11 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
           }
         }}
       >
-        <rect x="380" y="640" width="160" height="44" rx="8"></rect>
-        <text className="fill-foreground text-[12.5px]" x="460" y="659" textAnchor="middle">
+        <rect x="380" y="710" width="160" height="44" rx="8"></rect>
+        <text className="fill-foreground text-[12.5px]" x="460" y="729" textAnchor="middle">
           cdk assets bucket
         </text>
-        <text className="fill-muted-foreground text-[10.5px]" x="460" y="675" textAnchor="middle">
+        <text className="fill-muted-foreground text-[10.5px]" x="460" y="745" textAnchor="middle">
           Lambda zips, templates
         </text>
       </g>
@@ -966,17 +1081,17 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
           }
         }}
       >
-        <rect x="40" y="640" width="310" height="80" rx="8"></rect>
-        <text className="fill-foreground text-[12.5px]" x="195" y="660" textAnchor="middle">
+        <rect x="40" y="710" width="310" height="80" rx="8"></rect>
+        <text className="fill-foreground text-[12.5px]" x="195" y="730" textAnchor="middle">
           infra/ (CDK, TypeScript)
         </text>
-        <text className="fill-muted-foreground text-[10.5px]" x="195" y="676" textAnchor="middle">
+        <text className="fill-muted-foreground text-[10.5px]" x="195" y="746" textAnchor="middle">
           synth → CloudFormation JSON in cdk.out
         </text>
-        <text className="fill-muted-foreground text-[10.5px]" x="195" y="692" textAnchor="middle">
+        <text className="fill-muted-foreground text-[10.5px]" x="195" y="762" textAnchor="middle">
           snapshot tests freeze every template
         </text>
-        <text className="fill-muted-foreground text-[10.5px]" x="195" y="708" textAnchor="middle">
+        <text className="fill-muted-foreground text-[10.5px]" x="195" y="778" textAnchor="middle">
           cdk diff on every pull request
         </text>
       </g>
