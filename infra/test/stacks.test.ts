@@ -211,19 +211,43 @@ describe('ApiStack', () => {
     expect(stable(template)).toMatchSnapshot();
   });
 
-  it('puts a Cognito JWT authorizer on every route', () => {
-    template.resourceCountIs('AWS::ApiGatewayV2::Authorizer', 1);
+  it('puts the Cognito JWT authorizer on every member route', () => {
+    template.resourceCountIs('AWS::ApiGatewayV2::Authorizer', 2);
     template.hasResourceProperties('AWS::ApiGatewayV2::Authorizer', { AuthorizerType: 'JWT' });
     const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
-    expect(routes).toHaveLength(12);
-    for (const route of routes) {
+    expect(routes).toHaveLength(19);
+    const members = routes.filter((r) => !String(r.Properties.RouteKey).includes('/api/agent/'));
+    expect(members).toHaveLength(12);
+    for (const route of members) {
       expect(route.Properties.AuthorizationType).toBe('JWT');
       expect(route.Properties.RouteKey).toMatch(/^(GET|POST|DELETE) \/api\//);
     }
   });
 
+  it('opens the agents door on /api/agent/* through the Lambda authorizer, with no delete', () => {
+    template.hasResourceProperties('AWS::ApiGatewayV2::Authorizer', {
+      AuthorizerType: 'REQUEST',
+      AuthorizerPayloadFormatVersion: '2.0',
+      EnableSimpleResponses: true,
+      IdentitySource: ['$request.header.Authorization'],
+      AuthorizerResultTtlInSeconds: 60,
+    });
+    const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
+    const agents = routes.filter((r) => String(r.Properties.RouteKey).includes('/api/agent/'));
+    expect(agents.map((r) => r.Properties.RouteKey).sort()).toEqual([
+      'GET /api/agent/documents',
+      'GET /api/agent/documents/{id}',
+      'GET /api/agent/documents/{id}/diff',
+      'GET /api/agent/documents/{id}/versions',
+      'GET /api/agent/documents/{id}/versions/{number}',
+      'POST /api/agent/documents',
+      'POST /api/agent/documents/{id}/versions',
+    ]);
+    for (const route of agents) expect(route.Properties.AuthorizationType).toBe('CUSTOM');
+  });
+
   it('runs one Lambda per resource, outside the VPC, with Data API access', () => {
-    template.resourceCountIs('AWS::Lambda::Function', 4);
+    template.resourceCountIs('AWS::Lambda::Function', 5);
     const fns = Object.values(template.findResources('AWS::Lambda::Function'));
     for (const fn of fns) {
       expect(fn.Properties.VpcConfig).toBeUndefined();
@@ -232,7 +256,7 @@ describe('ApiStack', () => {
     }
     const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
     expect(policies).toContain('rds-data:ExecuteStatement');
-    template.resourceCountIs('AWS::Logs::LogGroup', 4);
+    template.resourceCountIs('AWS::Logs::LogGroup', 5);
     template.allResourcesProperties('AWS::Logs::LogGroup', { RetentionInDays: 30 });
   });
 

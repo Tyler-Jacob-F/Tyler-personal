@@ -14,7 +14,7 @@ import {
   softDeleteDocument,
 } from '../db/repositories.js';
 import { type ApiHandler, createApi, json, noContent, notFound, parse } from '../lib/http.js';
-import { cognitoIdentity } from '../middleware/identity.js';
+import { agentIdentity, cognitoIdentity } from '../middleware/identity.js';
 import { authorize } from '../middleware/permission.js';
 
 const idSchema = z.uuid();
@@ -22,7 +22,7 @@ const idSchema = z.uuid();
 export function build(db: Db): ApiHandler {
   return createApi({
     service: 'documents',
-    identify: cognitoIdentity(db),
+    identify: { member: cognitoIdentity(db), agent: agentIdentity(db) },
     routes: {
       'GET /api/documents': async ({ identity, query }) => {
         const { type, limit } = parse(listDocumentsQuerySchema, query, 'query');
@@ -43,7 +43,7 @@ export function build(db: Db): ApiHandler {
           type: input.type,
           title: frontmatter.title,
           ring,
-          owner: identity.caller.id,
+          owner: identity.owner,
           tags: input.tags,
           body: input.body,
           frontmatter,

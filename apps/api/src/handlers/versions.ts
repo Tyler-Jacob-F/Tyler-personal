@@ -10,7 +10,7 @@ import { type Db, getDb } from '../db/client.js';
 import { createVersion, getDocument, getVersion, listVersions } from '../db/repositories.js';
 import { diffVersions } from '../lib/diff.js';
 import { type ApiHandler, createApi, json, notFound, parse } from '../lib/http.js';
-import { cognitoIdentity } from '../middleware/identity.js';
+import { agentIdentity, cognitoIdentity } from '../middleware/identity.js';
 import { authorize } from '../middleware/permission.js';
 
 const idSchema = z.uuid();
@@ -19,7 +19,7 @@ const numberSchema = z.coerce.number().int().positive();
 export function build(db: Db): ApiHandler {
   return createApi({
     service: 'versions',
-    identify: cognitoIdentity(db),
+    identify: { member: cognitoIdentity(db), agent: agentIdentity(db) },
     routes: {
       'GET /api/documents/{id}/versions': async ({ identity, params }) => {
         const id = parse(idSchema, params.id, 'id');
