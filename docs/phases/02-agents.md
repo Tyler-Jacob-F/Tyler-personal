@@ -121,7 +121,7 @@ Each is one PR, in this order.
 - [x] **Brief type.** Schema, home-screen renderer, `write:briefs` on the scope map,
       the scheduled-task runbook. Tests.
 - [x] **Agent activity.** The admin view. MSW test.
-- [ ] **Importer runbook and tool.** `docs/runbooks/import-recipes.md`,
+- [x] **Importer runbook and tool.** `docs/runbooks/import-recipes.md`,
       `tools/pages-text.py`, the ordering rule.
 - [ ] **Gate check.** Import the archive from a Claude Code session; record the date
       here.
@@ -142,6 +142,49 @@ Each is one PR, in this order.
 - The `brief` sections shape and how "today" is chosen on the home screen.
 - Which Claude Code environment holds the brief writer's token and on what schedule.
 - The agent activity view's window and ordering.
+
+## Decided during implementation (Oct 30, 2026)
+
+Routine calls made while building, recorded here so no later session relitigates them.
+Each is reversible unless marked.
+
+- **Hash: SHA-256, unsalted.** The secret carries 256 bits of entropy, so there is nothing
+  to rainbow, and the hash doubles as the lookup key the authorizer needs. Token names
+  (`^[a-z0-9]+(?:-[a-z0-9]+)*$`, up to 40) are unique for life, revoked or not, because
+  the name is the author history shows. Revoke is `DELETE /api/admin/tokens/{id}`, 204,
+  idempotent, first timestamp kept.
+- **Two doors, one set of handlers.** `createApi` normalizes `METHOD /api/agent/…` onto
+  `METHOD /api/…` and picks the identity middleware by door; a handler with no agent door
+  (`me`, `admin-*`) answers 401 there whatever the token carries. Documents an agent creates
+  are **owned by the admin** (`document.owner` is a member); the version's author is the
+  token. No agent route for delete exists.
+- **Authorizer:** simple responses, keyed on the `Authorization` header, results cached
+  60 seconds. That bounds how long a revoked token keeps working and how coarse
+  `last_used_at` is. Same memory and timeout as the route Lambdas (512 MB, 30 s), since it
+  too may wake the cluster.
+- **MCP:** `@modelcontextprotocol/sdk` 1.32.2, Streamable HTTP, stateless, JSON responses;
+  anything but POST is a 405 before the transport sees it (a stateless server has no SSE
+  stream to open and a Lambda would hold it to its timeout). One `McpServer` per request.
+  The four tools take the shared DTOs as input schemas; each type's registry entry carries
+  a `guide` paragraph that the write tools' descriptions include. Refusals (400 with field
+  issues, 403, 404) return as tool errors the model can act on. The MCP Lambda imports the
+  service functions the REST routes use (`apps/api/src/services/documents.ts`): one
+  validation path, no HTTP hop.
+- **`brief`:** `{ date, sections[] of { heading, body }, title? }`, title defaulting to
+  `Brief for <date>`, markdown bodies, the version body an optional lead. "Today" on the
+  home screen is the viewer's local calendar date against the brief's `date` string. The
+  home at `/` replaced the redirect to recipes; `/briefs/:id` shows a past brief.
+- **The brief writer posts through the REST agent door with `curl`**, from a dedicated
+  Claude Code environment (`the-keep-brief`, secret `KEEP_BRIEF_TOKEN`) on a daily
+  06:10 Eastern schedule; `docs/runbooks/morning-brief.md` is the whole program. MCP stays
+  the door for interactive sessions.
+- **Agent activity:** last 30 days, newest first, agent-authored versions only, deleted
+  documents included. `GET /api/admin/activity?days=&limit=` on its own Lambda.
+- **The Stack page** gained the agents lane the handoff asked for: the token authorizer
+  and the MCP server in the TheKeepApi lane, an agent-clients box, and a fifth trace.
+- **Lambdas:** seven in `TheKeepApi` now (me, documents, versions, admin-tokens,
+  admin-activity, agent-authorizer, mcp). Twenty-one routes. CloudFront forwards `/mcp`
+  exactly as it forwards `/api/*`.
 
 ## Handoff (Oct 30, 2026)
 
