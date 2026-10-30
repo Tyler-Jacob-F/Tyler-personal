@@ -1,5 +1,14 @@
 import {
+  agentScopes,
+  agentScopeSchema,
+  agentTokenNameSchema,
+  agentTokenSecretSchema,
+  callerSchema,
+  createAgentTokenRequestSchema,
   createDocumentRequestSchema,
+  documentTypes,
+  writeScopeByType,
+  writeScopeFor,
   createVersionRequestSchema,
   ingredientLines,
   diffQuerySchema,
@@ -11,6 +20,8 @@ import {
   slugify,
   versionSchema,
 } from '../src/index.js';
+
+const ids = { id: '9b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b' };
 
 const chili = {
   title: 'Chili',
@@ -180,5 +191,61 @@ describe('slugify', () => {
 
   it('never returns an empty slug', () => {
     expect(slugify('***')).toBe('untitled');
+  });
+});
+
+describe('agent scopes and tokens', () => {
+  it('knows exactly the five scopes the brief lists', () => {
+    expect([...agentScopes]).toEqual([
+      'read:documents',
+      'write:recipes',
+      'write:briefs',
+      'write:notes',
+      'read:reading',
+    ]);
+    expect(agentScopeSchema.safeParse('write:documents').success).toBe(false);
+  });
+
+  it('maps a write on a type to its scope, for every type the registry knows', () => {
+    expect(writeScopeFor('recipe')).toBe('write:recipes');
+    for (const type of documentTypes) expect(type in writeScopeByType).toBe(true);
+  });
+
+  it('recognizes a secret by its shape', () => {
+    const secret = `keep_${'A'.repeat(43)}`;
+    expect(agentTokenSecretSchema.parse(secret)).toBe(secret);
+    expect(agentTokenSecretSchema.safeParse(`keep_${'A'.repeat(42)}`).success).toBe(false);
+    expect(agentTokenSecretSchema.safeParse(`kept_${'A'.repeat(43)}`).success).toBe(false);
+    expect(agentTokenSecretSchema.safeParse(`keep_${'A'.repeat(42)}+`).success).toBe(false);
+  });
+
+  it('collapses duplicate scopes into the brief order and insists on at least one', () => {
+    const parsed = createAgentTokenRequestSchema.parse({
+      name: 'cowork',
+      scopes: ['write:notes', 'read:documents', 'write:notes', 'write:recipes'],
+    });
+    expect(parsed.scopes).toEqual(['read:documents', 'write:recipes', 'write:notes']);
+    expect(createAgentTokenRequestSchema.safeParse({ name: 'x', scopes: [] }).success).toBe(false);
+    expect(
+      createAgentTokenRequestSchema.safeParse({ name: 'x', scopes: ['write:documents'] }).success,
+    ).toBe(false);
+  });
+
+  it('keeps token names short, lowercase and hyphenated', () => {
+    for (const name of ['importer', 'brief-writer', 'cowork2']) {
+      expect(agentTokenNameSchema.parse(name)).toBe(name);
+    }
+    for (const name of ['Importer', 'brief writer', '-x', 'x-', 'a--b', '', 'x'.repeat(41)]) {
+      expect(agentTokenNameSchema.safeParse(name).success, name).toBe(false);
+    }
+  });
+
+  it('holds an agent caller to known scopes', () => {
+    expect(
+      callerSchema.safeParse({ kind: 'agent', id: ids.id, scopes: ['write:documents'] }).success,
+    ).toBe(false);
+    expect(
+      callerSchema.safeParse({ kind: 'agent', id: ids.id, scopes: ['write:recipes'] }).success,
+    ).toBe(true);
   });
 });

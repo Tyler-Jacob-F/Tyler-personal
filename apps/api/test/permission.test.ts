@@ -5,34 +5,47 @@ import { diffFrontmatter, diffIngredients } from '../src/lib/diff.js';
 const admin: Caller = { kind: 'member', id: 'a', role: 'admin' };
 const group: Caller = { kind: 'member', id: 'g', role: 'group' };
 const agent: Caller = { kind: 'agent', id: 't', scopes: ['read:documents'] };
+const recipe = (ring: 'me' | 'group' | 'public') => ({ ring, type: 'recipe' as const });
 
 describe('permission middleware', () => {
   it('lets the admin do everything in every ring', () => {
     for (const ring of ['me', 'group', 'public'] as const) {
       for (const action of ['read', 'write', 'delete'] as const) {
-        expect(can(admin, action, ring)).toBe(true);
+        expect(can(admin, action, recipe(ring))).toBe(true);
       }
     }
   });
 
   it('lets a group member read group and public only', () => {
-    expect(can(group, 'read', 'group')).toBe(true);
-    expect(can(group, 'read', 'public')).toBe(true);
-    expect(can(group, 'read', 'me')).toBe(false);
-    expect(can(group, 'write', 'group')).toBe(false);
-    expect(can(group, 'delete', 'public')).toBe(false);
+    expect(can(group, 'read', recipe('group'))).toBe(true);
+    expect(can(group, 'read', recipe('public'))).toBe(true);
+    expect(can(group, 'read', recipe('me'))).toBe(false);
+    expect(can(group, 'write', recipe('group'))).toBe(false);
+    expect(can(group, 'delete', recipe('public'))).toBe(false);
   });
 
   it('holds an agent to its scopes and never lets it delete', () => {
-    expect(can(agent, 'read', 'me')).toBe(true);
-    expect(can(agent, 'write', 'me')).toBe(false);
-    expect(can({ ...agent, scopes: ['write:documents'] }, 'write', 'me')).toBe(true);
-    expect(can({ ...agent, scopes: ['write:documents'] }, 'delete', 'me')).toBe(false);
+    expect(can(agent, 'read', recipe('me'))).toBe(true);
+    expect(can(agent, 'read', recipe('public'))).toBe(true);
+    expect(can(agent, 'write', recipe('me'))).toBe(false);
+    expect(can({ ...agent, scopes: [] }, 'read', recipe('public'))).toBe(false);
+    const writer: Caller = { kind: 'agent', id: 't', scopes: ['write:recipes'] };
+    expect(can(writer, 'write', recipe('me'))).toBe(true);
+    expect(can(writer, 'read', recipe('me'))).toBe(false);
+    expect(can(writer, 'delete', recipe('me'))).toBe(false);
   });
 
-  it('authorize throws a 403 HttpError', () => {
-    expect(() => authorize(group, 'write', 'me')).toThrow(/cannot write/);
-    expect(() => authorize(admin, 'write', 'me')).not.toThrow();
+  it('matches a write scope to the document type, not to documents in general', () => {
+    const briefs: Caller = { kind: 'agent', id: 't', scopes: ['write:briefs'] };
+    expect(can(briefs, 'write', recipe('me'))).toBe(false);
+  });
+
+  it('authorize throws a 403 HttpError naming the type and ring', () => {
+    expect(() => authorize(group, 'write', recipe('me'))).toThrow(
+      /cannot write a recipe in the me ring/,
+    );
+    expect(() => authorize(agent, 'write', recipe('me'))).toThrow(/cannot write/);
+    expect(() => authorize(admin, 'write', recipe('me'))).not.toThrow();
   });
 });
 

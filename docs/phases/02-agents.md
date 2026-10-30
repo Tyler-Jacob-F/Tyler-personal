@@ -109,7 +109,7 @@ The three items the first draft reserved for Tyler, answered as proposed:
 
 Each is one PR, in this order.
 
-- [ ] **Token model.** Scope enum and token DTOs in `packages/shared`; `agent_token`
+- [x] **Token model.** Scope enum and token DTOs in `packages/shared`; `agent_token`
       repository; `write:documents` replaced by per-type scopes in the permission
       middleware. Tests.
 - [ ] **Admin tokens.** `/api/admin/tokens` (admin role only) and the Tokens screen:

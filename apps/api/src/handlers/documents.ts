@@ -28,7 +28,7 @@ export function build(db: Db): ApiHandler {
         const { type, limit } = parse(listDocumentsQuerySchema, query, 'query');
         const items = await listDocuments(db, { type, limit });
         const visible = items.filter((item) =>
-          authorizeQuietly(identity.caller, 'read', item.document.ring),
+          authorizeQuietly(identity.caller, 'read', item.document),
         );
         const body: ListDocumentsResponse = { items: visible };
         return json(200, body);
@@ -38,7 +38,7 @@ export function build(db: Db): ApiHandler {
         const input = parse(createDocumentRequestSchema, body, 'document');
         const frontmatter = parse(schemaFor(input.type).schema, input.frontmatter, 'frontmatter');
         const ring = schemaFor(input.type).defaultRing;
-        authorize(identity.caller, 'write', ring);
+        authorize(identity.caller, 'write', { ring, type: input.type });
         const created = await createDocument(db, {
           type: input.type,
           title: frontmatter.title,
@@ -63,7 +63,7 @@ export function build(db: Db): ApiHandler {
         const id = parse(idSchema, params.id, 'id');
         const found = await getDocument(db, id);
         if (!found) throw notFound('document');
-        authorize(identity.caller, 'read', found.document.ring);
+        authorize(identity.caller, 'read', found.document);
         // Stored frontmatter is already validated; re-parse so a later schema change surfaces here.
         parseFrontmatter(found.document.type, found.version.frontmatter);
         return json(200, found);
@@ -73,7 +73,7 @@ export function build(db: Db): ApiHandler {
         const id = parse(idSchema, params.id, 'id');
         const found = await getDocument(db, id);
         if (!found) throw notFound('document');
-        authorize(identity.caller, 'delete', found.document.ring);
+        authorize(identity.caller, 'delete', found.document);
         await softDeleteDocument(db, id);
         log.info('document deleted', { documentId: id });
         return noContent();

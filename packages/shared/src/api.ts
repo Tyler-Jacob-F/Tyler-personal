@@ -6,11 +6,12 @@ import {
   tagsSchema,
   versionSchema,
 } from './document.js';
+import { agentScopeSchema } from './scopes.js';
 
 /** The brief's normalized caller: `{ kind, id, role?, scopes? }`. */
 export const callerSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('member'), id: z.uuid(), role: z.enum(['admin', 'group']) }),
-  z.object({ kind: z.literal('agent'), id: z.uuid(), scopes: z.array(z.string()) }),
+  z.object({ kind: z.literal('agent'), id: z.uuid(), scopes: z.array(agentScopeSchema) }),
 ]);
 export type Caller = z.infer<typeof callerSchema>;
 
