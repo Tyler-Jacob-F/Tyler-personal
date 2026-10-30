@@ -143,13 +143,13 @@ Each is one PR, in this order. Later ones depend on earlier ones.
       Recipes search field); "New" split by type. Tests for both widths and the gating.
 - [ ] **Recipe schema.** `packages/shared`: the facet vocabulary, tag validation, the new
       fields, `proven`; the recipe guide for the MCP tools; the form; the server rejecting
-      an unknown facet value. Tests. A `docs/runbooks/tag-recipes.md` with the session
-      prompt that tags the Phase 2 import through the MCP server (document-level tag
-      changes, not versions; add a `set_tags` tool if the directive's four cannot express
-      it and flag it).
+      an unknown facet value; the `set_tags` MCP tool and its REST twin
+      (`PUT /api/documents/{id}/tags`, both doors), logged as agent activity without a
+      version. Tests, MCP client tests included. A `docs/runbooks/tag-recipes.md` with
+      the session prompt that tags the Phase 2 import through the MCP server.
 - [ ] **Search.** Migration `0005_search` (a `tsvector` column on `version` maintained by
       trigger, a GIN index), `GET /api/documents/search?q=&type=&tags=` on the documents
-      Lambda and through the agent door and as a fifth MCP tool `search_documents`, the
+      Lambda and through the agent door and as a sixth MCP tool `search_documents`, the
       Recipes list of the contract with facet filters and inverted active chips. Handler,
       repository (PGlite supports `tsvector`), MSW and MCP tests.
 - [ ] **Morning page.** The contract's four parts from the brief's sections, the accent
