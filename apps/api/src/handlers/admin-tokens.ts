@@ -21,7 +21,8 @@ const idSchema = z.uuid();
 export function build(db: Db): ApiHandler {
   return createApi({
     service: 'admin-tokens',
-    identify: cognitoIdentity(db),
+    // Members only, on purpose: no agent door, whatever scopes a token carries.
+    identify: { member: cognitoIdentity(db) },
     routes: {
       'GET /api/admin/tokens': async ({ identity }) => {
         requireAdmin(identity.caller);

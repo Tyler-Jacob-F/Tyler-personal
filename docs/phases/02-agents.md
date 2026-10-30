@@ -114,7 +114,7 @@ Each is one PR, in this order.
       middleware. Tests.
 - [x] **Admin tokens.** `/api/admin/tokens` (admin role only) and the Tokens screen:
       name, scopes, create (secret shown once), revoke, last used. Handler and MSW tests.
-- [ ] **Agent door.** Lambda authorizer, `/api/agent/*` routes, CloudFront unchanged
+- [x] **Agent door.** Lambda authorizer, `/api/agent/*` routes, CloudFront unchanged
       (same `/api/*` behavior). Handler tests with fake authorizer events; snapshot.
 - [ ] **MCP server.** The `mcp` Lambda, four tools, `/mcp` route and CloudFront behavior.
       In-process MCP client tests. Snapshot.

@@ -6,10 +6,10 @@ import { cognitoIdentity } from '../middleware/identity.js';
 export function build(db: Db): ApiHandler {
   return createApi({
     service: 'me',
-    identify: cognitoIdentity(db),
+    identify: { member: cognitoIdentity(db) },
     routes: {
-      'GET /api/me': async ({ identity }) => {
-        const body: MeResponse = identity;
+      'GET /api/me': async ({ identity: { caller, email, displayName } }) => {
+        const body: MeResponse = { caller, email, displayName };
         return json(200, body);
       },
     },

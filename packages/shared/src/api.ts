@@ -17,7 +17,8 @@ export type Caller = z.infer<typeof callerSchema>;
 
 export const meResponseSchema = z.object({
   caller: callerSchema,
-  email: z.email(),
+  /** Null for an agent, which has a name but no address. */
+  email: z.email().nullable(),
   displayName: z.string(),
 });
 export type MeResponse = z.infer<typeof meResponseSchema>;

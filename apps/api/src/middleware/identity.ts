@@ -1,25 +1,31 @@
-import type { Caller } from '@the-keep/shared';
+import { agentScopeSchema, type Caller } from '@the-keep/shared';
+import { z } from 'zod';
 import type { Db } from '../db/client.js';
-import { findMemberByEmail } from '../db/repositories.js';
+import { findAdminMember, findMemberByEmail } from '../db/repositories.js';
 import { type ApiEvent, forbidden, unauthorized } from '../lib/http.js';
 import type { Logger } from '../lib/logger.js';
 
 /** Who is calling, in the brief's shape, plus what the screens show about them. */
 export interface Identity {
   caller: Caller;
-  email: string;
+  /** The member who owns documents this caller creates: themselves, or the admin for an agent. */
+  owner: string;
   displayName: string;
+  /** Agents have none. */
+  email: string | null;
 }
+
+export type Identify = (event: ApiEvent, log: Logger) => Promise<Identity>;
 
 /**
  * Identity: "who is this". API Gateway has already verified the Cognito JWT, so the
  * email claim is trusted; the member allowlist then says whether that person belongs.
- * Agent tokens arrive by a different route prefix in Phase 2 and converge on the same
- * Identity shape. Nothing here knows about rings.
+ * Nothing here knows about rings.
  */
-export function cognitoIdentity(db: Db) {
-  return async (event: ApiEvent, log: Logger): Promise<Identity> => {
-    const claims = event.requestContext?.authorizer?.jwt?.claims;
+export function cognitoIdentity(db: Db): Identify {
+  return async (event, log) => {
+    const authorizer = event.requestContext?.authorizer;
+    const claims = authorizer && 'jwt' in authorizer ? authorizer.jwt?.claims : undefined;
     const email = typeof claims?.email === 'string' ? claims.email : undefined;
     if (!email) throw unauthorized('no verified email on the request');
     const member = await findMemberByEmail(db, email);
@@ -29,8 +35,42 @@ export function cognitoIdentity(db: Db) {
     }
     return {
       caller: { kind: 'member', id: member.id, role: member.role },
+      owner: member.id,
       email: member.email,
       displayName: member.displayName,
+    };
+  };
+}
+
+const agentContextSchema = z.object({
+  id: z.uuid(),
+  name: z.string().min(1),
+  scopes: z.string().transform((raw, ctx) => {
+    const parsed = z.array(agentScopeSchema).safeParse(JSON.parse(raw));
+    if (!parsed.success) ctx.addIssue({ code: 'custom', message: 'bad scopes' });
+    return parsed.success ? parsed.data : [];
+  }),
+});
+
+/**
+ * The agents' door: the Lambda authorizer has already hashed and looked up the token, so
+ * its context is trusted the way the JWT claims are. Documents an agent creates belong to
+ * the admin, since `document.owner` is a member and the admin is the one who issued the
+ * token.
+ */
+export function agentIdentity(db: Db): Identify {
+  return async (event) => {
+    const authorizer = event.requestContext?.authorizer;
+    const raw = authorizer && 'lambda' in authorizer ? authorizer.lambda : undefined;
+    const context = agentContextSchema.safeParse(raw);
+    if (!context.success) throw unauthorized('no agent token on the request');
+    const admin = await findAdminMember(db);
+    if (!admin) throw new Error('no admin member to own agent documents');
+    return {
+      caller: { kind: 'agent', id: context.data.id, scopes: context.data.scopes },
+      owner: admin.id,
+      displayName: context.data.name,
+      email: null,
     };
   };
 }

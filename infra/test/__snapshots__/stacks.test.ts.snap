@@ -553,6 +553,152 @@ exports[`ApiStack > matches the snapshot 1`] = `
       },
       "Type": "AWS::IAM::Policy",
     },
+    "AgentAuthorizerFunctionD5801B44": {
+      "DependsOn": [
+        "AgentAuthorizerFunctionServiceRoleDefaultPolicyBA65AC71",
+        "AgentAuthorizerFunctionServiceRoleA92AD3BD",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
+          "S3Key": "<asset-hash>.zip",
+        },
+        "Description": "The Keep: agent token authorizer for /api/agent/* and /mcp",
+        "Environment": {
+          "Variables": {
+            "DB_CLUSTER_ARN": {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:",
+                  {
+                    "Ref": "AWS::Partition",
+                  },
+                  ":rds:us-east-1:697941679713:cluster:",
+                  {
+                    "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                  },
+                ],
+              ],
+            },
+            "DB_NAME": "thekeep",
+            "DB_SECRET_ARN": {
+              "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+            },
+            "NODE_OPTIONS": "--enable-source-maps",
+          },
+        },
+        "Handler": "index.handler",
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "AgentAuthorizerFunctionLogsD221818A",
+          },
+        },
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "AgentAuthorizerFunctionServiceRoleA92AD3BD",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 30,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "AgentAuthorizerFunctionLogsD221818A": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "RetentionInDays": 30,
+      },
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Delete",
+    },
+    "AgentAuthorizerFunctionServiceRoleA92AD3BD": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "AgentAuthorizerFunctionServiceRoleDefaultPolicyBA65AC71": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "rds-data:BatchExecuteStatement",
+                "rds-data:BeginTransaction",
+                "rds-data:CommitTransaction",
+                "rds-data:ExecuteStatement",
+                "rds-data:RollbackTransaction",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":rds:us-east-1:697941679713:cluster:",
+                    {
+                      "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                    },
+                  ],
+                ],
+              },
+            },
+            {
+              "Action": [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "AgentAuthorizerFunctionServiceRoleDefaultPolicyBA65AC71",
+        "Roles": [
+          {
+            "Ref": "AgentAuthorizerFunctionServiceRoleA92AD3BD",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
     "Dashboard9E4231ED": {
       "Properties": {
         "DashboardBody": {
@@ -580,6 +726,10 @@ exports[`ApiStack > matches the snapshot 1`] = `
                 "Ref": "AdminTokensFunction644C1C58",
               },
               "",{"label":"AdminTokensFunction","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
+              {
+                "Ref": "AgentAuthorizerFunctionD5801B44",
+              },
+              "",{"label":"AgentAuthorizerFunction","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
               {
                 "Fn::ImportValue": "Auth:ExportsOutputRefDefineAuthChallengeE7E3BC7B5357E3C6",
               },
@@ -612,6 +762,10 @@ exports[`ApiStack > matches the snapshot 1`] = `
                 "Ref": "AdminTokensFunction644C1C58",
               },
               "",{"label":"AdminTokensFunction","stat":"p95"}],["AWS/Lambda","Duration","FunctionName","",
+              {
+                "Ref": "AgentAuthorizerFunctionD5801B44",
+              },
+              "",{"label":"AgentAuthorizerFunction","stat":"p95"}],["AWS/Lambda","Duration","FunctionName","",
               {
                 "Fn::ImportValue": "Auth:ExportsOutputRefDefineAuthChallengeE7E3BC7B5357E3C6",
               },
@@ -804,6 +958,73 @@ exports[`ApiStack > matches the snapshot 1`] = `
         ],
       },
       "Type": "AWS::IAM::Policy",
+    },
+    "HttpApiAgentAuthorizerE89C6658": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizerPayloadFormatVersion": "2.0",
+        "AuthorizerResultTtlInSeconds": 60,
+        "AuthorizerType": "REQUEST",
+        "AuthorizerUri": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":apigateway:us-east-1:lambda:path/2015-03-31/functions/",
+              {
+                "Fn::GetAtt": [
+                  "AgentAuthorizerFunctionD5801B44",
+                  "Arn",
+                ],
+              },
+              "/invocations",
+            ],
+          ],
+        },
+        "EnableSimpleResponses": true,
+        "IdentitySource": [
+          "$request.header.Authorization",
+        ],
+        "Name": "AgentAuthorizer",
+      },
+      "Type": "AWS::ApiGatewayV2::Authorizer",
+    },
+    "HttpApiApiHttpApiAgentAuthorizer6EE0F10BPermissionE7AE5646": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "AgentAuthorizerFunctionD5801B44",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/authorizers/",
+              {
+                "Ref": "HttpApiAgentAuthorizerE89C6658",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
     },
     "HttpApiCognitoAuthorizer935FA0F6": {
       "Properties": {
@@ -1039,6 +1260,351 @@ exports[`ApiStack > matches the snapshot 1`] = `
                 "Ref": "HttpApiF5A9A8A7",
               },
               "/*/*/api/admin/tokens",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiGETapiagentdocumentsCD4D06F0": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiAgentAuthorizerE89C6658",
+        },
+        "RouteKey": "GET /api/agent/documents",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapiagentdocumentsDocumentsFunctionapiagentdocumentsCD9144E2",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapiagentdocumentsDocumentsFunctionapiagentdocumentsCD9144E2": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapiagentdocumentsDocumentsFunctionapiagentdocumentsPermissionBA3502C4": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/agent/documents",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiGETapiagentdocumentsidAC1A9961": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiAgentAuthorizerE89C6658",
+        },
+        "RouteKey": "GET /api/agent/documents/{id}",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapiagentdocumentsidDocumentsFunctionapiagentdocumentsidCDBD9AA6",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapiagentdocumentsidDocumentsFunctionapiagentdocumentsidCDBD9AA6": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapiagentdocumentsidDocumentsFunctionapiagentdocumentsidPermissionBEEFBC02": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/agent/documents/{id}",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiGETapiagentdocumentsiddiff44A30590": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiAgentAuthorizerE89C6658",
+        },
+        "RouteKey": "GET /api/agent/documents/{id}/diff",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapiagentdocumentsiddiffVersionsFunctionapiagentdocumentsiddiff3F0BE4C2",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapiagentdocumentsiddiffVersionsFunctionapiagentdocumentsiddiff3F0BE4C2": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "VersionsFunction6B40A6D6",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapiagentdocumentsiddiffVersionsFunctionapiagentdocumentsiddiffPermissionE407062E": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "VersionsFunction6B40A6D6",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/agent/documents/{id}/diff",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiGETapiagentdocumentsidversions89CE692B": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiAgentAuthorizerE89C6658",
+        },
+        "RouteKey": "GET /api/agent/documents/{id}/versions",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapiagentdocumentsidversionsVersionsFunctionapiagentdocumentsidversionsC03003F6",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapiagentdocumentsidversionsVersionsFunctionapiagentdocumentsidversionsC03003F6": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "VersionsFunction6B40A6D6",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapiagentdocumentsidversionsVersionsFunctionapiagentdocumentsidversionsPermission4A5DF649": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "VersionsFunction6B40A6D6",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/agent/documents/{id}/versions",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiGETapiagentdocumentsidversionsnumber1DC6EFFC": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiAgentAuthorizerE89C6658",
+        },
+        "RouteKey": "GET /api/agent/documents/{id}/versions/{number}",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapiagentdocumentsidversionsnumberVersionsFunctionapiagentdocumentsidversionsnumberC275A7AA",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapiagentdocumentsidversionsnumberVersionsFunctionapiagentdocumentsidversionsnumberC275A7AA": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "VersionsFunction6B40A6D6",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapiagentdocumentsidversionsnumberVersionsFunctionapiagentdocumentsidversionsnumberPermission70CC15AD": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "VersionsFunction6B40A6D6",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/agent/documents/{id}/versions/{number}",
             ],
           ],
         },
@@ -1511,6 +2077,112 @@ exports[`ApiStack > matches the snapshot 1`] = `
         },
       },
       "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiPOSTapiagentdocumentsC2AE51E1": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiAgentAuthorizerE89C6658",
+        },
+        "RouteKey": "POST /api/agent/documents",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapiagentdocumentsDocumentsFunctionapiagentdocumentsCD9144E2",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiPOSTapiagentdocumentsDocumentsFunctionapiagentdocumentsPermission223BF5F0": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/agent/documents",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiPOSTapiagentdocumentsidversionsA3C09784": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiAgentAuthorizerE89C6658",
+        },
+        "RouteKey": "POST /api/agent/documents/{id}/versions",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapiagentdocumentsidversionsVersionsFunctionapiagentdocumentsidversionsC03003F6",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiPOSTapiagentdocumentsidversionsVersionsFunctionapiagentdocumentsidversionsPermission95689DC1": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "VersionsFunction6B40A6D6",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/agent/documents/{id}/versions",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
     },
     "HttpApiPOSTapidocumentsDA78BBFA": {
       "Properties": {

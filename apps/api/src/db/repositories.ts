@@ -55,6 +55,17 @@ export async function findMemberByEmail(db: Db, email: string): Promise<MemberRo
   return rows[0] ?? null;
 }
 
+/** The one admin (docs/phases/01-spine.md), who owns every document an agent creates. */
+export async function findAdminMember(db: Db): Promise<MemberRow | null> {
+  const rows = await db
+    .select()
+    .from(member)
+    .where(eq(member.role, 'admin'))
+    .orderBy(member.createdAt)
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 // ---------- agent tokens ----------
 
 type AgentTokenRow = typeof agentToken.$inferSelect;

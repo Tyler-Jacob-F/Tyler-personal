@@ -1,14 +1,36 @@
 import type {
   APIGatewayProxyEventV2WithJWTAuthorizer,
+  APIGatewayProxyEventV2WithLambdaAuthorizer,
   APIGatewayProxyStructuredResultV2,
   Context,
 } from 'aws-lambda';
 import { ZodError, type z } from 'zod';
+import type { AgentAuthorizerContext } from '../auth/agent-authorizer.js';
 import { ConflictError, NotFoundError } from '../db/repositories.js';
 import { createLogger, type Logger } from './logger.js';
 
-export type ApiEvent = APIGatewayProxyEventV2WithJWTAuthorizer;
+/** A request through the people's door: the Cognito JWT authorizer verified it. */
+export type MemberEvent = APIGatewayProxyEventV2WithJWTAuthorizer;
+/** A request through the agents' door: the Lambda authorizer looked the token up. */
+export type AgentEvent = APIGatewayProxyEventV2WithLambdaAuthorizer<AgentAuthorizerContext>;
+export type ApiEvent = MemberEvent | AgentEvent;
 export type ApiResult = APIGatewayProxyStructuredResultV2;
+
+/**
+ * Two doors, one set of handlers (docs/DESIGN.md "Implementation notes"). `/api/agent/*`
+ * mirrors `/api/*`; the prefix says which identity middleware runs, and the route key is
+ * normalized so a handler registers each route once.
+ */
+export type Door = 'member' | 'agent';
+export const AGENT_PREFIX = '/api/agent/';
+
+export function doorOf(routeKey: string): { door: Door; routeKey: string } {
+  const [method = '', path = ''] = routeKey.split(' ');
+  if (path.startsWith(AGENT_PREFIX)) {
+    return { door: 'agent', routeKey: `${method} /api/${path.slice(AGENT_PREFIX.length)}` };
+  }
+  return { door: 'member', routeKey };
+}
 
 /** An error the client caused, carried with the status it deserves. */
 export class HttpError extends Error {
@@ -86,8 +108,11 @@ export type Route<TIdentity> = (ctx: RouteContext<TIdentity>) => Promise<ApiResu
 
 export interface ApiOptions<TIdentity> {
   service: string;
-  /** Who is calling; runs before any route. Throw an HttpError to refuse. */
-  identify(event: ApiEvent, log: Logger): Promise<TIdentity>;
+  /**
+   * Who is calling, per door; runs before any route. Throw an HttpError to refuse. A door
+   * with no identifier is closed: a request through it is a 401 whatever the route.
+   */
+  identify: Partial<Record<Door, (event: ApiEvent, log: Logger) => Promise<TIdentity>>>;
   routes: Record<string, Route<TIdentity>>;
 }
 
@@ -103,16 +128,20 @@ export function createApi<TIdentity>({
   routes,
 }: ApiOptions<TIdentity>): ApiHandler {
   return async (event, context) => {
-    const routeKey = event.routeKey ?? event.requestContext?.routeKey ?? '';
+    const requested = event.routeKey ?? event.requestContext?.routeKey ?? '';
+    const { door, routeKey } = doorOf(requested);
     const log = createLogger(service, {
       requestId: event.requestContext?.requestId ?? context?.awsRequestId,
-      route: routeKey,
+      route: requested,
+      door,
     });
     const started = Date.now();
     try {
       const route = routes[routeKey];
       if (!route) throw notFound('route');
-      const identity = await identify(event, log);
+      const identifyAt = identify[door];
+      if (!identifyAt) throw unauthorized(`no ${door} door on this route`);
+      const identity = await identifyAt(event, log);
       const result = await route({
         event,
         identity,

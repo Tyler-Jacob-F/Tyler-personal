@@ -1,6 +1,10 @@
 import * as cdk from 'aws-cdk-lib';
 import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
-import { HttpUserPoolAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
+import {
+  HttpLambdaAuthorizer,
+  HttpLambdaResponseType,
+  HttpUserPoolAuthorizer,
+} from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import type * as cognito from 'aws-cdk-lib/aws-cognito';
@@ -19,15 +23,21 @@ export interface ApiStackProps extends cdk.StackProps {
 }
 
 /**
- * The HTTP API: a Cognito JWT authorizer in front of one Lambda per resource. Every
- * route lives under /api so CloudFront can forward that prefix unchanged. Lambdas reach
- * the database through the Data API, so none of them is in the VPC.
+ * The HTTP API: a Cognito JWT authorizer in front of one Lambda per resource, and a second
+ * door for agents at `/api/agent/*` where a Lambda authorizer looks the bearer token up and
+ * the same Lambdas answer. Every route lives under /api so CloudFront can forward that
+ * prefix unchanged. Lambdas reach the database through the Data API, so none is in the VPC.
  */
 export class ApiStack extends cdk.Stack {
   readonly httpApi: apigwv2.HttpApi;
   /** Hostname of the API's default endpoint, for the CloudFront origin. */
   readonly apiDomainName: string;
-  readonly functions: Record<'me' | 'documents' | 'versions' | 'adminTokens', lambda.IFunction>;
+  readonly functions: Record<
+    'me' | 'documents' | 'versions' | 'adminTokens' | 'agentAuthorizer',
+    lambda.IFunction
+  >;
+  /** The agents' door, for the MCP route to share. */
+  readonly agentAuthorizer: HttpLambdaAuthorizer;
 
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
@@ -65,11 +75,24 @@ export class ApiStack extends cdk.Stack {
       environment,
       timeout,
     });
-    this.functions = { me, documents, versions, adminTokens };
-    for (const fn of [me, documents, versions, adminTokens]) cluster.grantDataApiAccess(fn);
+    const agentAuthorizerFn = apiFunction(this, 'AgentAuthorizerFunction', {
+      entry: 'auth/agent-authorizer.ts',
+      description: `${config.siteName}: agent token authorizer for /api/agent/* and /mcp`,
+      environment,
+      timeout,
+    });
+    this.functions = { me, documents, versions, adminTokens, agentAuthorizer: agentAuthorizerFn };
+    for (const fn of Object.values(this.functions)) cluster.grantDataApiAccess(fn);
 
     const authorizer = new HttpUserPoolAuthorizer('CognitoAuthorizer', userPool, {
       userPoolClients: [userPoolClient],
+    });
+    // Simple responses, keyed on the Authorization header. The cache bounds how long a
+    // revoked token keeps working and how coarse `last_used_at` is: one minute.
+    this.agentAuthorizer = new HttpLambdaAuthorizer('AgentAuthorizer', agentAuthorizerFn, {
+      responseTypes: [HttpLambdaResponseType.SIMPLE],
+      identitySource: ['$request.header.Authorization'],
+      resultsCacheTtl: cdk.Duration.seconds(60),
     });
 
     this.httpApi = new apigwv2.HttpApi(this, 'HttpApi', {
@@ -90,6 +113,14 @@ export class ApiStack extends cdk.Stack {
       ['/api/admin/tokens', [GET, POST], adminTokens],
       ['/api/admin/tokens/{id}', [DELETE], adminTokens],
     ];
+    // The agents' door mirrors the document routes, minus delete: no agent deletes.
+    const agentRoutes: Array<[string, apigwv2.HttpMethod[], lambda.IFunction]> = [
+      ['/api/agent/documents', [GET, POST], documents],
+      ['/api/agent/documents/{id}', [GET], documents],
+      ['/api/agent/documents/{id}/versions', [GET, POST], versions],
+      ['/api/agent/documents/{id}/versions/{number}', [GET], versions],
+      ['/api/agent/documents/{id}/diff', [GET], versions],
+    ];
     for (const [path, methods, fn] of routes) {
       this.httpApi.addRoutes({
         path,
@@ -97,17 +128,19 @@ export class ApiStack extends cdk.Stack {
         integration: new HttpLambdaIntegration(`${fn.node.id}${path.replace(/[^a-z]/gi, '')}`, fn),
       });
     }
+    for (const [path, methods, fn] of agentRoutes) {
+      this.httpApi.addRoutes({
+        path,
+        methods,
+        integration: new HttpLambdaIntegration(`${fn.node.id}${path.replace(/[^a-z]/gi, '')}`, fn),
+        authorizer: this.agentAuthorizer,
+      });
+    }
 
     // https://abc123.execute-api.us-east-1.amazonaws.com -> abc123.execute-api.us-east-1.amazonaws.com
     this.apiDomainName = cdk.Fn.select(2, cdk.Fn.split('/', this.httpApi.apiEndpoint));
 
-    this.dashboard(cluster, [
-      me,
-      documents,
-      versions,
-      adminTokens,
-      ...(props.otherFunctions ?? []),
-    ]);
+    this.dashboard(cluster, [...Object.values(this.functions), ...(props.otherFunctions ?? [])]);
 
     new cdk.CfnOutput(this, 'ApiEndpoint', { value: this.httpApi.apiEndpoint });
   }
