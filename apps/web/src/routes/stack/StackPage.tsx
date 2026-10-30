@@ -1,4 +1,5 @@
 import { type ReactNode, useMemo, useState } from 'react';
+import { AdminNav } from '@/components/AdminNav';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { NODES, TRACES } from '@/routes/stack/data';
@@ -43,8 +44,9 @@ export function StackPage() {
 
   return (
     <div className="grid gap-6">
+      <AdminNav />
       <div>
-        <Eyebrow>tylerfuqua.com · after Phase 2</Eyebrow>
+        <Eyebrow>tylerfuqua.com · after Phase 3</Eyebrow>
         <h1 className="mt-1 page-title">The Keep, under the hood</h1>
         <p className="mt-2 max-w-prose text-muted">
           Five CloudFormation stacks, one domain, two doors (people and agents), nothing always on

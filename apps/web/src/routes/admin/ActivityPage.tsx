@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { useAgentActivity } from '@/api/activity';
+import { AdminNav } from '@/components/AdminNav';
 import { Alert } from '@/components/Alert';
 import { typeLabels } from '@/routes/home/home';
 import { dates } from '@/routes/recipes/format';
@@ -21,9 +22,9 @@ export function ActivityPage() {
 
   return (
     <div className="grid gap-6">
+      <AdminNav />
       <div>
-        <p className="eyebrow">Admin</p>
-        <h1 className="mt-1 page-title">Agent activity</h1>
+        <h1 className="page-title">Agent activity</h1>
         <p className="mt-2 max-w-prose text-sm text-muted">
           Every version an agent token wrote in the last {DAYS} days, newest first. What people
           saved is not here; the home screen&apos;s recent list has both.{' '}

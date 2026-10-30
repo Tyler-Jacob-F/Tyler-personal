@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useCreateToken, useRevokeToken, useTokens, useUpdateToken } from '@/api/tokens';
+import { AdminNav } from '@/components/AdminNav';
 import { Alert } from '@/components/Alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,9 +44,9 @@ export function TokensPage() {
 
   return (
     <div className="grid gap-8">
+      <AdminNav />
       <div>
-        <p className="eyebrow">Admin</p>
-        <h1 className="mt-1 page-title">Agent tokens</h1>
+        <h1 className="page-title">Agent tokens</h1>
         <p className="mt-2 max-w-prose text-sm text-muted">
           Each token is a named agent with the scopes it carries and nothing more. No token can
           promote a document, manage members or manage tokens.

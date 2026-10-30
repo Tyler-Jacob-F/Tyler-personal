@@ -3,8 +3,8 @@ import { NODES, TRACES } from '@/routes/stack/data';
 import { render, screen, userEvent, within } from '@/test/render';
 
 describe('StackPage', () => {
-  it('is reachable from the nav and opens on the overview', async () => {
-    render(<App />, { route: '/' });
+  it('is reachable from the admin row and opens on the overview', async () => {
+    render(<App />, { route: '/admin/activity' });
     expect(await screen.findByRole('link', { name: 'Stack' })).toHaveAttribute('href', '/stack');
     render(<App />, { route: '/stack' });
     expect(
