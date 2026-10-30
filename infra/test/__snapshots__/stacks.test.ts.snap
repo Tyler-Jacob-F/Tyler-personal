@@ -1218,6 +1218,9 @@ exports[`ApiStack > matches the snapshot 1`] = `
           ],
         },
         "EnableSimpleResponses": true,
+        "IdentitySource": [
+          "$request.header.Authorization",
+        ],
         "Name": "AgentAuthorizer",
       },
       "Type": "AWS::ApiGatewayV2::Authorizer",

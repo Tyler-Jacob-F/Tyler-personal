@@ -159,15 +159,18 @@ Each is reversible unless marked.
   (`me`, `admin-*`) answers 401 there whatever the token carries. Documents an agent creates
   are **owned by the admin** (`document.owner` is a member); the version's author is the
   token. No agent route for delete exists.
-- **Authorizer:** simple responses, invoked on every request, no identity source and no
-  result cache. It accepts the token as `Authorization: Bearer keep_…` (Claude Code, curl)
-  or as `X-Keep-Token: keep_…` (Cowork): claude.ai's connector dialog writes its own
-  `Authorization` header over the one typed into it (found Oct 30 from the authorizer
-  log: the header arrived, the token did not), and API Gateway can key a cache on one
-  header only, so the cache went. A revoke now takes effect at once and `last_used_at` is
-  exact; the cost is one hash lookup per request. A refusal logs the shape of what arrived
-  (header, scheme, length), never the value. Same memory and timeout as the route Lambdas
-  (512 MB, 30 s), since it too may wake the cluster.
+- **Authorizer:** simple responses, identity source `Authorization`, no result cache. It
+  accepts the token as `Authorization: Bearer keep_…` or bare (Claude Code, curl) or as
+  `X-Keep-Token: keep_…` (Cowork): claude.ai's connector sends an `Authorization` header
+  that is not the one typed into it (found Oct 30 from the authorizer log: the header
+  arrived, the token did not), and API Gateway can key a cache on one header only, so the
+  cache went. The identity source stays, because a request with no `Authorization` at all
+  must get the gateway's 401, not a simple-response 403: MCP clients and the connector
+  dialog read 401 as "needs a credential" and 403 as "no server here" (tried briefly on
+  Oct 30; the dialog said "server not found"). A revoke takes effect at once and
+  `last_used_at` is exact; the cost is one hash lookup per request. A refusal logs the
+  shape of what arrived (header, scheme, length), never the value. Same memory and timeout
+  as the route Lambdas (512 MB, 30 s), since it too may wake the cluster.
 - **MCP:** `@modelcontextprotocol/sdk` 1.32.2, Streamable HTTP, stateless, JSON responses;
   anything but POST is a 405 before the transport sees it (a stateless server has no SSE
   stream to open and a Lambda would hold it to its timeout). One `McpServer` per request.
@@ -208,8 +211,9 @@ What a fresh session should know that the files alone do not say.
 - **Only Tyler does these,** and the directive should ask at the right moment: create
   the three tokens in the admin UI after the Admin tokens PR deploys; add the Cowork
   custom connector (URL `https://tylerfuqua.com/mcp`, Authentication "No sign-in",
-  Request header `X-Keep-Token` with the value `keep_…`, since the platform overwrites
-  `Authorization`); run the import from
+  two request headers: `Authorization` with `Bearer keep_…` and `X-Keep-Token` with the
+  bare `keep_…`, because the platform rewrites the first and the gateway requires it);
+  run the import from
   his machine, where the recipe folder lives; set up the scheduled Claude Code task for
   the brief; and check whether Duet can present a header.
 - **Loose ends worth knowing.** `0004_import_chili_lineage` is the one content import by

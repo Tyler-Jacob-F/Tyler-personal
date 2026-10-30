@@ -30,9 +30,10 @@ export type AgentAuthorizer = (
 const deny: APIGatewaySimpleAuthorizerResult = { isAuthorized: false };
 
 /**
- * The second way in: a header no intermediary rewrites. claude.ai's connector dialog sends
- * its own `Authorization` header over the one typed into it (Oct 30), so Cowork presents the
- * token as `X-Keep-Token: keep_…` instead. Claude Code and curl keep using `Authorization`.
+ * The second way in: a header no intermediary rewrites. claude.ai's connector sends an
+ * `Authorization` header that is not the one typed into it (Oct 30), so Cowork presents the
+ * token as `X-Keep-Token: keep_…` as well. Some `Authorization` header must still be
+ * present, since it is the gateway's identity source; the connector supplies one.
  */
 export const TOKEN_HEADER = 'x-keep-token';
 
@@ -91,8 +92,9 @@ export function presentedToken(headers: Record<string, string | undefined> = {})
 
 /**
  * The agents' door (docs/DESIGN.md "Auth and access rings"): the Lambda authorizer on
- * `/api/agent/*` and `/mcp`, invoked on every request (no identity source, no result
- * cache, so a revoke takes effect at once). Hash the presented secret, look it up, refuse
+ * `/api/agent/*` and `/mcp`, invoked on every request that carries an `Authorization`
+ * header (no result cache, so a revoke takes effect at once; without the header the
+ * gateway answers 401 by itself). Hash the presented secret, look it up, refuse
  * a revoked or unknown token, record the use, and pass `{ id, name, scopes }` on as
  * context. It never sees a document and knows nothing about rings; that is the permission
  * middleware's job.
