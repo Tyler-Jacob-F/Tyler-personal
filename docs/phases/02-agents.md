@@ -22,9 +22,11 @@ token is recorded as author, and the admin UI's agent activity view shows the ru
   the REST routes use and calls them in-process with the agent `caller`, so there is one
   validation path and no second cold start. This honors the brief's "MCP wrapping the
   public API" by sharing code rather than by an HTTP hop; flagged, reversible.
-- **Duet is on a waitlist.** Nothing in this phase assumes it. The "always on" producer
-  for the morning brief is a scheduled Claude Code task holding a `write:briefs` token;
-  Duet takes over the same token when it can present a header.
+- **Duet arrived Oct 30.** Nothing in this phase is Duet-specific. The "always on"
+  producer for the morning brief is a scheduled Claude Code task holding a
+  `write:briefs` token; Duet takes over the same token the day it can present a bearer
+  header to a custom connector, which is the first thing to check once the MCP server is
+  up. If it cannot, that is the one reason to revisit OAuth, in a later phase.
 - **The refresh token is remembered in the browser** (decided Oct 29, after a week of
   typing codes): a reload restores the session silently, sign-out revokes the token at
   Cognito and forgets it, and the sign-in form prefills the last email. The id and access
@@ -34,6 +36,19 @@ token is recorded as author, and the admin UI's agent activity view shows the ru
   `write:briefs`, `write:notes`, `read:reading`). The permission middleware learns to map
   a write to a document type onto its scope; Phase 1's placeholder `write:documents`
   goes away.
+
+## Decided (Oct 30, 2026)
+
+The three items the first draft reserved for Tyler, answered as proposed:
+
+- **Token format:** `keep_` followed by 32 random bytes as base64url (43 characters after
+  the prefix), shown once at creation, stored as its SHA-256 hash, never recoverable.
+  Fixed from the first token issued.
+- **MCP URL:** `https://tylerfuqua.com/mcp`.
+- **First tokens:** `importer` with `write:recipes` (and `read:documents`, so it can
+  check what exists), `cowork` with `read:documents write:recipes write:notes`, and
+  `brief-writer` with `write:briefs`. Each is created in the admin UI, pasted once into
+  its home, and never shown again.
 
 ## In scope
 
@@ -54,11 +69,12 @@ token is recorded as author, and the admin UI's agent activity view shows the ru
   the scheduled task; the task's prompt and setup are a runbook, not code.
 - Agent activity: the admin UI lists recent versions authored by agents, separately
   from human activity, with the token name and time.
-- Importer runbook: `docs/runbooks/import-recipes.md` and `tools/pages-text.py` (the
-  dependency-free Pages unpacker from Phase 1), the ordering rule (oldest first, a
-  re-export is not a version, the file's own date goes in `authoredAt`), and the one-line
-  Claude Code command that adds the MCP server with the token from an environment
-  variable. The gate is running it.
+- Importer runbook: `docs/runbooks/import-recipes.md`, using `tools/pages-text.py`
+  (already in the repo: prints a Pages document's text with no dependencies) and
+  `pdftotext` for PDFs, the ordering rule (oldest first, a re-export is not a version,
+  the file's own date goes in `authoredAt`), and the one-line Claude Code command that
+  adds the MCP server with the token from an environment variable. The gate is running
+  it from Tyler's machine, where the folder is.
 - Tests travel with code as before; CDK snapshots for the authorizer, the new Lambda and
   the CloudFront behavior.
 
@@ -114,12 +130,9 @@ Each is one PR, in this order.
 
 **Ask Tyler** (cannot be undone or is reserved by the brief):
 
-- **Token format**, fixed once the first token exists: proposed `keep_` followed by 32
-  random bytes as base64url (43 characters), shown once at creation, stored as its
-  SHA-256 hash, never recoverable.
-- **The MCP URL**, a public address: proposed `https://tylerfuqua.com/mcp`.
-- The names and scopes of the first tokens (an importer with `write:recipes`, a Cowork
-  connector, a brief writer with `write:briefs`).
+- Nothing is open before the first PR; the three questions above were answered Oct 30.
+  Raise anything new that fits the rule: a table or column change after it ships, a
+  public URL, a token format change.
 
 **Decide and flag in the PR description:**
 
@@ -129,3 +142,27 @@ Each is one PR, in this order.
 - The `brief` sections shape and how "today" is chosen on the home screen.
 - Which Claude Code environment holds the brief writer's token and on what schedule.
 - The agent activity view's window and ordering.
+
+## Handoff (Oct 30, 2026)
+
+What a fresh session should know that the files alone do not say.
+
+- **State of the world.** Phase 1 is true in production: sign in by emailed code (the
+  session now survives reloads), recipes with versions and diffs, the chili lineage
+  imported, a Stack page at `/stack` that explains the system. Every stack deploys from
+  `main` through GitHub Actions; the first request after the cluster pauses can take up
+  to a minute, and the migration runner waits for it.
+- **Start here.** Read `CLAUDE.md`, `docs/DESIGN.md`, `docs/phases/01-spine.md` (its
+  "Decided during implementation" section is the map of what exists and why), then this
+  file. Work on your own branch; one PR per deliverable, in the order above; `cdk diff`
+  posts on every PR; merging deploys.
+- **Only Tyler does these,** and the directive should ask at the right moment: create
+  the three tokens in the admin UI after the Admin tokens PR deploys; add the Cowork
+  custom connector (URL `https://tylerfuqua.com/mcp`, Authentication "No sign-in",
+  Request header `authorization` with the value `Bearer keep_…`); run the import from
+  his machine, where the recipe folder lives; set up the scheduled Claude Code task for
+  the brief; and check whether Duet can present a header.
+- **Loose ends worth knowing.** `0004_import_chili_lineage` is the one content import by
+  migration and is marked the exception; do not add another. The Stack page
+  (`apps/web/src/routes/stack`) should gain an agents lane when the MCP Lambda exists.
+  The permission middleware's `write:documents` is a placeholder this phase replaces.
