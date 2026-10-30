@@ -82,7 +82,15 @@ export function createApiClient(getToken: TokenSource, base = config.apiBase) {
         `Request failed (${response.status})`,
       );
     }
-    return schema.parse(data);
+    const parsed = schema.safeParse(data);
+    if (!parsed.success) {
+      throw new ApiRequestError(
+        response.status,
+        'bad_response',
+        'The server answered in a shape this page does not understand. Reload; if it persists, the app and the API are out of step.',
+      );
+    }
+    return parsed.data;
   };
 }
 

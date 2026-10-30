@@ -150,7 +150,7 @@ function CreateTokenForm({ onCreated }: { onCreated(issued: CreateAgentTokenResp
           }
         })}
       >
-        <h2 className="text-base font-semibold tracking-tight">New token</h2>
+        <h2 className="font-serif text-xl font-medium text-text-strong">New token</h2>
         {error && <Alert tone="danger">{error}</Alert>}
         <FormField
           control={form.control}
@@ -208,11 +208,11 @@ function IssuedPanel({ issued, onDone }: { issued: CreateAgentTokenResponse; onD
   return (
     <section
       aria-label="New token secret"
-      className="grid gap-4 rounded-lg border border-accent bg-surface p-5"
+      className="grid gap-4 rounded-lg border border-border bg-surface p-5"
     >
       <div>
-        <h2 className="text-base font-semibold tracking-tight">
-          <span className="font-mono">{issued.token.name}</span> is ready
+        <h2 className="font-serif text-xl font-medium text-text-strong">
+          <span className="font-mono text-lg">{issued.token.name}</span> is ready
         </h2>
         <p className="mt-1 text-sm">
           Copy the secret now and paste it into its home. It is shown once and cannot be recovered;

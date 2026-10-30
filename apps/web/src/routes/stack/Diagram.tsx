@@ -496,7 +496,7 @@ export function Diagram({ selected, litNodes, litEdges, tracing, onSelect }: Dia
           MCP server
         </text>
         <text className="fill-muted text-[10.5px]" x="804" y="454" textAnchor="middle">
-          Lambda · /mcp, four tools
+          Lambda · /mcp, six tools
         </text>
       </g>
       <g

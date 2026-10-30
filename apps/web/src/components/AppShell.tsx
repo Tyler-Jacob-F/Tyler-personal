@@ -71,7 +71,7 @@ export function AppShell() {
           <Link
             to="/"
             className={cn(
-              'mr-2 inline-flex h-11 items-center gap-2 rounded-md px-1 font-serif text-xl font-medium text-text-strong',
+              'mr-2 inline-flex h-11 shrink-0 items-center gap-2 rounded-md px-1 font-serif text-xl font-medium whitespace-nowrap text-text-strong',
               focusRing,
             )}
           >

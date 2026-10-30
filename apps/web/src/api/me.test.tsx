@@ -33,6 +33,14 @@ describe('useMe', () => {
     expect(authorization).toBe('Bearer test-id-token');
   });
 
+  it('says so, readably, when the body does not fit the schema', async () => {
+    server.use(http.get('/api/me', () => HttpResponse.json({ caller: 'nobody' })));
+    render(<Me />);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /shape this page does not understand/,
+    );
+  });
+
   it('turns an API error body into a readable error', async () => {
     server.use(
       http.get('/api/me', () =>
