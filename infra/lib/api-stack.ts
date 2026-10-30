@@ -107,14 +107,17 @@ export class ApiStack extends cdk.Stack {
     const authorizer = new HttpUserPoolAuthorizer('CognitoAuthorizer', userPool, {
       userPoolClients: [userPoolClient],
     });
-    // Simple responses, invoked on every request: no identity source and no result cache,
-    // because the token may arrive as `Authorization: Bearer …` (Claude Code, curl) or as
-    // `X-Keep-Token: …` (Cowork, whose platform overwrites Authorization), and API Gateway
-    // can key a cache on one header only. A revoke therefore takes effect at once, and
-    // `last_used_at` is exact; the cost is one hash lookup per request.
+    // Simple responses. The identity source stays `Authorization` so a request with no
+    // header at all gets the gateway's 401, which is what MCP clients (and claude.ai's
+    // connector dialog) read as "needs a credential"; a simple-response deny is a 403, which
+    // they read as "no server here". The token itself may arrive in `Authorization` (Claude
+    // Code, curl) or in `X-Keep-Token` (Cowork, whose platform writes its own
+    // Authorization), so results are not cached: a cache keyed on one header would serve
+    // the other's answer. A revoke therefore takes effect at once and `last_used_at` is
+    // exact; the cost is one hash lookup per request.
     this.agentAuthorizer = new HttpLambdaAuthorizer('AgentAuthorizer', agentAuthorizerFn, {
       responseTypes: [HttpLambdaResponseType.SIMPLE],
-      identitySource: [],
+      identitySource: ['$request.header.Authorization'],
       resultsCacheTtl: cdk.Duration.seconds(0),
     });
 
@@ -163,11 +166,6 @@ export class ApiStack extends cdk.Stack {
         authorizer: this.agentAuthorizer,
       });
     }
-
-    // An empty identity source is "none" to CloudFormation only when the property is absent.
-    const authorizerResource = this.httpApi.node.findChild('AgentAuthorizer').node
-      .defaultChild as apigwv2.CfnAuthorizer;
-    authorizerResource.addPropertyDeletionOverride('IdentitySource');
 
     // https://abc123.execute-api.us-east-1.amazonaws.com -> abc123.execute-api.us-east-1.amazonaws.com
     this.apiDomainName = cdk.Fn.select(2, cdk.Fn.split('/', this.httpApi.apiEndpoint));
