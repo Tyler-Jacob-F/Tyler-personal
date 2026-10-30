@@ -30,10 +30,9 @@ export type AgentAuthorizer = (
 const deny: APIGatewaySimpleAuthorizerResult = { isAuthorized: false };
 
 /**
- * The second way in: a header no intermediary rewrites. claude.ai's connector sends an
- * `Authorization` header that is not the one typed into it (Oct 30), so Cowork presents the
- * token as `X-Keep-Token: keep_…` as well. Some `Authorization` header must still be
- * present, since it is the gateway's identity source; the connector supplies one.
+ * A second header name, for a client whose platform rewrites `Authorization`. claude.ai
+ * turned out not to allow it in a custom connector (its header names are allowlisted), so
+ * Cowork uses `Authorization` with the bare token; the name stays for the next client.
  */
 export const TOKEN_HEADER = 'x-keep-token';
 
@@ -45,9 +44,13 @@ export interface PresentedToken {
   shape: string;
 }
 
-/** `Authorization: Bearer keep_…` → `keep_…`; anything else is nothing. */
+/**
+ * `Authorization: Bearer keep_…` → `keep_…`; anything else is nothing. The space is
+ * optional because claude.ai's connector dialog strips whitespace from header values and
+ * sends `Bearerkeep_…` (Oct 30, found from a `shape` of "bare value, length 54").
+ */
 export function bearerToken(header: string | undefined): string | undefined {
-  const match = /^Bearer\s+(\S+)$/i.exec(header?.trim() ?? '');
+  const match = /^Bearer\s*(\S+)$/i.exec(header?.trim() ?? '');
   return match?.[1];
 }
 
