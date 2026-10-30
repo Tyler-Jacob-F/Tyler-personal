@@ -15,10 +15,10 @@ function show(value: unknown): string {
 function FrontmatterChanges({ changes }: { changes: FrontmatterChange[] }) {
   if (changes.length === 0) return <p className="text-sm text-muted">No changes to the details.</p>;
   return (
-    <dl className="divide-y divide-border rounded-lg border border-border text-sm">
+    <dl className="divide-y divide-border border-y border-border text-sm">
       {changes.map((c) => (
-        <div key={c.key} className="grid gap-1 px-4 py-3 md:grid-cols-[8rem_1fr]">
-          <dt className="font-medium">
+        <div key={c.key} className="grid gap-1 py-3 md:grid-cols-[8rem_1fr]">
+          <dt className="font-semibold text-text-strong">
             {c.key} <span className="text-xs font-normal text-muted">{c.change}</span>
           </dt>
           <dd className="grid gap-1">
@@ -48,10 +48,12 @@ function IngredientChanges({ groups }: { groups: IngredientGroupDiff[] }) {
       {changed.map((group, g) => (
         <div key={g} className="rounded-lg border border-border text-sm">
           <div className="flex items-baseline justify-between border-b border-border px-3 py-2">
-            <span className="font-semibold">{group.heading ?? 'Ingredients'}</span>
+            <span className="font-serif text-base font-semibold text-text-strong">
+              {group.heading ?? 'Ingredients'}
+            </span>
             <span className="text-xs text-muted">{group.change}</span>
           </div>
-          <ul>
+          <ul className="py-1 font-mono text-[13px]">
             {group.lines.map((line, i) => (
               <li key={i} className={cn('px-3 py-0.5', lineStyles[line.kind])}>
                 <span className="mr-2 inline-block w-3 text-muted">

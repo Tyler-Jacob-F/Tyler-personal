@@ -36,29 +36,24 @@ export function RecipeHistory() {
         )}
       </div>
 
-      <ol className="divide-y divide-border rounded-lg border border-border">
+      <ol className="divide-y divide-border border-y border-border">
         {items.map((version) => (
-          <li
-            key={version.id}
-            className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3 text-sm"
-          >
-            <div>
-              <span className="font-medium">v{version.number}</span>
-              <span className="ml-2 text-muted">{version.summary || 'no summary'}</span>
-            </div>
-            <div className="flex items-center gap-3 text-xs text-muted">
-              <span>
+          <li key={version.id} className="grid gap-1 py-4 text-[15px]">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <span className="font-semibold text-text-strong tabular-nums">v{version.number}</span>
+              <span className="text-[13px] text-muted">
                 {version.author.name} · {dates(version)}
               </span>
-              {version.number > 1 && (
-                <Link
-                  to={`/recipes/${id}/diff?from=${version.number - 1}&to=${version.number}`}
-                  className="text-text hover:underline"
-                >
-                  Diff from v{version.number - 1}
-                </Link>
-              )}
             </div>
+            <p className="reading max-w-none text-[17px]">{version.summary || 'no summary'}</p>
+            {version.number > 1 && (
+              <Link
+                to={`/recipes/${id}/diff?from=${version.number - 1}&to=${version.number}`}
+                className="w-fit text-sm text-muted underline decoration-border-strong underline-offset-[3px] hover:text-text"
+              >
+                Diff from v{version.number - 1}
+              </Link>
+            )}
           </li>
         ))}
       </ol>

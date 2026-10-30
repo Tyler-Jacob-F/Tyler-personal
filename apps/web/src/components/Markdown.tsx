@@ -48,13 +48,27 @@ const reading: Components = {
   ul: (p) => <ul className="mt-4 list-disc space-y-2 pl-6 first:mt-0" {...p} />,
 };
 
+/** The method: the reading measure with step numbers set off to the left in muted figures. */
+const method: Components = {
+  ...reading,
+  ol: (p) => (
+    <ol className="mt-4 grid list-none gap-4 pl-0 [counter-reset:step] first:mt-0" {...p} />
+  ),
+  li: (p) => (
+    <li
+      className="relative pl-9 [counter-increment:step] before:absolute before:top-[0.35em] before:left-0 before:font-sans before:text-[13px] before:text-muted before:tabular-nums before:content-[counter(step)]"
+      {...p}
+    />
+  ),
+};
+
 /** A single line of markdown with no block wrapper, for table-like rows. */
 const inline: Components = {
   ...shared,
   p: (p) => <span {...p} />,
 };
 
-const variants = { ui, reading, inline } as const;
+const variants = { ui, reading, method, inline } as const;
 
 export function Markdown({
   children,

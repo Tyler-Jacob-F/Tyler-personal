@@ -188,23 +188,76 @@ describe('NewRecipe', () => {
 });
 
 describe('RecipeDetail', () => {
-  it('shows the current version with its details, ingredients and method', async () => {
-    server.use(http.get(`/api/documents/${ids.doc}`, () => HttpResponse.json(recipeDoc(version2))));
+  it('shows the recipe of the contract: headnote, provenance, facets, times, proven, ingredients beside the method, Changed in vN, the version line', async () => {
+    server.use(
+      http.get(`/api/documents/${ids.doc}`, () =>
+        HttpResponse.json(
+          recipeDoc(
+            {
+              ...version2,
+              body: 'A pot for a cold Saturday.\n\n# Chili\n\nBrown the beef.\nStir in smoked paprika.\n',
+            },
+            [...chiliTags, 'flag:kid-approved'],
+          ),
+        ),
+      ),
+    );
     render(<App />, { route: `/recipes/${ids.doc}` });
     expect(await screen.findByRole('heading', { name: 'Chili', level: 1 })).toBeInTheDocument();
-    expect(screen.getByText(/v2 · Tyler · written Jan 31, 2025 · entered/)).toBeInTheDocument();
+    expect(screen.getByText('A pot for a cold Saturday.').closest('div')).toHaveClass('italic');
+    expect(screen.getByText('Provenance · Steve’s card, 2014')).toBeInTheDocument();
+    const facets = screen.getByRole('list', { name: 'Facets' });
+    expect(
+      within(facets)
+        .getAllByRole('link')
+        .map((a) => a.textContent),
+    ).toEqual(['Main', 'Beef', 'Project', 'Cookoff', 'Kid-approved']);
+    expect(within(facets).getByRole('link', { name: 'Beef' })).toHaveAttribute(
+      'href',
+      '/recipes?tags=main%3Abeef',
+    );
+    expect(screen.getByText('Active').nextSibling).toHaveTextContent('20 min');
+    expect(screen.getByText('Total').nextSibling).toHaveTextContent('3 h');
+    expect(screen.getByText('Serves').nextSibling).toHaveTextContent('8');
+    expect(screen.getByText('Proven')).toHaveClass('text-text-strong');
+    expect(screen.getByText(/cooked 3 times · last 1 Feb/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Meats' })).toBeInTheDocument();
-    expect(screen.getByText('1 tsp smoked paprika')).toBeInTheDocument();
+    const paprika = screen.getByText('smoked paprika');
+    expect(paprika.previousSibling).toHaveTextContent('1 tsp');
     expect(screen.getByRole('heading', { name: 'Chili', level: 2 })).toBeInTheDocument();
     expect(screen.getByText(/Stir in smoked paprika/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
-      'href',
-      `/recipes/${ids.doc}/edit`,
-    );
+    expect(screen.getByText('Changed in v2')).toBeInTheDocument();
+    expect(screen.getByText('added smoked paprika')).toBeInTheDocument();
+    expect(
+      screen.getByText(/v2 · Tyler · written Jan 2025 · entered Oct 2026/),
+    ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'History' })).toHaveAttribute(
       'href',
       `/recipes/${ids.doc}/history`,
     );
+    expect(screen.getByRole('link', { name: 'History' })).toHaveClass('text-accent');
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'href',
+      `/recipes/${ids.doc}/edit`,
+    );
+    const article = screen.getByRole('article');
+    expect(within(article).getByRole('link', { name: 'Recipes' })).toHaveAttribute(
+      'href',
+      '/recipes',
+    );
+    // The accent appears once on the page.
+    expect(article.querySelectorAll('.text-accent, .bg-accent, .border-accent')).toHaveLength(1);
+  });
+
+  it('says Untested, in italic muted, for a version never cooked, and shows no provenance line without one', async () => {
+    server.use(http.get(`/api/documents/${ids.doc}`, () => HttpResponse.json(recipeDoc(version1))));
+    render(<App />, { route: `/recipes/${ids.doc}` });
+    await screen.findByRole('heading', { name: 'Chili', level: 1 });
+    expect(screen.getByText('Untested')).toHaveClass('italic');
+    expect(screen.queryByText('Proven')).toBeNull();
+    expect(screen.queryByText(/Provenance/)).toBeNull();
+    expect(screen.queryByText(/Changed in/)).toBeNull();
+    expect(screen.queryByRole('list', { name: 'Facets' })).toBeNull();
   });
 
   it('shows the API error for a missing recipe', async () => {
@@ -267,7 +320,7 @@ describe('EditRecipe', () => {
       }),
     );
     await waitFor(() => expect(put).toEqual({ tags: ['course:main', 'season:winter', 'camping'] }));
-    expect(await screen.findByText(/v2 · Tyler/)).toBeInTheDocument();
+    expect(await screen.findByText(/v2 · Tyler · /)).toBeInTheDocument();
   });
 
   it('writes no tag change when the set is unchanged', async () => {
