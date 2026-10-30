@@ -170,6 +170,42 @@ describe('/api/agent/documents', () => {
     expect(del.statusCode).toBe(403);
   });
 
+  it('lets a writing token set tags through its door, and holds a reader to reading', async () => {
+    const documents = buildDocuments(t.db);
+    const created = bodyOf<DocumentWithVersion>(
+      await documents(fakeEvent({ method: 'POST', route: '/api/documents', body: create })),
+    );
+    const id = created.document.id;
+    const tagged = await documents(
+      fakeEvent({
+        method: 'PUT',
+        route: '/api/agent/documents/{id}/tags',
+        params: { id },
+        body: { tags: ['course:main', 'main:beef', 'effort:project', 'occasion:cookoff'] },
+        agent: importer,
+      }),
+    );
+    expect(tagged.statusCode).toBe(200);
+    expect(bodyOf<DocumentWithVersion>(tagged).document.tags).toEqual([
+      'course:main',
+      'main:beef',
+      'effort:project',
+      'occasion:cookoff',
+    ]);
+    const refused = await documents(
+      fakeEvent({
+        method: 'PUT',
+        route: '/api/agent/documents/{id}/tags',
+        params: { id },
+        body: { tags: [] },
+        agent: reader,
+      }),
+    );
+    expect(refused.statusCode).toBe(403);
+    // Still version 1: tagging writes no version.
+    expect(bodyOf<DocumentWithVersion>(tagged).version.number).toBe(1);
+  });
+
   it('lets write:briefs post a brief and nothing else, titled from its date', async () => {
     const documents = buildDocuments(t.db);
     const res = await documents(

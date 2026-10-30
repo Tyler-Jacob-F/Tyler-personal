@@ -6,6 +6,8 @@ import {
   type DocumentWithVersion,
   documentTypes,
   listDocumentsQuerySchema,
+  recipeTaxonomyGuide,
+  setTagsRequestSchema,
   typeGuides,
   type Version,
 } from '@the-keep/shared';
@@ -20,10 +22,11 @@ import {
   createVersionFor,
   getDocumentFor,
   listDocumentsFor,
+  setTagsFor,
 } from '../services/documents.js';
 
 export const SERVER_NAME = 'the-keep';
-export const SERVER_VERSION = '0.2.0';
+export const SERVER_VERSION = '0.3.0';
 
 const idField = z
   .uuid()
@@ -37,6 +40,8 @@ const instructions = [
   'Nothing here can make a document public; that is a human click in the admin UI. Use',
   'list_documents before create_document so an existing recipe gets a version instead of a',
   'duplicate. When importing an older file, pass authoredAt as the date the content was written.',
+  'Facets and flags are tags on the document, not frontmatter: set_tags replaces the whole set',
+  'without writing a version.',
 ].join(' ');
 
 /** A model-sized view of a document: identity and the current version's facts, not its body. */
@@ -196,6 +201,30 @@ export function createKeepServer(db: Db, identity: Identity, log: Logger): McpSe
       attempt(async () => {
         const version = await createVersionFor(db, identity, id, body, log);
         return ok(`Saved version ${version.number} of ${id}.`, versionView(version));
+      }),
+  );
+
+  server.registerTool(
+    'set_tags',
+    {
+      title: 'Set a document’s tags',
+      description:
+        'Replace the whole tag set on a document, by id. Tags are facts about the document ' +
+        'rather than about a version, so this writes no version: the change is recorded with ' +
+        'your token’s name and shows in the admin’s activity view as "tagged". Pass every tag ' +
+        'the document should have, since what you send replaces what is there; read the ' +
+        'document first to keep tags you are not changing. Tags are validated against the ' +
+        'type’s vocabulary and an unknown value is refused with the list of what is allowed. ' +
+        'Nothing here changes the ring. Needs write:<type>s for the document’s type.\n' +
+        recipeTaxonomyGuide(),
+      inputSchema: setTagsRequestSchema.extend({ id: idField }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    ({ id, tags }) =>
+      attempt(async () => {
+        const updated = await setTagsFor(db, identity, id, { tags }, log);
+        const view = summarize(updated);
+        return ok(`Tagged ${view.type} "${view.title}": ${view.tags.join(' ') || '(none)'}.`, view);
       }),
   );
 

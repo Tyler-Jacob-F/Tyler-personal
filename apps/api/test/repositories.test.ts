@@ -7,16 +7,18 @@ import {
   listDocuments,
   listVersions,
   type NewDocument,
+  setDocumentTags,
   softDeleteDocument,
 } from '../src/db/repositories.js';
+import * as schema from '../src/db/schema.js';
 import { toIso } from '../src/db/time.js';
 import { adminId, testDb, type TestDb } from './helpers/db.js';
 
 const chili = {
   title: 'Chili',
-  servings: 8,
-  prepMinutes: 20,
-  cookMinutes: 180,
+  serves: 8,
+  activeMinutes: 20,
+  totalMinutes: 180,
   ingredients: ['2 lb ground chuck', '1 onion'],
 };
 
@@ -103,6 +105,35 @@ describe('documents', () => {
 
   it('returns null for an unknown id', async () => {
     expect(await getDocument(t.db, '00000000-0000-0000-0000-000000000000')).toBeNull();
+  });
+});
+
+describe('tags', () => {
+  it('replaces the set and records who changed it, append-only', async () => {
+    const db = t.db;
+    const created = await createDocument(db, newDoc({ tags: ['camping'] }));
+    const updated = await setDocumentTags(db, created.document.id, ['course:main'], {
+      kind: 'member',
+      id: owner,
+    });
+    expect(updated.document.tags).toEqual(['course:main']);
+    expect(updated.version.number).toBe(1);
+    const rows = await db.select().from(schema.tagChange);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      documentId: created.document.id,
+      tags: ['course:main'],
+      previousTags: ['camping'],
+      authorMemberId: owner,
+      authorAgentTokenId: null,
+    });
+    await expect(db.delete(schema.tagChange)).rejects.toThrow(/append-only|tag_change/);
+    await expect(
+      setDocumentTags(db, '00000000-0000-0000-0000-000000000000', [], {
+        kind: 'member',
+        id: owner,
+      }),
+    ).rejects.toThrow(/not found/);
   });
 });
 

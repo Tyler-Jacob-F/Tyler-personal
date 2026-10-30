@@ -66,6 +66,13 @@ export const createVersionRequestSchema = z.object({
 });
 export type CreateVersionRequest = z.infer<typeof createVersionRequestSchema>;
 
+/**
+ * Replace a document's tags (`PUT /api/documents/{id}/tags`, the `set_tags` tool). The full
+ * set, validated against the type's vocabulary server-side; no version is written.
+ */
+export const setTagsRequestSchema = z.object({ tags: tagsSchema });
+export type SetTagsRequest = z.infer<typeof setTagsRequestSchema>;
+
 export const listVersionsResponseSchema = z.object({
   items: z.array(versionSchema),
 });

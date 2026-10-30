@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useCreateDocument } from '@/api/documents';
 import { RecipeForm } from '@/routes/recipes/RecipeForm';
-import { emptyRecipe, toFrontmatter } from '@/routes/recipes/recipe-form';
+import { emptyRecipe, toFrontmatter, toTags } from '@/routes/recipes/recipe-form';
 
 export function NewRecipe() {
   const navigate = useNavigate();
@@ -24,7 +24,7 @@ export function NewRecipe() {
               frontmatter: toFrontmatter(values),
               body: values.body,
               summary: values.summary,
-              tags: [],
+              tags: toTags(values),
               authoredAt: values.authoredAt,
             });
             navigate(`/recipes/${created.document.id}`);

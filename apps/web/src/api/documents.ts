@@ -84,6 +84,21 @@ export function useCreateVersion(id: string) {
   });
 }
 
+/** Replace the document's tags; no version is written. */
+export function useSetTags(id: string) {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (tags: string[]) =>
+      api(`/api/documents/${id}/tags`, {
+        method: 'PUT',
+        body: { tags },
+        schema: documentWithVersionSchema,
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: documentKeys.all }),
+  });
+}
+
 export function useDeleteDocument() {
   const api = useApi();
   const queryClient = useQueryClient();

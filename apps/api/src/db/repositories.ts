@@ -12,7 +12,7 @@ import { slugify } from '@the-keep/shared';
 import { and, desc, eq, gte, isNotNull, isNull, like, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { Db } from './client.js';
-import { agentToken, document, member, version } from './schema.js';
+import { agentToken, document, member, tagChange, version } from './schema.js';
 import { toIso } from './time.js';
 
 export type MemberRow = typeof member.$inferSelect;
@@ -173,9 +173,9 @@ export interface AgentActivityOptions {
 }
 
 /**
- * Versions written by agents, newest first, within a window. Deleted documents stay in
- * the list (an agent's work is history even after a soft delete); the admin view links to
- * the document, which 404s if it is gone.
+ * What agents did, newest first, within a window: versions they wrote and tag sets they
+ * replaced (two row kinds). Deleted documents stay in the list (an agent's work is history
+ * even after a soft delete); the admin view links to the document, which 404s if it is gone.
  *
  * The cutoff is computed here rather than as `now() - make_interval(days => $1)`: the
  * Data API binds a JavaScript number as a bigint, and Postgres has no
@@ -187,38 +187,78 @@ export async function listAgentActivity(
   { days, limit, now = new Date() }: AgentActivityOptions,
 ): Promise<AgentActivityItem[]> {
   const since = new Date(now.getTime() - days * 86_400_000).toISOString();
-  const rows = await db
-    .select({
-      versionId: version.id,
-      documentId: version.documentId,
-      documentType: document.type,
-      slug: document.slug,
-      frontmatter: version.frontmatter,
-      number: version.number,
-      summary: version.summary,
-      tokenId: agentToken.id,
-      tokenName: agentToken.name,
-      createdAt: version.createdAt,
-      authoredAt: version.authoredAt,
-    })
-    .from(version)
-    .innerJoin(agentToken, eq(agentToken.id, version.authorAgentTokenId))
-    .innerJoin(document, eq(document.id, version.documentId))
-    .where(and(isNotNull(version.authorAgentTokenId), gte(version.createdAt, since)))
-    .orderBy(desc(version.createdAt), desc(version.id))
-    .limit(limit);
-  return rows.map((row) => ({
-    versionId: row.versionId,
-    documentId: row.documentId,
-    documentType: row.documentType,
-    slug: row.slug,
-    title: typeof row.frontmatter.title === 'string' ? row.frontmatter.title : row.slug,
-    number: row.number,
-    summary: row.summary,
-    token: { id: row.tokenId, name: row.tokenName },
-    createdAt: toIso(row.createdAt),
-    authoredAt: row.authoredAt ? toIso(row.authoredAt) : null,
-  }));
+  const titleOf = (frontmatter: Record<string, unknown>, slug: string) =>
+    typeof frontmatter.title === 'string' ? frontmatter.title : slug;
+  const [versions, changes] = await Promise.all([
+    db
+      .select({
+        versionId: version.id,
+        documentId: version.documentId,
+        documentType: document.type,
+        slug: document.slug,
+        frontmatter: version.frontmatter,
+        number: version.number,
+        summary: version.summary,
+        tokenId: agentToken.id,
+        tokenName: agentToken.name,
+        createdAt: version.createdAt,
+        authoredAt: version.authoredAt,
+      })
+      .from(version)
+      .innerJoin(agentToken, eq(agentToken.id, version.authorAgentTokenId))
+      .innerJoin(document, eq(document.id, version.documentId))
+      .where(and(isNotNull(version.authorAgentTokenId), gte(version.createdAt, since)))
+      .orderBy(desc(version.createdAt), desc(version.id))
+      .limit(limit),
+    db
+      .select({
+        changeId: tagChange.id,
+        documentId: tagChange.documentId,
+        documentType: document.type,
+        slug: document.slug,
+        frontmatter: version.frontmatter,
+        tags: tagChange.tags,
+        previousTags: tagChange.previousTags,
+        tokenId: agentToken.id,
+        tokenName: agentToken.name,
+        createdAt: tagChange.createdAt,
+      })
+      .from(tagChange)
+      .innerJoin(agentToken, eq(agentToken.id, tagChange.authorAgentTokenId))
+      .innerJoin(document, eq(document.id, tagChange.documentId))
+      .innerJoin(version, eq(version.id, document.currentVersionId))
+      .where(and(isNotNull(tagChange.authorAgentTokenId), gte(tagChange.createdAt, since)))
+      .orderBy(desc(tagChange.createdAt), desc(tagChange.id))
+      .limit(limit),
+  ]);
+  const items: AgentActivityItem[] = [
+    ...versions.map((row): AgentActivityItem => ({
+      kind: 'version',
+      versionId: row.versionId,
+      documentId: row.documentId,
+      documentType: row.documentType,
+      slug: row.slug,
+      title: titleOf(row.frontmatter, row.slug),
+      number: row.number,
+      summary: row.summary,
+      token: { id: row.tokenId, name: row.tokenName },
+      createdAt: toIso(row.createdAt),
+      authoredAt: row.authoredAt ? toIso(row.authoredAt) : null,
+    })),
+    ...changes.map((row): AgentActivityItem => ({
+      kind: 'tagged',
+      changeId: row.changeId,
+      documentId: row.documentId,
+      documentType: row.documentType,
+      slug: row.slug,
+      title: titleOf(row.frontmatter, row.slug),
+      tags: row.tags,
+      previousTags: row.previousTags,
+      token: { id: row.tokenId, name: row.tokenName },
+      createdAt: toIso(row.createdAt),
+    })),
+  ];
+  return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
 }
 
 // ---------- shaping ----------
@@ -368,6 +408,31 @@ export async function softDeleteDocument(db: Db, id: string): Promise<boolean> {
     .where(and(eq(document.id, id), isNull(document.deletedAt)))
     .returning({ id: document.id });
   return rows.length > 0;
+}
+
+/**
+ * Replace a document's tag set and record the change with its author. Tags are not
+ * versioned (they are true of the document, not of a version), so this is the one write
+ * to a document that leaves a trail without a version row.
+ */
+export async function setDocumentTags(
+  db: Db,
+  documentId: string,
+  tags: string[],
+  author: AuthorRef,
+): Promise<DocumentWithVersion> {
+  const existing = await getDocument(db, documentId);
+  if (!existing) throw new NotFoundError('document');
+  await db.transaction(async (tx) => {
+    await tx.update(document).set({ tags }).where(eq(document.id, documentId));
+    await tx.insert(tagChange).values({
+      documentId,
+      tags,
+      previousTags: existing.document.tags,
+      ...authorColumns(author),
+    });
+  });
+  return (await getDocument(db, documentId))!;
 }
 
 // ---------- versions ----------

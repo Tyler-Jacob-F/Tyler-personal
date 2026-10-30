@@ -90,6 +90,23 @@ export const attachment = pgTable('attachment', {
   createdAt: timestamptz('created_at').notNull().defaultNow(),
 });
 
+/** Each replacement of a document's tag set, who did it and when (migration 0005). */
+export const tagChange = pgTable(
+  'tag_change',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    documentId: uuid('document_id')
+      .notNull()
+      .references(() => document.id),
+    tags: jsonb('tags').$type<string[]>().notNull().default([]),
+    previousTags: jsonb('previous_tags').$type<string[]>().notNull().default([]),
+    authorMemberId: uuid('author_member_id').references(() => member.id),
+    authorAgentTokenId: uuid('author_agent_token_id').references(() => agentToken.id),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+  },
+  (t) => [index('tag_change_by_document_idx').on(t.documentId, t.createdAt)],
+);
+
 export const schemaMigration = pgTable('schema_migration', {
   name: text('name').primaryKey(),
   appliedAt: timestamptz('applied_at').notNull().defaultNow(),

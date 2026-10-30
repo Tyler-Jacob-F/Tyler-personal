@@ -15,9 +15,9 @@ export const ids = {
 
 export const chili = {
   title: 'Chili',
-  servings: 8,
-  prepMinutes: 20,
-  cookMinutes: 180,
+  serves: 8,
+  activeMinutes: 20,
+  totalMinutes: 180,
   ingredients: [
     { heading: 'Meats', items: ['2 lb ground chuck'] },
     { heading: null, items: ['1 onion, diced'] },
@@ -25,6 +25,8 @@ export const chili = {
 };
 export const chili2 = {
   ...chili,
+  provenance: 'Steve’s card, 2014',
+  proven: { count: 3, last: '2026-02-01' },
   ingredients: [
     { heading: 'Meats', items: ['2 lb ground chuck'] },
     { heading: null, items: ['1 onion, diced', '1 tsp smoked paprika'] },
@@ -56,7 +58,9 @@ export const version2: Version = {
   summary: 'added smoked paprika',
 };
 
-export function recipeDoc(version: Version = version1): DocumentWithVersion {
+export const chiliTags = ['course:main', 'main:beef', 'effort:project', 'occasion:cookoff'];
+
+export function recipeDoc(version: Version = version1, tags: string[] = []): DocumentWithVersion {
   return {
     document: {
       id: ids.doc,
@@ -66,7 +70,7 @@ export function recipeDoc(version: Version = version1): DocumentWithVersion {
       owner: ids.owner,
       createdAt: '2026-10-26T12:00:00.000Z',
       currentVersionId: version.id,
-      tags: [],
+      tags,
       deletedAt: null,
     },
     version,
@@ -169,6 +173,19 @@ export function briefDoc(
 
 export const activity: AgentActivityItem[] = [
   {
+    kind: 'tagged',
+    changeId: 'cb2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
+    documentId: ids.doc,
+    documentType: 'recipe',
+    slug: 'chili',
+    title: 'Chili',
+    tags: chiliTags,
+    previousTags: [],
+    token: { id: '8b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b', name: 'claude' },
+    createdAt: '2026-10-31T09:00:00.000Z',
+  },
+  {
+    kind: 'version',
     versionId: 'ab2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
     documentId: '6b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
     documentType: 'brief',
@@ -181,6 +198,7 @@ export const activity: AgentActivityItem[] = [
     authoredAt: null,
   },
   {
+    kind: 'version',
     versionId: 'bb2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
     documentId: ids.doc,
     documentType: 'recipe',

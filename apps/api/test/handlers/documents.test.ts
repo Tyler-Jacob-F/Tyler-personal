@@ -6,9 +6,9 @@ import { bodyOf, fakeEvent } from '../helpers/event.js';
 
 const chili = {
   title: 'Chili',
-  servings: 8,
-  prepMinutes: 20,
-  cookMinutes: 180,
+  serves: 8,
+  activeMinutes: 20,
+  totalMinutes: 180,
   ingredients: ['2 lb ground chuck', '1 onion, diced'],
 };
 const create = { type: 'recipe', frontmatter: chili, body: '# Chili\n\nBrown the beef.' };
@@ -77,13 +77,13 @@ describe('POST /api/documents', () => {
       fakeEvent({
         method: 'POST',
         route: '/api/documents',
-        body: { ...create, frontmatter: { ...chili, ingredients: [], servings: 'eight' } },
+        body: { ...create, frontmatter: { ...chili, ingredients: [], serves: 'eight' } },
       }),
     );
     expect(res.statusCode).toBe(400);
     const body = bodyOf<{ error: string; issues: Array<{ path: string }> }>(res);
     expect(body.error).toBe('bad_request');
-    expect(body.issues.map((i) => i.path).sort()).toEqual(['ingredients.0.items', 'servings']);
+    expect(body.issues.map((i) => i.path).sort()).toEqual(['ingredients.0.items', 'serves']);
   });
 
   it('rejects an unknown type and a malformed body', async () => {
@@ -154,5 +154,98 @@ describe('GET and DELETE /api/documents/{id}', () => {
   it('refuses a caller who is not a member', async () => {
     const res = await api(fakeEvent({ method: 'GET', route: '/api/documents', email: 'x@y.z' }));
     expect(res.statusCode).toBe(403);
+  });
+});
+
+describe('PUT /api/documents/{id}/tags', () => {
+  it('replaces the tag set, normalized to the vocabulary order, without writing a version', async () => {
+    const created = await createChili();
+    const id = created.document.id;
+    const res = await api(
+      fakeEvent({
+        method: 'PUT',
+        route: '/api/documents/{id}/tags',
+        params: { id },
+        body: { tags: ['flag:vegetarian', 'camping', 'main:beans-legumes', 'course:main'] },
+      }),
+    );
+    expect(res.statusCode).toBe(200);
+    const updated = bodyOf<DocumentWithVersion>(res);
+    expect(updated.document.tags).toEqual([
+      'course:main',
+      'main:beans-legumes',
+      'flag:vegetarian',
+      'camping',
+    ]);
+    expect(updated.version.number).toBe(1);
+    expect(updated.document.ring).toBe('me');
+
+    const again = await api(
+      fakeEvent({
+        method: 'PUT',
+        route: '/api/documents/{id}/tags',
+        params: { id },
+        body: { tags: [] },
+      }),
+    );
+    expect(bodyOf<DocumentWithVersion>(again).document.tags).toEqual([]);
+  });
+
+  it('refuses a value outside the vocabulary, naming what is allowed, and two values for one facet', async () => {
+    const { document } = await createChili();
+    const put = (tags: string[]) =>
+      api(
+        fakeEvent({
+          method: 'PUT',
+          route: '/api/documents/{id}/tags',
+          params: { id: document.id },
+          body: { tags },
+        }),
+      );
+    const unknown = await put(['course:brunch']);
+    expect(unknown.statusCode).toBe(400);
+    const body = bodyOf<{ issues: Array<{ path: string; message: string }> }>(unknown);
+    expect(body.issues[0]).toMatchObject({ path: '0' });
+    expect(body.issues[0]!.message).toMatch(/not a value of course; one of breakfast, main/);
+    expect((await put(['cuisine:thai'])).statusCode).toBe(400);
+    expect((await put(['season:fall', 'season:winter'])).statusCode).toBe(400);
+    expect((await put(['flag:proven'])).statusCode).toBe(400);
+    const missing = await put([]);
+    expect(missing.statusCode).toBe(200);
+    expect(
+      (
+        await api(
+          fakeEvent({
+            method: 'PUT',
+            route: '/api/documents/{id}/tags',
+            params: { id: '00000000-0000-0000-0000-000000000000' },
+            body: { tags: [] },
+          }),
+        )
+      ).statusCode,
+    ).toBe(404);
+  });
+
+  it('validates tags on create as well, per type', async () => {
+    const bad = await api(
+      fakeEvent({
+        method: 'POST',
+        route: '/api/documents',
+        body: { ...create, tags: ['course:brunch'] },
+      }),
+    );
+    expect(bad.statusCode).toBe(400);
+    expect(bodyOf<{ message: string }>(bad).message).toBe('invalid tags');
+    const good = await api(
+      fakeEvent({
+        method: 'POST',
+        route: '/api/documents',
+        body: { ...create, tags: ['flag:kid-approved', 'course:main'] },
+      }),
+    );
+    expect(bodyOf<DocumentWithVersion>(good).document.tags).toEqual([
+      'course:main',
+      'flag:kid-approved',
+    ]);
   });
 });

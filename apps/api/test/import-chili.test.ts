@@ -22,7 +22,7 @@ describe('0004_import_chili_lineage', () => {
     expect(blobs).toHaveLength(5);
     for (const blob of blobs) {
       const parsed = recipeFrontmatterSchema.parse(blob);
-      expect(parsed.servings).toBeUndefined();
+      expect(parsed.serves).toBeUndefined();
       expect(parsed.ingredients.length).toBeGreaterThan(0);
     }
   });

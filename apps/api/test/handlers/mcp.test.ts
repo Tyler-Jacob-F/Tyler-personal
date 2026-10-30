@@ -102,7 +102,7 @@ beforeEach(async () => {
 afterEach(() => t.close());
 
 describe('MCP server', () => {
-  it('initializes and lists four tools, each with a description and an input schema', async () => {
+  it('initializes and lists five tools, each with a description and an input schema', async () => {
     const client = await connect(secrets.importer);
     expect(client.getServerVersion()).toMatchObject({ name: 'the-keep' });
     expect(client.getInstructions()).toMatch(/private by default/);
@@ -112,6 +112,7 @@ describe('MCP server', () => {
       'create_version',
       'get_document',
       'list_documents',
+      'set_tags',
     ]);
     for (const tool of tools) {
       expect(tool.description!.length).toBeGreaterThan(80);
@@ -135,6 +136,56 @@ describe('MCP server', () => {
     expect(tools.find((tool) => tool.name === 'list_documents')!.annotations).toMatchObject({
       readOnlyHint: true,
     });
+    const setTags = tools.find((tool) => tool.name === 'set_tags')!;
+    expect(setTags.description).toContain('course:');
+    expect(setTags.inputSchema.required).toEqual(expect.arrayContaining(['id', 'tags']));
+    await client.close();
+  });
+
+  it('sets a document’s tags as the token, refusing a value outside the vocabulary', async () => {
+    const client = await connect(secrets.importer);
+    const created = (await client.callTool({
+      name: 'create_document',
+      arguments: { type: 'recipe', frontmatter: chili, body: '', tags: ['camping'] },
+    })) as CallToolResult;
+    const { id } = created.structuredContent as { id: string };
+
+    const refused = (await client.callTool({
+      name: 'set_tags',
+      arguments: { id, tags: ['course:brunch'] },
+    })) as CallToolResult;
+    expect(refused.isError).toBe(true);
+    expect(textOf(refused)).toMatch(/bad_request: invalid tags/);
+    expect(textOf(refused)).toMatch(/one of breakfast, main/);
+
+    const tagged = (await client.callTool({
+      name: 'set_tags',
+      arguments: { id, tags: ['flag:kid-approved', 'course:breakfast', 'main:eggs'] },
+    })) as CallToolResult;
+    expect(tagged.isError).toBeFalsy();
+    expect(textOf(tagged)).toMatch(
+      /^Tagged recipe "Chili": course:breakfast main:eggs flag:kid-approved\./,
+    );
+    expect(tagged.structuredContent).toMatchObject({
+      id,
+      tags: ['course:breakfast', 'main:eggs', 'flag:kid-approved'],
+      version: 1,
+    });
+    expect((await getDocument(t.db, id))?.document.tags).toEqual([
+      'course:breakfast',
+      'main:eggs',
+      'flag:kid-approved',
+    ]);
+    expect((await listVersions(t.db, id)).length).toBe(1);
+
+    const reader = await connect(secrets.reader);
+    const forbidden = (await reader.callTool({
+      name: 'set_tags',
+      arguments: { id, tags: [] },
+    })) as CallToolResult;
+    expect(forbidden.isError).toBe(true);
+    expect(textOf(forbidden)).toMatch(/forbidden/);
+    await reader.close();
     await client.close();
   });
 
@@ -166,7 +217,7 @@ describe('MCP server', () => {
       name: 'create_version',
       arguments: {
         id: view.id,
-        frontmatter: { ...chili, servings: 8 },
+        frontmatter: { ...chili, serves: 8 },
         body: '# Chili\n\nBrown the beef. Add cumin.',
         summary: 'added cumin',
         authoredAt: '2023-11-06',
@@ -183,7 +234,7 @@ describe('MCP server', () => {
     expect(got.structuredContent).toMatchObject({
       version: 2,
       summary: 'added cumin',
-      frontmatter: { servings: 8 },
+      frontmatter: { serves: 8 },
       body: '# Chili\n\nBrown the beef. Add cumin.',
     });
 
@@ -203,14 +254,14 @@ describe('MCP server', () => {
       name: 'create_document',
       arguments: {
         type: 'recipe',
-        frontmatter: { title: 'Chili', ingredients: [], servings: 'eight' },
+        frontmatter: { title: 'Chili', ingredients: [], serves: 'eight' },
         body: '',
       },
     })) as CallToolResult;
     expect(result.isError).toBe(true);
     expect(textOf(result)).toMatch(/bad_request: invalid frontmatter/);
     expect(textOf(result)).toMatch(/ingredients/);
-    expect(textOf(result)).toMatch(/servings/);
+    expect(textOf(result)).toMatch(/serves/);
 
     const unknown = (await client.callTool({
       name: 'get_document',

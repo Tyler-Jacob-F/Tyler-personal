@@ -1,5 +1,10 @@
 import type { DocumentWithVersion, ListAgentActivityResponse } from '@the-keep/shared';
-import { createAgentToken, createDocument, createVersion } from '../../src/db/repositories.js';
+import {
+  createAgentToken,
+  createDocument,
+  createVersion,
+  setDocumentTags,
+} from '../../src/db/repositories.js';
 import { member } from '../../src/db/schema.js';
 import { build } from '../../src/handlers/admin-activity.js';
 import { build as buildDocuments } from '../../src/handlers/documents.js';
@@ -87,6 +92,52 @@ describe('GET /api/admin/activity', () => {
       fakeEvent({ method: 'GET', route: '/api/admin/activity', query: { days: '0' } }),
     );
     expect(bad.statusCode).toBe(400);
+  });
+
+  it('lists a tag change an agent made as a "tagged" row, in time order with the versions', async () => {
+    const owner = await adminId(t.db);
+    const claude = await createAgentToken(t.db, {
+      name: 'claude',
+      scopes: ['read:documents', 'write:recipes'],
+      secretHash: 'h3',
+    });
+    const created = await createDocument(t.db, {
+      type: 'recipe',
+      title: 'Chili',
+      ring: 'me',
+      owner,
+      tags: ['camping'],
+      body: '',
+      frontmatter: chili,
+      summary: 'imported',
+      author: { kind: 'agent', id: claude.id },
+    });
+    await setDocumentTags(t.db, created.document.id, ['course:main', 'main:beef', 'camping'], {
+      kind: 'agent',
+      id: claude.id,
+    });
+    // A person's tag change is not agent activity.
+    await setDocumentTags(t.db, created.document.id, ['course:main'], {
+      kind: 'member',
+      id: owner,
+    });
+
+    const res = await build(t.db)(fakeEvent({ method: 'GET', route: '/api/admin/activity' }));
+    const { items } = bodyOf<ListAgentActivityResponse>(res);
+    expect(items.map((i) => i.kind)).toEqual(['tagged', 'version']);
+    expect(items[0]).toMatchObject({
+      kind: 'tagged',
+      documentId: created.document.id,
+      title: 'Chili',
+      tags: ['course:main', 'main:beef', 'camping'],
+      previousTags: ['camping'],
+      token: { id: claude.id, name: 'claude' },
+    });
+    expect(items[0]).not.toHaveProperty('number');
+    const limited = await build(t.db)(
+      fakeEvent({ method: 'GET', route: '/api/admin/activity', query: { limit: '1' } }),
+    );
+    expect(bodyOf<ListAgentActivityResponse>(limited).items.map((i) => i.kind)).toEqual(['tagged']);
   });
 
   it('keeps the window: a version older than the window is not listed', async () => {

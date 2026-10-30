@@ -42,9 +42,12 @@ describe('NewRecipe', () => {
     );
     render(<App />, { route: '/recipes/new' });
     await user.type(await screen.findByLabelText('Title'), 'Chili');
-    await user.type(screen.getByLabelText('Servings'), '8');
-    await user.type(screen.getByLabelText('Prep minutes'), '20');
-    await user.type(screen.getByLabelText('Cook minutes'), '180');
+    await user.type(screen.getByLabelText('Serves'), '8');
+    await user.type(screen.getByLabelText('Active minutes'), '20');
+    await user.type(screen.getByLabelText('Total minutes'), '180');
+    await user.selectOptions(screen.getByLabelText('Course'), 'main');
+    await user.selectOptions(screen.getByLabelText('Main ingredient'), 'beef');
+    await user.click(screen.getByRole('checkbox', { name: 'Kid-approved' }));
     await user.type(
       screen.getByLabelText('Ingredients'),
       '1 onion, diced\nMeats:\n2 lb ground chuck',
@@ -65,7 +68,7 @@ describe('NewRecipe', () => {
         },
         body: '# Chili',
         summary: '',
-        tags: [],
+        tags: ['course:main', 'main:beef', 'flag:kid-approved'],
         authoredAt: '2023-11-06',
       }),
     );
@@ -77,14 +80,14 @@ describe('NewRecipe', () => {
     const post = vi.fn();
     server.use(http.post('/api/documents', post));
     render(<App />, { route: '/recipes/new' });
-    await user.type(await screen.findByLabelText('Servings'), 'eight');
+    await user.type(await screen.findByLabelText('Serves'), 'eight');
     await user.click(screen.getByRole('button', { name: 'Save recipe' }));
     expect(await screen.findByText(/whole number/)).toBeInTheDocument();
     expect(screen.getByText(/at least one ingredient/)).toBeInTheDocument();
     expect(post).not.toHaveBeenCalled();
   });
 
-  it('lets servings and times stay blank and sends no numbers for them', async () => {
+  it('lets serves and the minutes stay blank and sends no numbers for them', async () => {
     const user = userEvent.setup();
     let posted: { frontmatter: Record<string, unknown>; authoredAt: unknown } | undefined;
     server.use(
@@ -142,23 +145,32 @@ describe('EditRecipe', () => {
   it('prefills from the current version and saves a new version with a summary', async () => {
     const user = userEvent.setup();
     let posted: unknown;
-    let current = recipeDoc(version1);
+    let put: unknown;
+    let current = recipeDoc(version1, ['course:main', 'camping']);
     server.use(
       http.get(`/api/documents/${ids.doc}`, () => HttpResponse.json(current)),
       http.post(`/api/documents/${ids.doc}/versions`, async ({ request }) => {
         posted = await request.json();
-        current = recipeDoc(version2);
+        current = recipeDoc(version2, current.document.tags);
         return HttpResponse.json(version2, { status: 201 });
+      }),
+      http.put(`/api/documents/${ids.doc}/tags`, async ({ request }) => {
+        put = await request.json();
+        current = recipeDoc(version2, (put as { tags: string[] }).tags);
+        return HttpResponse.json(current);
       }),
     );
     render(<App />, { route: `/recipes/${ids.doc}/edit` });
     const ingredients = await screen.findByLabelText('Ingredients');
     expect(ingredients).toHaveValue('Meats:\n2 lb ground chuck\n1 onion, diced');
-    expect(screen.getByLabelText('Cook minutes')).toHaveValue('180');
+    expect(screen.getByLabelText('Total minutes')).toHaveValue('180');
+    expect(screen.getByLabelText('Course')).toHaveValue('main');
+    expect(screen.getByRole('checkbox', { name: 'Vegetarian' })).not.toBeChecked();
 
     await user.type(ingredients, '\n1 tsp smoked paprika');
     await user.type(screen.getByLabelText('Method'), 'Stir in smoked paprika.\n');
     await user.type(screen.getByLabelText('What changed'), 'added smoked paprika');
+    await user.selectOptions(screen.getByLabelText('Season'), 'winter');
     await user.click(screen.getByRole('button', { name: 'Save as v2' }));
 
     await waitFor(() =>
@@ -177,7 +189,27 @@ describe('EditRecipe', () => {
         authoredAt: null,
       }),
     );
+    await waitFor(() => expect(put).toEqual({ tags: ['course:main', 'season:winter', 'camping'] }));
     expect(await screen.findByText(/v2 · Tyler/)).toBeInTheDocument();
+  });
+
+  it('writes no tag change when the set is unchanged', async () => {
+    const user = userEvent.setup();
+    const put = vi.fn();
+    server.use(
+      http.get(`/api/documents/${ids.doc}`, () =>
+        HttpResponse.json(recipeDoc(version1, ['course:main'])),
+      ),
+      http.post(`/api/documents/${ids.doc}/versions`, () =>
+        HttpResponse.json(version2, { status: 201 }),
+      ),
+      http.put(`/api/documents/${ids.doc}/tags`, put),
+    );
+    render(<App />, { route: `/recipes/${ids.doc}/edit` });
+    await user.type(await screen.findByLabelText('What changed'), 'nothing much');
+    await user.click(screen.getByRole('button', { name: 'Save as v2' }));
+    await screen.findByRole('heading', { name: 'Chili', level: 1 });
+    expect(put).not.toHaveBeenCalled();
   });
 });
 

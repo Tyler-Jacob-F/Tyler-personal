@@ -17,9 +17,9 @@ export function RecipeDetail() {
   const { document, version } = recipe.data;
   const r = recipeOf(version.frontmatter);
   const facts: Array<[string, string]> = [];
-  if (r?.servings !== undefined) facts.push(['Servings', String(r.servings)]);
-  if (r?.prepMinutes !== undefined) facts.push(['Prep', `${r.prepMinutes} min`]);
-  if (r?.cookMinutes !== undefined) facts.push(['Cook', `${r.cookMinutes} min`]);
+  if (r?.serves !== undefined) facts.push(['Serves', String(r.serves)]);
+  if (r?.activeMinutes !== undefined) facts.push(['Active', `${r.activeMinutes} min`]);
+  if (r?.totalMinutes !== undefined) facts.push(['Total', `${r.totalMinutes} min`]);
 
   return (
     <article className="grid gap-6">

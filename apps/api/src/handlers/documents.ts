@@ -4,7 +4,12 @@ import { getDocument, softDeleteDocument } from '../db/repositories.js';
 import { type ApiHandler, createApi, json, noContent, notFound, parse } from '../lib/http.js';
 import { agentIdentity, cognitoIdentity } from '../middleware/identity.js';
 import { authorize } from '../middleware/permission.js';
-import { createDocumentFor, getDocumentFor, listDocumentsFor } from '../services/documents.js';
+import {
+  createDocumentFor,
+  getDocumentFor,
+  listDocumentsFor,
+  setTagsFor,
+} from '../services/documents.js';
 
 const idSchema = z.uuid();
 
@@ -21,6 +26,11 @@ export function build(db: Db): ApiHandler {
 
       'GET /api/documents/{id}': async ({ identity, params }) =>
         json(200, await getDocumentFor(db, identity, params.id)),
+
+      // The whole tag set, replaced; no version. Both doors, since the tagging pass over
+      // the Phase 2 import runs through the MCP server with the same service function.
+      'PUT /api/documents/{id}/tags': async ({ identity, params, body, log }) =>
+        json(200, await setTagsFor(db, identity, params.id, body, log)),
 
       // Delete has no agent counterpart: the agent door never exposes it, and the
       // permission middleware refuses it regardless.

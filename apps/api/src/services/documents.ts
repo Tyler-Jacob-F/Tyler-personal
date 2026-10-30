@@ -6,11 +6,18 @@ import {
   listDocumentsQuerySchema,
   parseFrontmatter,
   schemaFor,
+  setTagsRequestSchema,
   type Version,
 } from '@the-keep/shared';
 import { z } from 'zod';
 import type { Db } from '../db/client.js';
-import { createDocument, createVersion, getDocument, listDocuments } from '../db/repositories.js';
+import {
+  createDocument,
+  createVersion,
+  getDocument,
+  listDocuments,
+  setDocumentTags,
+} from '../db/repositories.js';
 import { notFound, parse } from '../lib/http.js';
 import type { Logger } from '../lib/logger.js';
 import type { Identity } from '../middleware/identity.js';
@@ -42,6 +49,7 @@ export async function createDocumentFor(
 ): Promise<DocumentWithVersion> {
   const input = parse(createDocumentRequestSchema, body, 'document');
   const frontmatter = parse(schemaFor(input.type).schema, input.frontmatter, 'frontmatter');
+  const tags = parse(schemaFor(input.type).tags, input.tags, 'tags');
   const ring = schemaFor(input.type).defaultRing;
   authorize(identity.caller, 'write', { ring, type: input.type });
   const created = await createDocument(db, {
@@ -49,7 +57,7 @@ export async function createDocumentFor(
     title: frontmatter.title,
     ring,
     owner: identity.owner,
-    tags: input.tags,
+    tags,
     body: input.body,
     frontmatter,
     summary: input.summary,
@@ -104,4 +112,30 @@ export async function createVersionFor(
   });
   log.info('version created', { documentId: id, number: version.number });
   return version;
+}
+
+/**
+ * Replace a document's tags: the full set, validated against the type's vocabulary (a
+ * recipe's facets and flags), needing the write scope for the type, logged as a tag change
+ * rather than a version. The ring is untouched: tags say what a thing is, never who sees it.
+ */
+export async function setTagsFor(
+  db: Db,
+  identity: Identity,
+  rawId: unknown,
+  body: unknown,
+  log: Logger,
+): Promise<DocumentWithVersion> {
+  const id = parse(idSchema, rawId, 'id');
+  const found = await getDocument(db, id);
+  if (!found) throw notFound('document');
+  authorize(identity.caller, 'write', found.document);
+  const input = parse(setTagsRequestSchema, body, 'tags');
+  const tags = parse(schemaFor(found.document.type).tags, input.tags, 'tags');
+  const updated = await setDocumentTags(db, id, tags, {
+    kind: identity.caller.kind,
+    id: identity.caller.id,
+  });
+  log.info('tags set', { documentId: id, tags });
+  return updated;
 }

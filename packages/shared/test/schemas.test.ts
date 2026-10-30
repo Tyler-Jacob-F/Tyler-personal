@@ -21,6 +21,20 @@ import {
   schemaFor,
   slugify,
   typeGuides,
+  recipeFacetNames,
+  recipeFacets,
+  recipeFlags,
+  recipeTagsSchema,
+  recipeTagsOf,
+  recipeTaxonomyGuide,
+  parseRecipeTag,
+  parseTags,
+  facetTag,
+  flagTag,
+  tagLabel,
+  valueLabel,
+  setTagsRequestSchema,
+  agentActivityItemSchema,
   versionSchema,
 } from '../src/index.js';
 
@@ -28,9 +42,11 @@ const ids = { id: '9b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b' };
 
 const chili = {
   title: 'Chili',
-  servings: 8,
-  prepMinutes: 20,
-  cookMinutes: 180,
+  serves: 8,
+  activeMinutes: 20,
+  totalMinutes: 180,
+  provenance: 'Steve\u2019s card, 2014',
+  proven: { count: 3, last: '2026-02-01' },
   ingredients: [
     { heading: 'Meats', items: ['2 lb ground chuck'] },
     { heading: null, items: ['1 onion, diced', '2 tbsp chili powder'] },
@@ -44,23 +60,60 @@ describe('recipe frontmatter', () => {
     expect(parsed.ingredients).toHaveLength(2);
   });
 
-  it('rejects a recipe without ingredients or a title, and a zero serving count', () => {
+  it('rejects a recipe without ingredients or a title, and a zero serves count', () => {
     expect(recipeFrontmatterSchema.safeParse({ ...chili, ingredients: [] }).success).toBe(false);
     expect(
       recipeFrontmatterSchema.safeParse({ ...chili, ingredients: [{ heading: 'x', items: [] }] })
         .success,
     ).toBe(false);
-    expect(recipeFrontmatterSchema.safeParse({ ...chili, servings: 0 }).success).toBe(false);
+    expect(recipeFrontmatterSchema.safeParse({ ...chili, serves: 0 }).success).toBe(false);
     expect(recipeFrontmatterSchema.safeParse({ ...chili, title: '' }).success).toBe(false);
   });
 
-  it('lets servings and times be absent: recipes say "simmer 2–3 hr", not "cook: 180"', () => {
+  it('lets serves and the minutes be absent: recipes say "simmer 2–3 hr", not "total: 180"', () => {
     const parsed = recipeFrontmatterSchema.parse({
       title: 'Chili',
       ingredients: chili.ingredients,
     });
-    expect(parsed.servings).toBeUndefined();
-    expect(parsed.cookMinutes).toBeUndefined();
+    expect(parsed.serves).toBeUndefined();
+    expect(parsed.totalMinutes).toBeUndefined();
+    expect(parsed.proven).toBeUndefined();
+    expect(parsed.provenance).toBeUndefined();
+  });
+
+  it('no longer knows the Phase 1 names: servings, prepMinutes and cookMinutes are dropped on parse', () => {
+    const parsed = recipeFrontmatterSchema.parse({
+      title: 'Chili',
+      ingredients: chili.ingredients,
+      servings: 8,
+      prepMinutes: 20,
+      cookMinutes: 180,
+    });
+    expect(parsed).toEqual({ title: 'Chili', ingredients: chili.ingredients });
+  });
+
+  it('keeps active minutes within total minutes', () => {
+    expect(
+      recipeFrontmatterSchema.safeParse({ ...chili, activeMinutes: 200, totalMinutes: 180 })
+        .success,
+    ).toBe(false);
+    expect(
+      recipeFrontmatterSchema.safeParse({ ...chili, totalMinutes: undefined, activeMinutes: 200 })
+        .success,
+    ).toBe(true);
+  });
+
+  it('reads proven as a cook count with a last date, lifting a bare true and dropping false', () => {
+    expect(recipeFrontmatterSchema.parse({ ...chili, proven: true }).proven).toEqual({ count: 1 });
+    expect(recipeFrontmatterSchema.parse({ ...chili, proven: false }).proven).toBeUndefined();
+    expect(recipeFrontmatterSchema.parse({ ...chili, proven: null }).proven).toBeUndefined();
+    expect(recipeFrontmatterSchema.safeParse({ ...chili, proven: { count: 0 } }).success).toBe(
+      false,
+    );
+    expect(
+      recipeFrontmatterSchema.safeParse({ ...chili, proven: { count: 2, last: 'last winter' } })
+        .success,
+    ).toBe(false);
   });
 
   it('lifts the flat ingredient list older versions stored into one unnamed group', () => {
@@ -77,9 +130,85 @@ describe('recipe frontmatter', () => {
     expect(parsed.ingredients[0]!.heading).toBeNull();
   });
 
-  it('rejects fractional minutes and non-integer servings', () => {
-    expect(recipeFrontmatterSchema.safeParse({ ...chili, prepMinutes: 1.5 }).success).toBe(false);
-    expect(recipeFrontmatterSchema.safeParse({ ...chili, servings: '8' }).success).toBe(false);
+  it('rejects fractional minutes and non-integer serves', () => {
+    expect(recipeFrontmatterSchema.safeParse({ ...chili, activeMinutes: 1.5 }).success).toBe(false);
+    expect(recipeFrontmatterSchema.safeParse({ ...chili, serves: '8' }).success).toBe(false);
+  });
+});
+
+describe('recipe taxonomy', () => {
+  it('names the facets and flags of the contract', () => {
+    expect(recipeFacetNames).toEqual([
+      'course',
+      'main',
+      'effort',
+      'technique',
+      'season',
+      'occasion',
+    ]);
+    expect(recipeFacets.course).toHaveLength(9);
+    expect(recipeFacets.main).toHaveLength(10);
+    expect(recipeFacets.technique).toContain('ferment-preserve');
+    expect([...recipeFlags]).toEqual(['kid-approved', 'vegetarian', 'gluten-free']);
+    expect(valueLabel('soup-stew')).toBe('Soup & stew');
+    expect(valueLabel('slow-cooker')).toBe('Slow cooker');
+    expect(valueLabel('any')).toBe('Any');
+    expect(tagLabel('course:main')).toBe('Main');
+    expect(tagLabel('flag:gluten-free')).toBe('Gluten-free');
+    expect(tagLabel('camping')).toBe('camping');
+  });
+
+  it('accepts facets, flags and free tags, collapsing duplicates into the contract order', () => {
+    expect(
+      recipeTagsSchema.parse([
+        'camping',
+        'flag:vegetarian',
+        'course:breakfast',
+        'main:eggs',
+        'course:breakfast',
+        'effort:weeknight',
+      ]),
+    ).toEqual(['course:breakfast', 'main:eggs', 'effort:weeknight', 'flag:vegetarian', 'camping']);
+    expect(parseTags('recipe', [])).toEqual([]);
+    expect(parseTags('brief', ['anything:goes'])).toEqual(['anything:goes']);
+  });
+
+  it('refuses an unknown facet value, an unknown namespace, and two values for one facet', () => {
+    const bad = recipeTagsSchema.safeParse(['course:brunch']);
+    expect(bad.success).toBe(false);
+    expect(bad.error!.issues[0]!.message).toMatch(/not a value of course; one of breakfast/);
+    const unknown = recipeTagsSchema.safeParse(['cuisine:thai']);
+    expect(unknown.success).toBe(false);
+    expect(unknown.error!.issues[0]!.message).toMatch(/unknown namespace/);
+    const two = recipeTagsSchema.safeParse(['course:main', 'course:side']);
+    expect(two.success).toBe(false);
+    expect(two.error!.issues[0]!.message).toMatch(/one value per facet/);
+    expect(recipeTagsSchema.safeParse(['flag:proven']).success).toBe(false);
+  });
+
+  it('reads a document’s tags back by facet, for screens', () => {
+    expect(
+      recipeTagsOf(['course:main', 'main:beef', 'flag:kid-approved', 'camping', 'bogus:x']),
+    ).toEqual({
+      facets: { course: 'main', main: 'beef' },
+      flags: ['kid-approved'],
+      free: ['camping'],
+    });
+    expect(parseRecipeTag('season:winter')).toEqual({
+      kind: 'facet',
+      facet: 'season',
+      value: 'winter',
+    });
+    expect(facetTag('course', 'main')).toBe('course:main');
+    expect(flagTag('vegetarian')).toBe('flag:vegetarian');
+  });
+
+  it('is in the recipe guide the tools show a model', () => {
+    expect(schemaFor('recipe').guide).toContain('course:');
+    expect(schemaFor('recipe').guide).toContain('activeMinutes');
+    expect(schemaFor('recipe').guide).toContain('proven');
+    expect(schemaFor('recipe').guide).not.toContain('servings');
+    expect(recipeTaxonomyGuide()).toContain('flag:<name>');
   });
 });
 
@@ -215,6 +344,41 @@ describe('API DTOs', () => {
         .summary,
     ).toHaveLength(500);
     expect(versionSchema.shape.summary.safeParse('y'.repeat(2000)).success).toBe(true);
+  });
+
+  it('takes a full tag set on set_tags and knows both activity row kinds', () => {
+    expect(setTagsRequestSchema.parse({ tags: ['course:main'] })).toEqual({
+      tags: ['course:main'],
+    });
+    expect(setTagsRequestSchema.safeParse({}).success).toBe(false);
+    const base = {
+      documentId: ids.id,
+      documentType: 'recipe',
+      slug: 'chili',
+      title: 'Chili',
+      token: { id: ids.id, name: 'claude' },
+      createdAt: '2026-10-30T12:00:00.000Z',
+    };
+    expect(
+      agentActivityItemSchema.safeParse({
+        ...base,
+        kind: 'tagged',
+        changeId: ids.id,
+        tags: ['course:main'],
+        previousTags: [],
+      }).success,
+    ).toBe(true);
+    expect(
+      agentActivityItemSchema.safeParse({
+        ...base,
+        kind: 'version',
+        versionId: ids.id,
+        number: 2,
+        summary: '',
+        authoredAt: null,
+      }).success,
+    ).toBe(true);
+    expect(agentActivityItemSchema.safeParse({ ...base, kind: 'renamed' }).success).toBe(false);
   });
 
   it('coerces diff query numbers from strings', () => {

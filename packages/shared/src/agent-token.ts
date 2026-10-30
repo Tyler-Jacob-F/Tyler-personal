@@ -60,19 +60,38 @@ export const listAgentTokensResponseSchema = z.object({
 });
 export type ListAgentTokensResponse = z.infer<typeof listAgentTokensResponseSchema>;
 
-/** One version an agent wrote, with enough of its document to show and link it. */
-export const agentActivityItemSchema = z.object({
-  versionId: z.uuid(),
+const activityDocumentSchema = z.object({
   documentId: z.uuid(),
   documentType: z.string(),
   slug: z.string(),
   title: z.string(),
-  number: z.number().int().positive(),
-  summary: z.string(),
   token: z.object({ id: z.uuid(), name: z.string() }),
   createdAt: z.iso.datetime(),
+});
+
+/** One version an agent wrote, with enough of its document to show and link it. */
+export const agentVersionActivitySchema = activityDocumentSchema.extend({
+  kind: z.literal('version'),
+  versionId: z.uuid(),
+  number: z.number().int().positive(),
+  summary: z.string(),
   authoredAt: z.iso.datetime().nullable(),
 });
+export type AgentVersionActivity = z.infer<typeof agentVersionActivitySchema>;
+
+/** A tag set an agent changed (`set_tags`): no version, so it is its own row kind. */
+export const agentTaggedActivitySchema = activityDocumentSchema.extend({
+  kind: z.literal('tagged'),
+  changeId: z.uuid(),
+  tags: z.array(z.string()),
+  previousTags: z.array(z.string()),
+});
+export type AgentTaggedActivity = z.infer<typeof agentTaggedActivitySchema>;
+
+export const agentActivityItemSchema = z.discriminatedUnion('kind', [
+  agentVersionActivitySchema,
+  agentTaggedActivitySchema,
+]);
 export type AgentActivityItem = z.infer<typeof agentActivityItemSchema>;
 
 export const listAgentActivityQuerySchema = z.object({
