@@ -39,7 +39,7 @@ export function SignIn() {
   const codeForm = useForm({ resolver: zodResolver(codeSchema), defaultValues: { code: '' } });
 
   if (state.status === 'restoring') {
-    return <p className="p-6 text-sm text-muted-foreground">Signing you back in…</p>;
+    return <p className="p-6 text-sm text-muted">Signing you back in…</p>;
   }
   if (state.status === 'signedIn') {
     const from = (location.state as { from?: string } | null)?.from ?? '/';
@@ -72,10 +72,8 @@ export function SignIn() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4 py-16">
-      <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-        The Keep
-      </p>
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight">Sign in</h1>
+      <p className="eyebrow">The Keep</p>
+      <h1 className="mt-2 page-title">Sign in</h1>
 
       {error && (
         <Alert tone="danger" className="mt-6">

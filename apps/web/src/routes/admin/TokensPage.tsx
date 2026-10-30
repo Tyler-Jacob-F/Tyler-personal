@@ -44,11 +44,9 @@ export function TokensPage() {
   return (
     <div className="grid gap-8">
       <div>
-        <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-          Admin
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Agent tokens</h1>
-        <p className="mt-2 max-w-prose text-sm text-muted-foreground">
+        <p className="eyebrow">Admin</p>
+        <h1 className="mt-1 page-title">Agent tokens</h1>
+        <p className="mt-2 max-w-prose text-sm text-muted">
           Each token is a named agent with the scopes it carries and nothing more. No token can
           promote a document, manage members or manage tokens.
         </p>
@@ -61,16 +59,14 @@ export function TokensPage() {
       )}
 
       <section className="grid gap-3">
-        <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-          Issued
-        </h2>
-        {tokens.isPending && <p className="text-sm text-muted-foreground">Loading…</p>}
+        <h2 className="eyebrow">Issued</h2>
+        {tokens.isPending && <p className="text-sm text-muted">Loading…</p>}
         {tokens.isError && <Alert tone="danger">{tokens.error.message}</Alert>}
         {tokens.data && tokens.data.items.length === 0 && (
-          <p className="text-sm text-muted-foreground">No tokens yet.</p>
+          <p className="text-sm text-muted">No tokens yet.</p>
         )}
         {tokens.data && tokens.data.items.length > 0 && (
-          <ul className="divide-y divide-border rounded-card border border-border">
+          <ul className="divide-y divide-border rounded-lg border border-border">
             {tokens.data.items.map((token) => (
               <TokenRow key={token.id} token={token} />
             ))}
@@ -100,13 +96,13 @@ function ScopePicker({
           <label
             key={scope}
             className={cn(
-              'flex cursor-pointer items-start gap-3 rounded-control border px-3 py-2 text-sm',
-              checked ? 'border-foreground bg-muted' : 'border-border',
+              'flex cursor-pointer items-start gap-3 rounded-md border px-3 py-2 text-sm',
+              checked ? 'border-text bg-surface' : 'border-border',
             )}
           >
             <input
               type="checkbox"
-              className="mt-1 accent-foreground"
+              className="mt-1 accent-accent"
               name={name}
               value={scope}
               checked={checked}
@@ -121,9 +117,7 @@ function ScopePicker({
             />
             <span>
               <span className="font-mono text-xs">{scope}</span>
-              <span className="block text-xs text-muted-foreground">
-                {scopeDescriptions[scope]}
-              </span>
+              <span className="block text-xs text-muted">{scopeDescriptions[scope]}</span>
             </span>
           </label>
         );
@@ -144,7 +138,7 @@ function CreateTokenForm({ onCreated }: { onCreated(issued: CreateAgentTokenResp
     <Form {...form}>
       <form
         noValidate
-        className="grid gap-5 rounded-card border border-border p-5"
+        className="grid gap-5 rounded-lg border border-border p-5"
         onSubmit={form.handleSubmit(async (values) => {
           setError(null);
           try {
@@ -213,7 +207,7 @@ function IssuedPanel({ issued, onDone }: { issued: CreateAgentTokenResponse; onD
   return (
     <section
       aria-label="New token secret"
-      className="grid gap-4 rounded-card border border-highlight bg-highlight-subtle p-5"
+      className="grid gap-4 rounded-lg border border-accent bg-surface p-5"
     >
       <div>
         <h2 className="text-base font-semibold tracking-tight">
@@ -226,7 +220,7 @@ function IssuedPanel({ issued, onDone }: { issued: CreateAgentTokenResponse; onD
       </div>
       <code
         data-testid="token-secret"
-        className="block rounded-control border border-border bg-background px-3 py-2 font-mono text-sm break-all select-all"
+        className="block rounded-md border border-border bg-bg px-3 py-2 font-mono text-sm break-all select-all"
       >
         {issued.secret}
       </code>
@@ -237,9 +231,7 @@ function IssuedPanel({ issued, onDone }: { issued: CreateAgentTokenResponse; onD
         <Button size="sm" variant="outline" onClick={onDone}>
           Done, I have it
         </Button>
-        <span className="text-xs text-muted-foreground">
-          Scopes: {issued.token.scopes.join(' ')}
-        </span>
+        <span className="text-xs text-muted">Scopes: {issued.token.scopes.join(' ')}</span>
       </div>
     </section>
   );
@@ -267,7 +259,7 @@ function TokenRow({
       <li className="grid gap-3 px-4 py-3 text-sm">
         <div className="flex items-baseline gap-2">
           <span className="font-mono font-medium">{token.name}</span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted">
             scopes take effect on the token&apos;s next request
           </span>
         </div>
@@ -303,21 +295,19 @@ function TokenRow({
           <span className={cn('font-mono font-medium', revoked && 'line-through opacity-60')}>
             {token.name}
           </span>
-          {revoked && (
-            <span className="text-xs text-destructive">revoked {when(token.revokedAt!)}</span>
-          )}
+          {revoked && <span className="text-xs text-wrong">revoked {when(token.revokedAt!)}</span>}
         </div>
         <div className="flex flex-wrap gap-1.5">
           {token.scopes.map((scope) => (
             <span
               key={scope}
-              className="rounded-control border border-border bg-muted px-1.5 py-0.5 font-mono text-xs"
+              className="rounded-md border border-border bg-surface px-1.5 py-0.5 font-mono text-xs"
             >
               {scope}
             </span>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted">
           created {when(token.createdAt)} ·{' '}
           {token.lastUsedAt ? `last used ${when(token.lastUsedAt)}` : 'never used'}
         </p>
@@ -330,7 +320,7 @@ function TokenRow({
           <Button
             variant="ghost"
             size="sm"
-            className="text-destructive"
+            className="text-wrong"
             disabled={revoke.isPending}
             onClick={() => {
               if (!window.confirm(`Revoke ${token.name}? Anything holding it stops working now.`))

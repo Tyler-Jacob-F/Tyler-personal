@@ -11,7 +11,7 @@ export function RecipeDetail() {
   const recipe = useDocument(id);
   const remove = useDeleteDocument();
 
-  if (recipe.isPending) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (recipe.isPending) return <p className="text-sm text-muted">Loading…</p>;
   if (recipe.isError) return <Alert tone="danger">{recipe.error.message}</Alert>;
 
   const { document, version } = recipe.data;
@@ -25,13 +25,9 @@ export function RecipeDetail() {
     <article className="grid gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-            Recipe
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-            {titleOf(version.frontmatter)}
-          </h1>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="eyebrow">Recipe</p>
+          <h1 className="mt-1 page-title">{titleOf(version.frontmatter)}</h1>
+          <p className="mt-1 text-xs text-muted">
             v{version.number} · {version.author.name} · {dates(version)}
             {version.summary ? ` · ${version.summary}` : ''}
           </p>
@@ -47,10 +43,10 @@ export function RecipeDetail() {
       </div>
 
       {facts.length > 0 && (
-        <dl className="grid grid-cols-3 gap-4 rounded-card border border-border p-4 text-sm">
+        <dl className="grid grid-cols-3 gap-4 rounded-lg border border-border p-4 text-sm">
           {facts.map(([label, value]) => (
             <div key={label}>
-              <dt className="text-xs text-muted-foreground">{label}</dt>
+              <dt className="text-xs text-muted">{label}</dt>
               <dd className="font-medium">{value}</dd>
             </div>
           ))}
@@ -59,9 +55,7 @@ export function RecipeDetail() {
 
       {r && (
         <section>
-          <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-            Ingredients
-          </h2>
+          <h2 className="eyebrow">Ingredients</h2>
           <div className="mt-2 grid gap-4 md:grid-cols-2">
             {r.ingredients.map((group, g) => (
               <div key={g}>
@@ -78,9 +72,7 @@ export function RecipeDetail() {
       )}
 
       <section>
-        <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-          Method
-        </h2>
+        <h2 className="eyebrow">Method</h2>
         <div className="mt-2">
           <Markdown>{version.body}</Markdown>
         </div>
@@ -90,7 +82,7 @@ export function RecipeDetail() {
         <Button
           variant="ghost"
           size="sm"
-          className="text-destructive"
+          className="text-wrong"
           disabled={remove.isPending}
           onClick={async () => {
             if (!window.confirm('Delete this recipe? Its versions stay in the database.')) return;

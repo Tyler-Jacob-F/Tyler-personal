@@ -8,7 +8,7 @@ export function AppShell() {
   const { state, signOut } = useAuth();
   return (
     <div className="flex h-screen flex-col">
-      <header className="border-b border-border bg-background">
+      <header className="border-b border-border bg-bg">
         <div className="mx-auto flex h-14 max-w-4xl items-center gap-6 px-4">
           <Link to="/" className="text-sm font-semibold tracking-wider uppercase">
             The Keep
@@ -18,7 +18,7 @@ export function AppShell() {
               to="/"
               end
               className={({ isActive }) =>
-                cn('text-muted-foreground hover:text-foreground', isActive && 'text-foreground')
+                cn('text-muted hover:text-text', isActive && 'text-text')
               }
             >
               Home
@@ -26,7 +26,7 @@ export function AppShell() {
             <NavLink
               to="/recipes"
               className={({ isActive }) =>
-                cn('text-muted-foreground hover:text-foreground', isActive && 'text-foreground')
+                cn('text-muted hover:text-text', isActive && 'text-text')
               }
             >
               Recipes
@@ -34,7 +34,7 @@ export function AppShell() {
             <NavLink
               to="/stack"
               className={({ isActive }) =>
-                cn('text-muted-foreground hover:text-foreground', isActive && 'text-foreground')
+                cn('text-muted hover:text-text', isActive && 'text-text')
               }
             >
               Stack
@@ -42,7 +42,7 @@ export function AppShell() {
             <NavLink
               to="/admin/tokens"
               className={({ isActive }) =>
-                cn('text-muted-foreground hover:text-foreground', isActive && 'text-foreground')
+                cn('text-muted hover:text-text', isActive && 'text-text')
               }
             >
               Tokens
@@ -50,13 +50,13 @@ export function AppShell() {
             <NavLink
               to="/admin/activity"
               className={({ isActive }) =>
-                cn('text-muted-foreground hover:text-foreground', isActive && 'text-foreground')
+                cn('text-muted hover:text-text', isActive && 'text-text')
               }
             >
               Activity
             </NavLink>
           </nav>
-          <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
+          <div className="ml-auto flex items-center gap-3 text-sm text-muted">
             {state.status === 'signedIn' && <span className="hidden md:inline">{state.email}</span>}
             <Button variant="ghost" size="sm" onClick={signOut}>
               Sign out

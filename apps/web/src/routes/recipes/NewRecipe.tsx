@@ -11,7 +11,7 @@ export function NewRecipe() {
 
   return (
     <div className="grid gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">New recipe</h1>
+      <h1 className="page-title">New recipe</h1>
       <RecipeForm
         defaultValues={emptyRecipe}
         submitLabel="Save recipe"

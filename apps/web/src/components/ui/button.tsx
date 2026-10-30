@@ -6,10 +6,10 @@ type Variant = 'default' | 'outline' | 'ghost' | 'destructive';
 type Size = 'default' | 'sm';
 
 const variants: Record<Variant, string> = {
-  default: 'bg-foreground text-background hover:bg-foreground/90',
-  outline: 'border border-border bg-background hover:bg-muted',
-  ghost: 'hover:bg-muted',
-  destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+  default: 'bg-accent text-on-accent hover:bg-accent-hover',
+  outline: 'border border-border bg-bg hover:bg-surface',
+  ghost: 'hover:bg-surface',
+  destructive: 'bg-wrong text-on-accent hover:bg-wrong/90',
 };
 
 const sizes: Record<Size, string> = {
@@ -35,8 +35,8 @@ export function Button({
     <Comp
       data-slot="button"
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-control text-sm font-medium whitespace-nowrap transition-colors',
-        'focus-visible:ring-2 focus-visible:ring-foreground/40 focus-visible:outline-none',
+        'inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
+        'focus-visible:ring-2 focus-visible:ring-border-strong focus-visible:outline-none',
         'disabled:pointer-events-none disabled:opacity-50',
         variants[variant],
         sizes[size],

@@ -14,7 +14,7 @@ export function EditRecipe() {
   const save = useCreateVersion(id);
   const [error, setError] = useState<string | null>(null);
 
-  if (recipe.isPending) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (recipe.isPending) return <p className="text-sm text-muted">Loading…</p>;
   if (recipe.isError) return <Alert tone="danger">{recipe.error.message}</Alert>;
 
   const { version } = recipe.data;
@@ -22,12 +22,8 @@ export function EditRecipe() {
   return (
     <div className="grid gap-6">
       <div>
-        <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-          Editing v{version.number}
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-          {titleOf(version.frontmatter)}
-        </h1>
+        <p className="eyebrow">Editing v{version.number}</p>
+        <h1 className="mt-1 page-title">{titleOf(version.frontmatter)}</h1>
       </div>
       <RecipeForm
         defaultValues={fromVersion(version.frontmatter, version.body)}

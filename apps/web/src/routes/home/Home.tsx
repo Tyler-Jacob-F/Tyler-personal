@@ -15,10 +15,10 @@ export function Home() {
   return (
     <div className="grid gap-8">
       <section className="grid gap-3" aria-label="Today's brief">
-        {briefs.isPending && <p className="text-sm text-muted-foreground">Loading…</p>}
+        {briefs.isPending && <p className="text-sm text-muted">Loading…</p>}
         {briefs.isError && <Alert tone="danger">{briefs.error.message}</Alert>}
         {briefs.data && !picked && (
-          <div className="rounded-card border border-dashed border-border p-5 text-sm text-muted-foreground">
+          <div className="rounded-lg border border-dashed border-border p-5 text-sm text-muted">
             No brief yet. The brief writer posts one each morning once its scheduled task is set up
             (docs/runbooks/morning-brief.md).
           </div>
@@ -33,35 +33,31 @@ export function Home() {
 
       <section className="grid gap-3" aria-label="Recent documents">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-            Recent
-          </h2>
+          <h2 className="eyebrow">Recent</h2>
           <Link to="/recipes/new" className="text-sm underline underline-offset-2">
             New recipe
           </Link>
         </div>
-        {recent.isPending && <p className="text-sm text-muted-foreground">Loading…</p>}
+        {recent.isPending && <p className="text-sm text-muted">Loading…</p>}
         {recent.isError && <Alert tone="danger">{recent.error.message}</Alert>}
         {recent.data && recent.data.items.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            Nothing yet. Chili would be a fine first one.
-          </p>
+          <p className="text-sm text-muted">Nothing yet. Chili would be a fine first one.</p>
         )}
         {recent.data && recent.data.items.length > 0 && (
-          <ul className="divide-y divide-border rounded-card border border-border">
+          <ul className="divide-y divide-border rounded-lg border border-border">
             {recent.data.items.map((item) => (
               <li key={item.document.id}>
-                <Link to={pathFor(item)} className="block px-4 py-3 hover:bg-muted">
+                <Link to={pathFor(item)} className="block px-4 py-3 hover:bg-surface">
                   <div className="flex items-baseline justify-between gap-4">
                     <span className="font-medium">
-                      <span className="mr-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                      <span className="mr-2 eyebrow">
                         {typeLabels[item.document.type] ?? item.document.type}
                       </span>
                       {titleOf(item.version.frontmatter)}
                     </span>
-                    <span className="text-xs text-muted-foreground">v{item.version.number}</span>
+                    <span className="text-xs text-muted">v{item.version.number}</span>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 text-xs text-muted">
                     {item.version.author.name} · {item.version.summary || 'no summary'} ·{' '}
                     {when(item.version.createdAt)}
                   </p>

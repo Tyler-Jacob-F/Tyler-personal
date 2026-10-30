@@ -9,13 +9,11 @@ export function BriefView({ item, kicker }: { item: DocumentWithVersion; kicker:
   const brief = briefOf(version.frontmatter);
   if (!brief) return null;
   return (
-    <article className="grid gap-5 rounded-card border border-border p-5">
+    <article className="grid gap-5 rounded-lg border border-border p-5">
       <div>
-        <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-          {kicker}
-        </p>
+        <p className="eyebrow">{kicker}</p>
         <h2 className="mt-1 text-xl font-semibold tracking-tight">{briefDay(brief.date)}</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1 text-xs text-muted">
           {brief.title} · v{version.number} · {version.author.name} · {when(version.createdAt)}
         </p>
       </div>
@@ -23,9 +21,7 @@ export function BriefView({ item, kicker }: { item: DocumentWithVersion; kicker:
       <div className="grid gap-4 md:grid-cols-2">
         {brief.sections.map((section) => (
           <section key={section.heading} className="min-w-0">
-            <h3 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              {section.heading}
-            </h3>
+            <h3 className="eyebrow">{section.heading}</h3>
             <div className="mt-1">
               <Markdown>{section.body}</Markdown>
             </div>
