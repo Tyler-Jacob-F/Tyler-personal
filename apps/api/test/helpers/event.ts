@@ -85,6 +85,7 @@ export function fakeEvent({
 export function fakeAuthorizerEvent(
   authorization: string | undefined,
   route = 'GET /api/agent/documents',
+  extraHeaders: Record<string, string> = {},
 ): APIGatewayRequestAuthorizerEventV2 {
   const [method = 'GET', path = '/'] = route.split(' ');
   return {
@@ -98,6 +99,7 @@ export function fakeAuthorizerEvent(
     cookies: [],
     headers: {
       ...(authorization ? { authorization } : {}),
+      ...extraHeaders,
       'user-agent': 'vitest',
     },
     queryStringParameters: {},

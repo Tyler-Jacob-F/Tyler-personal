@@ -26,7 +26,8 @@ token is recorded as author, and the admin UI's agent activity view shows the ru
   producer for the morning brief is a scheduled Claude Code task holding a
   `write:briefs` token; Duet takes over the same token the day it can present a bearer
   header to a custom connector, which is the first thing to check once the MCP server is
-  up. If it cannot, that is the one reason to revisit OAuth, in a later phase.
+  up. If it cannot, that is the one reason to revisit OAuth, in a later phase. (Oct 30:
+  the header is `X-Keep-Token`, because claude.ai overwrites `Authorization`.)
 - **The refresh token is remembered in the browser** (decided Oct 29, after a week of
   typing codes): a reload restores the session silently, sign-out revokes the token at
   Cognito and forgets it, and the sign-in form prefills the last email. The id and access
@@ -158,10 +159,15 @@ Each is reversible unless marked.
   (`me`, `admin-*`) answers 401 there whatever the token carries. Documents an agent creates
   are **owned by the admin** (`document.owner` is a member); the version's author is the
   token. No agent route for delete exists.
-- **Authorizer:** simple responses, keyed on the `Authorization` header, results cached
-  60 seconds. That bounds how long a revoked token keeps working and how coarse
-  `last_used_at` is. Same memory and timeout as the route Lambdas (512 MB, 30 s), since it
-  too may wake the cluster.
+- **Authorizer:** simple responses, invoked on every request, no identity source and no
+  result cache. It accepts the token as `Authorization: Bearer keep_…` (Claude Code, curl)
+  or as `X-Keep-Token: keep_…` (Cowork): claude.ai's connector dialog writes its own
+  `Authorization` header over the one typed into it (found Oct 30 from the authorizer
+  log: the header arrived, the token did not), and API Gateway can key a cache on one
+  header only, so the cache went. A revoke now takes effect at once and `last_used_at` is
+  exact; the cost is one hash lookup per request. A refusal logs the shape of what arrived
+  (header, scheme, length), never the value. Same memory and timeout as the route Lambdas
+  (512 MB, 30 s), since it too may wake the cluster.
 - **MCP:** `@modelcontextprotocol/sdk` 1.32.2, Streamable HTTP, stateless, JSON responses;
   anything but POST is a 405 before the transport sees it (a stateless server has no SSE
   stream to open and a Lambda would hold it to its timeout). One `McpServer` per request.
@@ -202,7 +208,8 @@ What a fresh session should know that the files alone do not say.
 - **Only Tyler does these,** and the directive should ask at the right moment: create
   the three tokens in the admin UI after the Admin tokens PR deploys; add the Cowork
   custom connector (URL `https://tylerfuqua.com/mcp`, Authentication "No sign-in",
-  Request header `authorization` with the value `Bearer keep_…`); run the import from
+  Request header `X-Keep-Token` with the value `keep_…`, since the platform overwrites
+  `Authorization`); run the import from
   his machine, where the recipe folder lives; set up the scheduled Claude Code task for
   the brief; and check whether Duet can present a header.
 - **Loose ends worth knowing.** `0004_import_chili_lineage` is the one content import by

@@ -107,12 +107,15 @@ export class ApiStack extends cdk.Stack {
     const authorizer = new HttpUserPoolAuthorizer('CognitoAuthorizer', userPool, {
       userPoolClients: [userPoolClient],
     });
-    // Simple responses, keyed on the Authorization header. The cache bounds how long a
-    // revoked token keeps working and how coarse `last_used_at` is: one minute.
+    // Simple responses, invoked on every request: no identity source and no result cache,
+    // because the token may arrive as `Authorization: Bearer …` (Claude Code, curl) or as
+    // `X-Keep-Token: …` (Cowork, whose platform overwrites Authorization), and API Gateway
+    // can key a cache on one header only. A revoke therefore takes effect at once, and
+    // `last_used_at` is exact; the cost is one hash lookup per request.
     this.agentAuthorizer = new HttpLambdaAuthorizer('AgentAuthorizer', agentAuthorizerFn, {
       responseTypes: [HttpLambdaResponseType.SIMPLE],
-      identitySource: ['$request.header.Authorization'],
-      resultsCacheTtl: cdk.Duration.seconds(60),
+      identitySource: [],
+      resultsCacheTtl: cdk.Duration.seconds(0),
     });
 
     this.httpApi = new apigwv2.HttpApi(this, 'HttpApi', {
@@ -160,6 +163,11 @@ export class ApiStack extends cdk.Stack {
         authorizer: this.agentAuthorizer,
       });
     }
+
+    // An empty identity source is "none" to CloudFormation only when the property is absent.
+    const authorizerResource = this.httpApi.node.findChild('AgentAuthorizer').node
+      .defaultChild as apigwv2.CfnAuthorizer;
+    authorizerResource.addPropertyDeletionOverride('IdentitySource');
 
     // https://abc123.execute-api.us-east-1.amazonaws.com -> abc123.execute-api.us-east-1.amazonaws.com
     this.apiDomainName = cdk.Fn.select(2, cdk.Fn.split('/', this.httpApi.apiEndpoint));

@@ -231,8 +231,8 @@ describe('ApiStack', () => {
       AuthorizerType: 'REQUEST',
       AuthorizerPayloadFormatVersion: '2.0',
       EnableSimpleResponses: true,
-      IdentitySource: ['$request.header.Authorization'],
-      AuthorizerResultTtlInSeconds: 60,
+      AuthorizerResultTtlInSeconds: 0,
+      IdentitySource: Match.absent(),
     });
     const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
     const agents = routes.filter((r) => String(r.Properties.RouteKey).includes('/api/agent/'));
