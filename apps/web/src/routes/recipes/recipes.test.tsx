@@ -1,31 +1,105 @@
 import { http, HttpResponse } from 'msw/http';
 import { App } from '@/App';
-import { chili, diff12, ids, recipeDoc, version1, version2 } from '@/test/fixtures';
+import { chili, chiliTags, diff12, ids, recipeDoc, version1, version2 } from '@/test/fixtures';
 import { render, screen, userEvent, waitFor, within } from '@/test/render';
 import { server } from '@/test/server';
 
 describe('RecipeList', () => {
-  it('lists recipes with their current version and summary', async () => {
+  const searching = (handler: (url: URL) => unknown[] = () => [recipeDoc(version2, chiliTags)]) => {
+    const calls: URL[] = [];
     server.use(
-      http.get('/api/documents', ({ request }) => {
-        expect(new URL(request.url).searchParams.get('type')).toBe('recipe');
-        return HttpResponse.json({ items: [recipeDoc(version2)] });
+      http.get('/api/documents/search', ({ request }) => {
+        const url = new URL(request.url);
+        calls.push(url);
+        return HttpResponse.json({
+          items: handler(url),
+          q: url.searchParams.get('q') ?? '',
+          tags: (url.searchParams.get('tags') ?? '').split(',').filter(Boolean),
+        });
       }),
     );
+    return calls;
+  };
+
+  it('lists recipes with their facets, total time in tabular figures and a check for proven', async () => {
+    const calls = searching();
     render(<App />, { route: '/recipes' });
     const item = await screen.findByRole('link', { name: /Chili/ });
-    expect(within(item).getByText('v2')).toBeInTheDocument();
-    expect(within(item).getByText(/added smoked paprika/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'New recipe' })).toHaveAttribute(
+    expect(calls[0]!.searchParams.get('type')).toBe('recipe');
+    expect(calls[0]!.searchParams.has('q')).toBe(false);
+    expect(within(item).getByText('Main · Beef · Project · Cookoff')).toBeInTheDocument();
+    expect(within(item).getByText('3 h')).toHaveClass('tabular-nums');
+    expect(within(item).getByRole('img', { name: 'Proven' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /New recipe/ })).toHaveAttribute(
       'href',
       '/recipes/new',
     );
   });
 
-  it('says so when there is nothing yet', async () => {
-    server.use(http.get('/api/documents', () => HttpResponse.json({ items: [] })));
+  it('shows no check for an untested recipe and says so when there is nothing yet', async () => {
+    searching(() => [recipeDoc(version1)]);
+    render(<App />, { route: '/recipes' });
+    const item = await screen.findByRole('link', { name: /Chili/ });
+    expect(within(item).queryByRole('img', { name: 'Proven' })).toBeNull();
+    searching(() => []);
     render(<App />, { route: '/recipes' });
     expect(await screen.findByText(/Nothing yet/)).toBeInTheDocument();
+  });
+
+  it('searches by words from the field and by facet from the filters, keeping both in the URL', async () => {
+    const user = userEvent.setup();
+    const calls = searching((url) =>
+      url.searchParams.get('tags') === 'course:breakfast' ? [] : [recipeDoc(version2, chiliTags)],
+    );
+    render(<App />, { route: '/recipes' });
+    await screen.findByRole('link', { name: /Chili/ });
+
+    await user.type(screen.getByRole('searchbox', { name: 'Search recipes' }), 'saturday');
+    await waitFor(() => expect(calls.at(-1)!.searchParams.get('q')).toBe('saturday'));
+
+    const filters = screen.getByRole('navigation', { name: 'Filters' });
+    await user.click(within(filters).getByRole('button', { name: 'Breakfast', pressed: false }));
+    await waitFor(() => expect(calls.at(-1)!.searchParams.get('tags')).toBe('course:breakfast'));
+    expect(calls.at(-1)!.searchParams.get('q')).toBe('saturday');
+    expect(await screen.findByText('Nothing matches.')).toBeInTheDocument();
+
+    const active = screen.getByRole('list', { name: 'Active filters' });
+    expect(within(active).getByRole('button', { name: 'Remove Breakfast' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    // One value per facet: picking Main replaces Breakfast.
+    await user.click(within(filters).getByRole('button', { name: 'Main', pressed: false }));
+    await waitFor(() => expect(calls.at(-1)!.searchParams.get('tags')).toBe('course:main'));
+    // A flag adds to the set; removing from the active chips takes it away.
+    await user.click(within(filters).getByRole('button', { name: 'Vegetarian' }));
+    await waitFor(() =>
+      expect(calls.at(-1)!.searchParams.get('tags')).toBe('course:main,flag:vegetarian'),
+    );
+    await user.click(within(active).getByRole('button', { name: 'Remove Main' }));
+    await waitFor(() => expect(calls.at(-1)!.searchParams.get('tags')).toBe('flag:vegetarian'));
+    await user.click(screen.getByRole('button', { name: 'Clear' }));
+    // The words-only search is still cached, so no request goes out; the chips are gone.
+    await waitFor(() => expect(screen.queryByRole('list', { name: 'Active filters' })).toBeNull());
+    expect(screen.getByRole('searchbox', { name: 'Search recipes' })).toHaveValue('saturday');
+  }, 15_000);
+
+  it('reads the search from the URL, as the phone sheet sends it', async () => {
+    const calls = searching();
+    render(<App />, { route: '/recipes?q=breakfast&tags=course:breakfast' });
+    await screen.findByRole('link', { name: /Chili/ });
+    expect(screen.getByRole('searchbox', { name: 'Search recipes' })).toHaveValue('breakfast');
+    expect(calls[0]!.searchParams.get('q')).toBe('breakfast');
+    expect(calls[0]!.searchParams.get('tags')).toBe('course:breakfast');
+    const filters = screen.getByRole('navigation', { name: 'Filters' });
+    expect(within(filters).getByRole('button', { name: 'Breakfast' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(filters).getByRole('button', { name: /^Course/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
   });
 });
 

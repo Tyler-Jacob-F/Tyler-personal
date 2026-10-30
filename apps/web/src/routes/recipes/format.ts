@@ -32,3 +32,11 @@ export function dates(version: { createdAt: string; authoredAt: string | null })
     ? `written ${whenDay(version.authoredAt)} · entered ${when(version.createdAt)}`
     : when(version.createdAt);
 }
+
+/** "40 min", "2 h", "2 h 30 min", in tabular figures where it is shown. */
+export function minutes(total: number): string {
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (h === 0) return `${m} min`;
+  return m === 0 ? `${h} h` : `${h} h ${m} min`;
+}

@@ -7,6 +7,7 @@ import {
   documentTypes,
   listDocumentsQuerySchema,
   recipeTaxonomyGuide,
+  searchDocumentsQuerySchema,
   setTagsRequestSchema,
   typeGuides,
   type Version,
@@ -22,6 +23,7 @@ import {
   createVersionFor,
   getDocumentFor,
   listDocumentsFor,
+  searchDocumentsFor,
   setTagsFor,
 } from '../services/documents.js';
 
@@ -143,6 +145,28 @@ export function createKeepServer(db: Db, identity: Identity, log: Logger): McpSe
       attempt(async () => {
         const { items } = await listDocumentsFor(db, identity, args);
         return ok(null, { count: items.length, items: items.map(summarize) });
+      }),
+  );
+
+  server.registerTool(
+    'search_documents',
+    {
+      title: 'Search documents',
+      description:
+        `Find documents by words and by tags. q is matched against titles, tags, ingredients ` +
+        `and bodies (web-search syntax: "exact phrase", -not, or); tags is a list the document ` +
+        `must carry, every one of them, such as ["course:breakfast"]; type (${types}) narrows ` +
+        `further; limit caps the count (default 50). With words the best match comes first; ` +
+        `without, newest first. "Saturday morning breakfast ideas" is tags ["course:breakfast"] ` +
+        `with q "morning" or nothing. Returns the same summaries list_documents does. Needs ` +
+        `read:documents.`,
+      inputSchema: searchDocumentsQuerySchema,
+      annotations: { readOnlyHint: true, idempotentHint: true },
+    },
+    (args) =>
+      attempt(async () => {
+        const { items, q, tags } = await searchDocumentsFor(db, identity, args);
+        return ok(null, { q, tags, count: items.length, items: items.map(summarize) });
       }),
   );
 

@@ -382,6 +382,50 @@ export async function listDocuments(
   }));
 }
 
+export interface SearchDocumentsOptions {
+  q: string;
+  type?: string;
+  /** Every one of these must be on the document. */
+  tags: string[];
+  limit: number;
+}
+
+/**
+ * Full text over the trigger-maintained vector plus a tag filter, live documents only.
+ * Words use web-search syntax; with words the order is rank (title over tags over body),
+ * then newest; without, newest first, so an empty search is the plain list.
+ */
+export async function searchDocuments(
+  db: Db,
+  { q, type, tags, limit }: SearchDocumentsOptions,
+): Promise<DocumentWithVersion[]> {
+  const query = q.trim() ? sql`websearch_to_tsquery('english', ${q.trim()})` : null;
+  const rows = await db
+    .select({ document, version, memberName: authorMember.displayName, agentName: agentToken.name })
+    .from(document)
+    .innerJoin(version, eq(version.id, document.currentVersionId))
+    .leftJoin(authorMember, eq(authorMember.id, version.authorMemberId))
+    .leftJoin(agentToken, eq(agentToken.id, version.authorAgentTokenId))
+    .where(
+      and(
+        isNull(document.deletedAt),
+        type ? eq(document.type, type) : undefined,
+        tags.length > 0 ? sql`${document.tags} @> ${JSON.stringify(tags)}::jsonb` : undefined,
+        query ? sql`${document.search} @@ ${query}` : undefined,
+      ),
+    )
+    .orderBy(
+      ...(query ? [sql`ts_rank_cd(${document.search}, ${query}) desc`] : []),
+      desc(document.createdAt),
+      desc(document.id),
+    )
+    .limit(limit);
+  return rows.map((row) => ({
+    document: toDocument(row.document),
+    version: toVersion(row.version, row.memberName, row.agentName),
+  }));
+}
+
 /** A live document with its current version, or null (deleted counts as gone). */
 export async function getDocument(db: Db, id: string): Promise<DocumentWithVersion | null> {
   const rows = await db

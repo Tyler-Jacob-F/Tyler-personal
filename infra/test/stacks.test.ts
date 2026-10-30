@@ -213,13 +213,13 @@ describe('ApiStack', () => {
     template.resourceCountIs('AWS::ApiGatewayV2::Authorizer', 2);
     template.hasResourceProperties('AWS::ApiGatewayV2::Authorizer', { AuthorizerType: 'JWT' });
     const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
-    expect(routes).toHaveLength(24);
+    expect(routes).toHaveLength(26);
     const members = routes.filter(
       (r) =>
         /\/api\//.test(String(r.Properties.RouteKey)) &&
         !/\/api\/agent\//.test(String(r.Properties.RouteKey)),
     );
-    expect(members).toHaveLength(15);
+    expect(members).toHaveLength(16);
     for (const route of members) {
       expect(route.Properties.AuthorizationType).toBe('JWT');
       expect(route.Properties.RouteKey).toMatch(/^(GET|POST|PUT|PATCH|DELETE) \/api\//);
@@ -238,6 +238,7 @@ describe('ApiStack', () => {
     const agents = routes.filter((r) => String(r.Properties.RouteKey).includes('/api/agent/'));
     expect(agents.map((r) => r.Properties.RouteKey).sort()).toEqual([
       'GET /api/agent/documents',
+      'GET /api/agent/documents/search',
       'GET /api/agent/documents/{id}',
       'GET /api/agent/documents/{id}/diff',
       'GET /api/agent/documents/{id}/versions',

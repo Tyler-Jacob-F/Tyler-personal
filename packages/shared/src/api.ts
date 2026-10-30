@@ -41,6 +41,41 @@ export const listDocumentsResponseSchema = z.object({
 });
 export type ListDocumentsResponse = z.infer<typeof listDocumentsResponseSchema>;
 
+/** `tags=course:breakfast,flag:vegetarian` on the URL, or a list from a tool call. */
+const tagListSchema = z.preprocess(
+  (value) =>
+    typeof value === 'string'
+      ? value
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter(Boolean)
+      : value,
+  tagsSchema.default([]),
+);
+
+/**
+ * `GET /api/documents/search` and the `search_documents` tool: words over title, tags and
+ * body (web-search syntax: quotes, minus, or), a type, and tags the document must carry,
+ * every one of them. An empty `q` with tags is a facet browse; nothing at all lists newest
+ * first, like `GET /api/documents`.
+ */
+export const searchDocumentsQuerySchema = z.object({
+  q: z.string().trim().max(200).default(''),
+  type: documentTypeSchema.optional(),
+  tags: tagListSchema,
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+export type SearchDocumentsQuery = z.infer<typeof searchDocumentsQuerySchema>;
+export type SearchDocumentsInput = z.input<typeof searchDocumentsQuerySchema>;
+
+export const searchDocumentsResponseSchema = z.object({
+  items: z.array(documentWithVersionSchema),
+  /** What was searched, as the server read it. */
+  q: z.string(),
+  tags: z.array(z.string()),
+});
+export type SearchDocumentsResponse = z.infer<typeof searchDocumentsResponseSchema>;
+
 /** Frontmatter is validated a second time against the type's own schema, server-side. */
 /** Accepts a date only, or a full timestamp; stored as the start of that day in UTC when a date. */
 export const authoredAtSchema = z

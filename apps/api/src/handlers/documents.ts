@@ -8,6 +8,7 @@ import {
   createDocumentFor,
   getDocumentFor,
   listDocumentsFor,
+  searchDocumentsFor,
   setTagsFor,
 } from '../services/documents.js';
 
@@ -23,6 +24,10 @@ export function build(db: Db): ApiHandler {
 
       'POST /api/documents': async ({ identity, body, log }) =>
         json(201, await createDocumentFor(db, identity, body, log)),
+
+      // Static before the {id} template; the gateway routes it the same way.
+      'GET /api/documents/search': async ({ identity, query }) =>
+        json(200, await searchDocumentsFor(db, identity, query)),
 
       'GET /api/documents/{id}': async ({ identity, params }) =>
         json(200, await getDocumentFor(db, identity, params.id)),

@@ -1895,6 +1895,75 @@ exports[`ApiStack > matches the snapshot 1`] = `
       },
       "Type": "AWS::Lambda::Permission",
     },
+    "HttpApiGETapiagentdocumentssearchD3CBF886": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiAgentAuthorizerE89C6658",
+        },
+        "RouteKey": "GET /api/agent/documents/search",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapiagentdocumentssearchDocumentsFunctionapiagentdocumentssearch0E02E96D",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapiagentdocumentssearchDocumentsFunctionapiagentdocumentssearch0E02E96D": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapiagentdocumentssearchDocumentsFunctionapiagentdocumentssearchPermission692FCED0": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/agent/documents/search",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
     "HttpApiGETapidocumentsDocumentsFunctionapidocumentsAEBC805D": {
       "Properties": {
         "ApiId": {
@@ -2234,6 +2303,75 @@ exports[`ApiStack > matches the snapshot 1`] = `
                 "Ref": "HttpApiF5A9A8A7",
               },
               "/*/*/api/documents/{id}/versions/{number}",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiGETapidocumentssearch7A7221D4": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "HttpApiCognitoAuthorizer935FA0F6",
+        },
+        "RouteKey": "GET /api/documents/search",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapidocumentssearchDocumentsFunctionapidocumentssearchC6594584",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapidocumentssearchDocumentsFunctionapidocumentssearchC6594584": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapidocumentssearchDocumentsFunctionapidocumentssearchPermission57DC5D21": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/documents/search",
             ],
           ],
         },

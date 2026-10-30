@@ -6,6 +6,7 @@
 import {
   type AnyPgColumn,
   bigint,
+  customType,
   index,
   integer,
   jsonb,
@@ -17,6 +18,13 @@ import {
 } from 'drizzle-orm/pg-core';
 
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true, mode: 'string' });
+
+/** Maintained by the `document_search_refresh` trigger (migration 0006); never written here. */
+const tsvector = customType<{ data: string }>({
+  dataType() {
+    return 'tsvector';
+  },
+});
 
 export const member = pgTable('member', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -52,6 +60,7 @@ export const document = pgTable(
     currentVersionId: uuid('current_version_id').references((): AnyPgColumn => version.id),
     tags: jsonb('tags').$type<string[]>().notNull().default([]),
     deletedAt: timestamptz('deleted_at'),
+    search: tsvector('search'),
   },
   (t) => [uniqueIndex('document_type_slug_key').on(t.type, t.slug)],
 );

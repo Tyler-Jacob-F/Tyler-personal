@@ -4,7 +4,10 @@ import { render, screen, userEvent, waitFor, within } from '@/test/render';
 import { adminMe, server } from '@/test/server';
 
 const noDocuments = () =>
-  server.use(http.get('/api/documents', () => HttpResponse.json({ items: [] })));
+  server.use(
+    http.get('/api/documents', () => HttpResponse.json({ items: [] })),
+    http.get('/api/documents/search', () => HttpResponse.json({ items: [], q: '', tags: [] })),
+  );
 
 describe('the top bar', () => {
   it('names the places, with Admin for the admin, and the actions of the contract', async () => {

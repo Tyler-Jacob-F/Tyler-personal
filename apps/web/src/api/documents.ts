@@ -5,6 +5,7 @@ import {
   documentWithVersionSchema,
   listDocumentsResponseSchema,
   listVersionsResponseSchema,
+  searchDocumentsResponseSchema,
   versionSchema,
 } from '@the-keep/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -15,6 +16,8 @@ export const documentKeys = {
   all: ['documents'] as const,
   list: (type: string) => [...documentKeys.all, 'list', type] as const,
   recent: (limit: number) => [...documentKeys.all, 'recent', limit] as const,
+  search: (type: string, q: string, tags: string[]) =>
+    [...documentKeys.all, 'search', type, q, tags.join(',')] as const,
   detail: (id: string) => [...documentKeys.all, 'detail', id] as const,
   versions: (id: string) => [...documentKeys.all, 'versions', id] as const,
   diff: (id: string, from: number, to: number) =>
@@ -26,6 +29,20 @@ export function useDocuments(type: string) {
   return useQuery({
     queryKey: documentKeys.list(type),
     queryFn: () => api('/api/documents', { schema: listDocumentsResponseSchema, query: { type } }),
+  });
+}
+
+/** Words over title, tags and body plus a tag filter; empty words and no tags is the plain list. */
+export function useSearch({ type, q, tags }: { type: string; q: string; tags: string[] }) {
+  const api = useApi();
+  return useQuery({
+    queryKey: documentKeys.search(type, q, tags),
+    queryFn: () =>
+      api('/api/documents/search', {
+        schema: searchDocumentsResponseSchema,
+        query: { type, q: q || undefined, tags: tags.length ? tags.join(',') : undefined },
+      }),
+    placeholderData: (previous) => previous,
   });
 }
 

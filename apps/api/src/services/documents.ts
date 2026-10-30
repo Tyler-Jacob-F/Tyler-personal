@@ -4,6 +4,8 @@ import {
   type DocumentWithVersion,
   type ListDocumentsResponse,
   listDocumentsQuerySchema,
+  type SearchDocumentsResponse,
+  searchDocumentsQuerySchema,
   parseFrontmatter,
   schemaFor,
   setTagsRequestSchema,
@@ -16,6 +18,7 @@ import {
   createVersion,
   getDocument,
   listDocuments,
+  searchDocuments,
   setDocumentTags,
 } from '../db/repositories.js';
 import { notFound, parse } from '../lib/http.js';
@@ -39,6 +42,16 @@ export async function listDocumentsFor(
   const { type, limit } = parse(listDocumentsQuerySchema, query ?? {}, 'query');
   const items = await listDocuments(db, { type, limit });
   return { items: items.filter((item) => can(identity.caller, 'read', item.document)) };
+}
+
+export async function searchDocumentsFor(
+  db: Db,
+  identity: Identity,
+  query: unknown,
+): Promise<SearchDocumentsResponse> {
+  const { q, type, tags, limit } = parse(searchDocumentsQuerySchema, query ?? {}, 'query');
+  const items = await searchDocuments(db, { q, type, tags, limit });
+  return { items: items.filter((item) => can(identity.caller, 'read', item.document)), q, tags };
 }
 
 export async function createDocumentFor(

@@ -102,7 +102,7 @@ beforeEach(async () => {
 afterEach(() => t.close());
 
 describe('MCP server', () => {
-  it('initializes and lists five tools, each with a description and an input schema', async () => {
+  it('initializes and lists six tools, each with a description and an input schema', async () => {
     const client = await connect(secrets.importer);
     expect(client.getServerVersion()).toMatchObject({ name: 'the-keep' });
     expect(client.getInstructions()).toMatch(/private by default/);
@@ -112,6 +112,7 @@ describe('MCP server', () => {
       'create_version',
       'get_document',
       'list_documents',
+      'search_documents',
       'set_tags',
     ]);
     for (const tool of tools) {
@@ -136,9 +137,48 @@ describe('MCP server', () => {
     expect(tools.find((tool) => tool.name === 'list_documents')!.annotations).toMatchObject({
       readOnlyHint: true,
     });
+    const searchTool = tools.find((tool) => tool.name === 'search_documents')!;
+    expect(searchTool.annotations).toMatchObject({ readOnlyHint: true });
+    expect(Object.keys(searchTool.inputSchema.properties ?? {}).sort()).toEqual([
+      'limit',
+      'q',
+      'tags',
+      'type',
+    ]);
     const setTags = tools.find((tool) => tool.name === 'set_tags')!;
     expect(setTags.description).toContain('course:');
     expect(setTags.inputSchema.required).toEqual(expect.arrayContaining(['id', 'tags']));
+    await client.close();
+  });
+
+  it('searches by words and by tags, as the token', async () => {
+    const client = await connect(secrets.importer);
+    const make = (title: string, body: string, tags: string[]) =>
+      client.callTool({
+        name: 'create_document',
+        arguments: { type: 'recipe', frontmatter: { title, ingredients: ['salt'] }, body, tags },
+      });
+    await make('Pancakes', 'Griddle on a Saturday morning.', ['course:breakfast']);
+    await make('Chili', 'Brown the beef.', ['course:main']);
+
+    const byWord = (await client.callTool({
+      name: 'search_documents',
+      arguments: { q: 'saturday morning' },
+    })) as CallToolResult;
+    expect(byWord.structuredContent).toMatchObject({ count: 1, q: 'saturday morning' });
+    expect(JSON.parse(textOf(byWord)).items[0]).toMatchObject({ title: 'Pancakes' });
+
+    const byTag = (await client.callTool({
+      name: 'search_documents',
+      arguments: { tags: ['course:breakfast'], type: 'recipe' },
+    })) as CallToolResult;
+    expect(byTag.structuredContent).toMatchObject({ count: 1, tags: ['course:breakfast'] });
+
+    const none = (await client.callTool({
+      name: 'search_documents',
+      arguments: { q: 'chili', tags: ['course:breakfast'] },
+    })) as CallToolResult;
+    expect(none.structuredContent).toMatchObject({ count: 0 });
     await client.close();
   });
 
