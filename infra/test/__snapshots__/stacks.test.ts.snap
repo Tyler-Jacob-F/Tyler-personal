@@ -407,6 +407,152 @@ exports[`ApiStack > matches the snapshot 1`] = `
     },
   },
   "Resources": {
+    "AdminActivityFunction35779F23": {
+      "DependsOn": [
+        "AdminActivityFunctionServiceRoleDefaultPolicy12029BBD",
+        "AdminActivityFunctionServiceRoleADCC6192",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
+          "S3Key": "<asset-hash>.zip",
+        },
+        "Description": "The Keep: /api/admin/activity, what the agents wrote (admin only)",
+        "Environment": {
+          "Variables": {
+            "DB_CLUSTER_ARN": {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:",
+                  {
+                    "Ref": "AWS::Partition",
+                  },
+                  ":rds:us-east-1:697941679713:cluster:",
+                  {
+                    "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                  },
+                ],
+              ],
+            },
+            "DB_NAME": "thekeep",
+            "DB_SECRET_ARN": {
+              "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+            },
+            "NODE_OPTIONS": "--enable-source-maps",
+          },
+        },
+        "Handler": "index.handler",
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "AdminActivityFunctionLogs768B3C56",
+          },
+        },
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "AdminActivityFunctionServiceRoleADCC6192",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 30,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "AdminActivityFunctionLogs768B3C56": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "RetentionInDays": 30,
+      },
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Delete",
+    },
+    "AdminActivityFunctionServiceRoleADCC6192": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "AdminActivityFunctionServiceRoleDefaultPolicy12029BBD": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "rds-data:BatchExecuteStatement",
+                "rds-data:BeginTransaction",
+                "rds-data:CommitTransaction",
+                "rds-data:ExecuteStatement",
+                "rds-data:RollbackTransaction",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":rds:us-east-1:697941679713:cluster:",
+                    {
+                      "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                    },
+                  ],
+                ],
+              },
+            },
+            {
+              "Action": [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "AdminActivityFunctionServiceRoleDefaultPolicy12029BBD",
+        "Roles": [
+          {
+            "Ref": "AdminActivityFunctionServiceRoleADCC6192",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
     "AdminTokensFunction644C1C58": {
       "DependsOn": [
         "AdminTokensFunctionServiceRoleDefaultPolicy8B75A47E",
@@ -727,6 +873,10 @@ exports[`ApiStack > matches the snapshot 1`] = `
               },
               "",{"label":"AdminTokensFunction","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
               {
+                "Ref": "AdminActivityFunction35779F23",
+              },
+              "",{"label":"AdminActivityFunction","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
+              {
                 "Ref": "AgentAuthorizerFunctionD5801B44",
               },
               "",{"label":"AgentAuthorizerFunction","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
@@ -766,6 +916,10 @@ exports[`ApiStack > matches the snapshot 1`] = `
                 "Ref": "AdminTokensFunction644C1C58",
               },
               "",{"label":"AdminTokensFunction","stat":"p95"}],["AWS/Lambda","Duration","FunctionName","",
+              {
+                "Ref": "AdminActivityFunction35779F23",
+              },
+              "",{"label":"AdminActivityFunction","stat":"p95"}],["AWS/Lambda","Duration","FunctionName","",
               {
                 "Ref": "AgentAuthorizerFunctionD5801B44",
               },
@@ -1273,6 +1427,75 @@ exports[`ApiStack > matches the snapshot 1`] = `
         "ProtocolType": "HTTP",
       },
       "Type": "AWS::ApiGatewayV2::Api",
+    },
+    "HttpApiGETapiadminactivityA54E8F64": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "HttpApiCognitoAuthorizer935FA0F6",
+        },
+        "RouteKey": "GET /api/admin/activity",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapiadminactivityAdminActivityFunctionapiadminactivity95F75DFE",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapiadminactivityAdminActivityFunctionapiadminactivity95F75DFE": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "AdminActivityFunction35779F23",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapiadminactivityAdminActivityFunctionapiadminactivityPermissionD7806559": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "AdminActivityFunction35779F23",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/admin/activity",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
     },
     "HttpApiGETapiadmintokens7DADF511": {
       "Properties": {

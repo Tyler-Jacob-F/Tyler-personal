@@ -33,7 +33,7 @@ export class ApiStack extends cdk.Stack {
   /** Hostname of the API's default endpoint, for the CloudFront origin. */
   readonly apiDomainName: string;
   readonly functions: Record<
-    'me' | 'documents' | 'versions' | 'adminTokens' | 'agentAuthorizer' | 'mcp',
+    'me' | 'documents' | 'versions' | 'adminTokens' | 'adminActivity' | 'agentAuthorizer' | 'mcp',
     lambda.IFunction
   >;
   /** The agents' door, for the MCP route to share. */
@@ -75,6 +75,12 @@ export class ApiStack extends cdk.Stack {
       environment,
       timeout,
     });
+    const adminActivity = apiFunction(this, 'AdminActivityFunction', {
+      entry: 'handlers/admin-activity.ts',
+      description: `${config.siteName}: /api/admin/activity, what the agents wrote (admin only)`,
+      environment,
+      timeout,
+    });
     const agentAuthorizerFn = apiFunction(this, 'AgentAuthorizerFunction', {
       entry: 'auth/agent-authorizer.ts',
       description: `${config.siteName}: agent token authorizer for /api/agent/* and /mcp`,
@@ -92,6 +98,7 @@ export class ApiStack extends cdk.Stack {
       documents,
       versions,
       adminTokens,
+      adminActivity,
       agentAuthorizer: agentAuthorizerFn,
       mcp,
     };
@@ -125,6 +132,7 @@ export class ApiStack extends cdk.Stack {
       ['/api/documents/{id}/diff', [GET], versions],
       ['/api/admin/tokens', [GET, POST], adminTokens],
       ['/api/admin/tokens/{id}', [DELETE], adminTokens],
+      ['/api/admin/activity', [GET], adminActivity],
     ];
     // The agents' door mirrors the document routes, minus delete: no agent deletes.
     const agentRoutes: Array<[string, apigwv2.HttpMethod[], lambda.IFunction]> = [

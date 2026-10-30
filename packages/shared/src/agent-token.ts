@@ -53,3 +53,30 @@ export const listAgentTokensResponseSchema = z.object({
   items: z.array(agentTokenSchema),
 });
 export type ListAgentTokensResponse = z.infer<typeof listAgentTokensResponseSchema>;
+
+/** One version an agent wrote, with enough of its document to show and link it. */
+export const agentActivityItemSchema = z.object({
+  versionId: z.uuid(),
+  documentId: z.uuid(),
+  documentType: z.string(),
+  slug: z.string(),
+  title: z.string(),
+  number: z.number().int().positive(),
+  summary: z.string(),
+  token: z.object({ id: z.uuid(), name: z.string() }),
+  createdAt: z.iso.datetime(),
+  authoredAt: z.iso.datetime().nullable(),
+});
+export type AgentActivityItem = z.infer<typeof agentActivityItemSchema>;
+
+export const listAgentActivityQuerySchema = z.object({
+  /** How far back to look. */
+  days: z.coerce.number().int().min(1).max(365).default(30),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
+export type ListAgentActivityQuery = z.infer<typeof listAgentActivityQuerySchema>;
+
+export const listAgentActivityResponseSchema = z.object({
+  items: z.array(agentActivityItemSchema),
+});
+export type ListAgentActivityResponse = z.infer<typeof listAgentActivityResponseSchema>;

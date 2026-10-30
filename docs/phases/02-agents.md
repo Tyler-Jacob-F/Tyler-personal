@@ -120,7 +120,7 @@ Each is one PR, in this order.
       In-process MCP client tests. Snapshot.
 - [x] **Brief type.** Schema, home-screen renderer, `write:briefs` on the scope map,
       the scheduled-task runbook. Tests.
-- [ ] **Agent activity.** The admin view. MSW test.
+- [x] **Agent activity.** The admin view. MSW test.
 - [ ] **Importer runbook and tool.** `docs/runbooks/import-recipes.md`,
       `tools/pages-text.py`, the ordering rule.
 - [ ] **Gate check.** Import the archive from a Claude Code session; record the date

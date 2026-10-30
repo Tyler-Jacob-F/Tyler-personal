@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router';
 import { RequireAuth } from '@/auth/RequireAuth';
 import { AppShell } from '@/components/AppShell';
+import { ActivityPage } from '@/routes/admin/ActivityPage';
 import { TokensPage } from '@/routes/admin/TokensPage';
 import { BriefDetail } from '@/routes/briefs/BriefDetail';
 import { Home } from '@/routes/home/Home';
@@ -30,6 +31,7 @@ export function App() {
           <Route path="/recipes/:id/diff" element={<RecipeDiff />} />
           <Route path="/stack" element={<StackPage />} />
           <Route path="/admin/tokens" element={<TokensPage />} />
+          <Route path="/admin/activity" element={<ActivityPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

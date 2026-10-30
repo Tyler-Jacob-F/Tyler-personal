@@ -1,4 +1,10 @@
-import type { AgentToken, DiffResponse, DocumentWithVersion, Version } from '@the-keep/shared';
+import type {
+  AgentActivityItem,
+  AgentToken,
+  DiffResponse,
+  DocumentWithVersion,
+  Version,
+} from '@the-keep/shared';
 
 export const ids = {
   doc: '9b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
@@ -160,3 +166,30 @@ export function briefDoc(
     version,
   };
 }
+
+export const activity: AgentActivityItem[] = [
+  {
+    versionId: 'ab2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
+    documentId: '6b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
+    documentType: 'brief',
+    slug: 'brief-for-2026-10-30',
+    title: 'Brief for 2026-10-30',
+    number: 1,
+    summary: 'morning brief',
+    token: { id: '8b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b', name: 'brief-writer' },
+    createdAt: '2026-10-30T10:10:00.000Z',
+    authoredAt: null,
+  },
+  {
+    versionId: 'bb2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b',
+    documentId: ids.doc,
+    documentType: 'recipe',
+    slug: 'chili',
+    title: 'Chili',
+    number: 2,
+    summary: 'from the 2014 card',
+    token: { id: tokens.importer.id, name: 'importer' },
+    createdAt: '2026-10-29T20:00:00.000Z',
+    authoredAt: '2014-03-03T00:00:00.000Z',
+  },
+];
