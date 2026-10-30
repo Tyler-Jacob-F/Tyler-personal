@@ -215,7 +215,7 @@ describe('ApiStack', () => {
     template.resourceCountIs('AWS::ApiGatewayV2::Authorizer', 1);
     template.hasResourceProperties('AWS::ApiGatewayV2::Authorizer', { AuthorizerType: 'JWT' });
     const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
-    expect(routes).toHaveLength(9);
+    expect(routes).toHaveLength(12);
     for (const route of routes) {
       expect(route.Properties.AuthorizationType).toBe('JWT');
       expect(route.Properties.RouteKey).toMatch(/^(GET|POST|DELETE) \/api\//);
@@ -223,7 +223,7 @@ describe('ApiStack', () => {
   });
 
   it('runs one Lambda per resource, outside the VPC, with Data API access', () => {
-    template.resourceCountIs('AWS::Lambda::Function', 3);
+    template.resourceCountIs('AWS::Lambda::Function', 4);
     const fns = Object.values(template.findResources('AWS::Lambda::Function'));
     for (const fn of fns) {
       expect(fn.Properties.VpcConfig).toBeUndefined();
@@ -232,8 +232,19 @@ describe('ApiStack', () => {
     }
     const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
     expect(policies).toContain('rds-data:ExecuteStatement');
-    template.resourceCountIs('AWS::Logs::LogGroup', 3);
+    template.resourceCountIs('AWS::Logs::LogGroup', 4);
     template.allResourcesProperties('AWS::Logs::LogGroup', { RetentionInDays: 30 });
+  });
+
+  it('keeps token management under the Cognito authorizer, never an agent route', () => {
+    const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
+    const admin = routes.filter((r) => String(r.Properties.RouteKey).includes('/api/admin/'));
+    expect(admin.map((r) => r.Properties.RouteKey).sort()).toEqual([
+      'DELETE /api/admin/tokens/{id}',
+      'GET /api/admin/tokens',
+      'POST /api/admin/tokens',
+    ]);
+    for (const route of admin) expect(route.Properties.AuthorizationType).toBe('JWT');
   });
 
   it('draws one dashboard with Lambda errors and duration, API 4xx/5xx and Aurora ACU', () => {

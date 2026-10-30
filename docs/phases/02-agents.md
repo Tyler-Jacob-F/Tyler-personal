@@ -112,7 +112,7 @@ Each is one PR, in this order.
 - [x] **Token model.** Scope enum and token DTOs in `packages/shared`; `agent_token`
       repository; `write:documents` replaced by per-type scopes in the permission
       middleware. Tests.
-- [ ] **Admin tokens.** `/api/admin/tokens` (admin role only) and the Tokens screen:
+- [x] **Admin tokens.** `/api/admin/tokens` (admin role only) and the Tokens screen:
       name, scopes, create (secret shown once), revoke, last used. Handler and MSW tests.
 - [ ] **Agent door.** Lambda authorizer, `/api/agent/*` routes, CloudFront unchanged
       (same `/api/*` behavior). Handler tests with fake authorizer events; snapshot.

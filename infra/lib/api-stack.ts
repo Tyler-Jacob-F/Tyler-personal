@@ -27,7 +27,7 @@ export class ApiStack extends cdk.Stack {
   readonly httpApi: apigwv2.HttpApi;
   /** Hostname of the API's default endpoint, for the CloudFront origin. */
   readonly apiDomainName: string;
-  readonly functions: Record<'me' | 'documents' | 'versions', lambda.IFunction>;
+  readonly functions: Record<'me' | 'documents' | 'versions' | 'adminTokens', lambda.IFunction>;
 
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
@@ -59,8 +59,14 @@ export class ApiStack extends cdk.Stack {
       environment,
       timeout,
     });
-    this.functions = { me, documents, versions };
-    for (const fn of [me, documents, versions]) cluster.grantDataApiAccess(fn);
+    const adminTokens = apiFunction(this, 'AdminTokensFunction', {
+      entry: 'handlers/admin-tokens.ts',
+      description: `${config.siteName}: /api/admin/tokens (admin role only)`,
+      environment,
+      timeout,
+    });
+    this.functions = { me, documents, versions, adminTokens };
+    for (const fn of [me, documents, versions, adminTokens]) cluster.grantDataApiAccess(fn);
 
     const authorizer = new HttpUserPoolAuthorizer('CognitoAuthorizer', userPool, {
       userPoolClients: [userPoolClient],
@@ -81,6 +87,8 @@ export class ApiStack extends cdk.Stack {
       ['/api/documents/{id}/versions', [GET, POST], versions],
       ['/api/documents/{id}/versions/{number}', [GET], versions],
       ['/api/documents/{id}/diff', [GET], versions],
+      ['/api/admin/tokens', [GET, POST], adminTokens],
+      ['/api/admin/tokens/{id}', [DELETE], adminTokens],
     ];
     for (const [path, methods, fn] of routes) {
       this.httpApi.addRoutes({
@@ -93,7 +101,13 @@ export class ApiStack extends cdk.Stack {
     // https://abc123.execute-api.us-east-1.amazonaws.com -> abc123.execute-api.us-east-1.amazonaws.com
     this.apiDomainName = cdk.Fn.select(2, cdk.Fn.split('/', this.httpApi.apiEndpoint));
 
-    this.dashboard(cluster, [me, documents, versions, ...(props.otherFunctions ?? [])]);
+    this.dashboard(cluster, [
+      me,
+      documents,
+      versions,
+      adminTokens,
+      ...(props.otherFunctions ?? []),
+    ]);
 
     new cdk.CfnOutput(this, 'ApiEndpoint', { value: this.httpApi.apiEndpoint });
   }
