@@ -205,20 +205,23 @@ converge on the same handlers with a normalized `caller` object:
 
 _Six phases, each live at the domain before the next begins._
 
-| Phase                 | Scope                                                                                             | Gate                                           |
-| --------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| Phase 0 · Foundation  | Repo, CDK, S3 + CloudFront, domain, GitHub Actions via OIDC, billing alarm, a page with your name | A merge to main is live at the domain          |
-| Phase 1 · Spine       | Postgres, documents + versions, recipe type, diffs, admin login (Cognito, one allowlisted email)  | Save and diff two chili versions in production |
-| Phase 2 · Agents      | Agent tokens with scopes, MCP server on Lambda, brief type, agent activity in the admin UI        | Claude saves a recipe through MCP              |
-| Phase 3 · Group       | Group ring, member allowlist, surveys, sign-ups, share tokens, group calendar                     | The small group answers a real survey          |
-| Phase 4 · Public face | Public read API, resume page, essays and notes feeds, dark mode, the design values applied        | Resume and an essay are public                 |
-| Phase 5 · Feeds       | Hardcover ingest, Ishar status, calendar sync, whatever earns its place                           | The reading feed updates without you           |
+| Phase                 | Scope                                                                                             | Gate                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Phase 0 · Foundation  | Repo, CDK, S3 + CloudFront, domain, GitHub Actions via OIDC, billing alarm, a page with your name | A merge to main is live at the domain             |
+| Phase 1 · Spine       | Postgres, documents + versions, recipe type, diffs, admin login (Cognito, one allowlisted email)  | Save and diff two chili versions in production    |
+| Phase 2 · Agents      | Agent tokens with scopes, MCP server on Lambda, brief type, agent activity in the admin UI        | Claude saves a recipe through MCP                 |
+| Phase 3 · Face        | The design values as tokens, dark and light, type, nav, recipe taxonomy, search, the morning page | The morning page, in the dark palette, on a phone |
+| Phase 4 · Group       | Group ring, member allowlist, surveys, sign-ups, share tokens, group calendar                     | The small group answers a real survey             |
+| Phase 5 · Public face | Public read API, resume page, essays and notes feeds                                              | Resume and an essay are public                    |
+| Phase 6 · Feeds       | Hardcover ingest, Ishar status, calendar sync, whatever earns its place                           | The reading feed updates without you              |
 
-roadmap · 6 phases, a gate on each
+roadmap · 7 phases, a gate on each
 
 Each phase is its own Claude Code directive and its own set of PRs; a phase is done when
-its gate is true in production, not when the code merges. Phases 3 and 4 can swap if the
-small group's needs push harder than the resume.
+its gate is true in production, not when the code merges. (Oct 30, 2026: a Face phase was
+inserted before the group ring, since the logged-in app is the thing Tyler uses daily and
+everyone else visits; the design values it applies are in `docs/DESIGN-VALUES.md`. Group
+and Public face each moved one later.)
 
 **Phase 0** is deliberately small and teaches the most AWS per hour. It includes the CDK
 bootstrap, a `cdk diff` check on PRs, the GitHub OIDC role, the billing alarm, and the
