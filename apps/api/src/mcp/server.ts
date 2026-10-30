@@ -165,8 +165,8 @@ export function createKeepServer(db: Db, identity: Identity, log: Logger): McpSe
     },
     (args) =>
       attempt(async () => {
-        const { items, q, tags } = await searchDocumentsFor(db, identity, args);
-        return ok(null, { q, tags, count: items.length, items: items.map(summarize) });
+        const { items, total, q, tags } = await searchDocumentsFor(db, identity, args);
+        return ok(null, { q, tags, count: items.length, total, items: items.map(summarize) });
       }),
   );
 

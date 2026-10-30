@@ -2,13 +2,22 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { useMe } from '@/api/me';
 import { useAuth } from '@/auth/useAuth';
-import { ChevronDownIcon, CloseIcon, MenuIcon, PlusIcon, SearchIcon } from '@/components/icons';
+import {
+  ChevronDownIcon,
+  CloseIcon,
+  KeepMark,
+  MenuIcon,
+  PlusIcon,
+  SearchIcon,
+} from '@/components/icons';
 import {
   ADMIN_PLACE,
+  ADMIN_PLACES,
   CREATABLE,
   currentCreatable,
   FOCUS_SEARCH_STATE,
   isActive,
+  type Place,
   PLACES,
   SEARCH_PATH,
 } from '@/components/nav';
@@ -18,10 +27,11 @@ import { focusRing } from '@/components/ui/styles';
 import { cn } from '@/lib/utils';
 
 /**
- * A top bar, 56px, not a sidebar (docs/DESIGN-VALUES.md "Nav"). Wordmark, places, search,
- * a type-aware New, the theme toggle and sign-out; on the phone the bar collapses to the
- * wordmark, search, New and a menu button that opens a sheet with a search field at its
- * top. Admin appears for the admin role, which the shell learns once from /api/me.
+ * A top bar, 56px, not a sidebar (docs/DESIGN-VALUES.md "Nav"; docs/design/nav-*.png).
+ * Wordmark with the mark, places, a search field-button with ⌘K, a type-aware New with a
+ * split caret, the theme toggle and sign-out; Admin is a menu for the admin role, which the
+ * shell learns once from /api/me. On the phone the bar collapses to the wordmark, search,
+ * New and a menu button that opens a sheet with a search field at its top.
  */
 export function AppShell() {
   const { state, signOut } = useAuth();
@@ -32,7 +42,6 @@ export function AppShell() {
   const menuButton = useRef<HTMLButtonElement>(null);
 
   const isAdmin = me.data?.caller.kind === 'member' && me.data.caller.role === 'admin';
-  const places = isAdmin ? [...PLACES, ADMIN_PLACE] : PLACES;
   const creatable = currentCreatable(location.pathname);
 
   const openSearch = () => navigate(SEARCH_PATH, { state: FOCUS_SEARCH_STATE });
@@ -55,13 +64,6 @@ export function AppShell() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setOpen(false), [location.pathname, location.search]);
 
-  const placeClass = (active: boolean) =>
-    cn(
-      'inline-flex h-11 items-center rounded-md px-2 text-[15px] transition-colors',
-      focusRing,
-      active ? 'font-semibold text-text-strong' : 'text-muted hover:text-text',
-    );
-
   return (
     <div className="flex h-dvh flex-col">
       <header className="shrink-0 border-b border-border bg-bg">
@@ -69,39 +71,37 @@ export function AppShell() {
           <Link
             to="/"
             className={cn(
-              'mr-2 rounded-md px-1 font-serif text-xl font-medium text-text-strong',
+              'mr-2 inline-flex h-11 items-center gap-2 rounded-md px-1 font-serif text-xl font-medium text-text-strong',
               focusRing,
             )}
           >
+            <KeepMark size={20} />
             The Keep
           </Link>
 
           <nav aria-label="Places" className="hidden items-center gap-1 md:flex">
-            {places.map((place) => (
-              <NavLink
-                key={place.to}
-                to={place.to}
-                end={place.end}
-                className={placeClass(isActive(place, location.pathname))}
-                aria-current={isActive(place, location.pathname) ? 'page' : undefined}
-              >
-                {place.label}
-              </NavLink>
+            {PLACES.map((place) => (
+              <PlaceLink key={place.to} place={place} pathname={location.pathname} />
             ))}
+            {isAdmin && <AdminMenu pathname={location.pathname} />}
           </nav>
 
-          <div className="ml-auto flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
+          <div className="ml-auto flex items-center gap-1.5">
+            <button
+              type="button"
               aria-label="Search"
-              title="Search (⌘K)"
               aria-keyshortcuts="Meta+K Control+K"
-              className="hidden md:inline-flex"
+              className={cn(
+                'hidden h-11 w-48 items-center gap-2 rounded-md border border-border bg-surface px-3 text-sm text-muted md:flex',
+                'hover:border-border-strong hover:text-text',
+                focusRing,
+              )}
               onClick={openSearch}
             >
-              <SearchIcon />
-            </Button>
+              <SearchIcon width="16" height="16" />
+              <span className="grow text-left">Search</span>
+              <kbd className="rounded-sm border border-border px-1 font-sans text-xs">⌘K</kbd>
+            </button>
             <Button
               variant="ghost"
               size="icon"
@@ -137,7 +137,7 @@ export function AppShell() {
 
       {open && (
         <Sheet
-          places={places}
+          isAdmin={isAdmin}
           email={state.status === 'signedIn' ? state.email : null}
           pathname={location.pathname}
           onClose={() => {
@@ -158,37 +158,91 @@ export function AppShell() {
   );
 }
 
-/** "New recipe" on Recipes; the caret lists every type New can make. */
+function PlaceLink({ place, pathname }: { place: Place; pathname: string }) {
+  const active = isActive(place, pathname);
+  return (
+    <NavLink
+      to={place.to}
+      end={place.end}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'inline-flex h-11 items-center rounded-md px-2 text-[15px] transition-colors',
+        focusRing,
+        active ? 'font-semibold text-text-strong' : 'text-muted hover:text-text',
+      )}
+    >
+      {place.label}
+    </NavLink>
+  );
+}
+
+/** Admin ⌄ on the desktop: the owner-only places with a hint each (docs/design/nav-dark-desktop.png). */
+function AdminMenu({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const id = useId();
+  const active = isActive(ADMIN_PLACE, pathname);
+  useDismiss(root, open, () => setOpen(false));
+  return (
+    <div ref={root} className="relative">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={id}
+        aria-current={active ? 'page' : undefined}
+        className={cn(
+          'inline-flex h-11 items-center gap-1 rounded-md px-2 text-[15px] transition-colors',
+          focusRing,
+          active ? 'font-semibold text-text-strong' : 'text-muted hover:text-text',
+        )}
+        onClick={() => setOpen((v) => !v)}
+      >
+        Admin
+        <ChevronDownIcon width="14" height="14" />
+      </button>
+      {open && (
+        <div
+          id={id}
+          role="menu"
+          aria-label="Admin"
+          className="absolute top-full left-0 z-20 mt-1 w-64 rounded-lg border border-border bg-surface-raised p-2 shadow-lg"
+        >
+          <p className="eyebrow px-2 pt-1 pb-2">Admin · owner only</p>
+          {ADMIN_PLACES.map((place) => (
+            <Link
+              key={place.to}
+              role="menuitem"
+              to={place.to}
+              onClick={() => setOpen(false)}
+              className={cn(
+                'flex h-11 items-center justify-between gap-3 rounded-md px-2 text-[15px] hover:bg-surface',
+                focusRing,
+              )}
+            >
+              {place.label}
+              <span className="text-[13px] text-muted">{place.hint}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** "New recipe" with a caret that lists every type New can make. */
 function NewSplit({ current }: { current: ReturnType<typeof currentCreatable> }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const id = useId();
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (event: PointerEvent) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('pointerdown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('pointerdown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
+  useDismiss(root, open, () => setOpen(false));
 
   return (
     <div ref={root} className="relative flex items-center">
-      <Button asChild size="sm" className="rounded-r-none border-r-0 px-3 md:pr-3">
+      <Button asChild size="sm" className="rounded-r-none border-r-0 px-3">
         <Link to={current.to} onClick={() => setOpen(false)}>
           <PlusIcon width="16" height="16" />
-          <span className="md:hidden" aria-hidden="true">
-            New
-          </span>
-          <span className="hidden md:inline">New {current.label.toLowerCase()}</span>
+          New {current.label.toLowerCase()}
         </Link>
       </Button>
       <Button
@@ -230,15 +284,34 @@ function NewSplit({ current }: { current: ReturnType<typeof currentCreatable> })
   );
 }
 
+/** Close a menu on a pointer down outside it or on Escape. */
+function useDismiss(root: React.RefObject<HTMLElement | null>, open: boolean, close: () => void) {
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) close();
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close();
+    };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open, root, close]);
+}
+
 function Sheet({
-  places,
+  isAdmin,
   email,
   pathname,
   onClose,
   onSearch,
   onSignOut,
 }: {
-  places: typeof PLACES;
+  isAdmin: boolean;
   email: string | null;
   pathname: string;
   onClose(): void;
@@ -255,12 +328,33 @@ function Sheet({
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  const row = (place: Place, serif: boolean) => {
+    const active = isActive(place, pathname);
+    return (
+      <li key={place.to}>
+        <Link
+          to={place.to}
+          aria-current={active ? 'page' : undefined}
+          className={cn(
+            'flex h-13 items-center justify-between gap-3',
+            serif ? 'font-serif text-[19px]' : 'text-[17px]',
+            focusRing,
+            active ? 'font-semibold text-text-strong' : 'text-text',
+          )}
+        >
+          {place.label}
+          {place.hint && <span className="text-[13px] text-muted">{place.hint}</span>}
+        </Link>
+      </li>
+    );
+  };
+
   return (
     <div
       id="nav-sheet"
       role="dialog"
       aria-label="Menu"
-      className="fixed inset-x-0 top-14 bottom-0 z-10 overflow-y-auto bg-bg md:hidden"
+      className="fixed inset-x-0 top-14 bottom-0 z-10 flex flex-col overflow-y-auto bg-bg md:hidden"
     >
       <div className="grid gap-6 px-4 py-5">
         <form
@@ -277,7 +371,7 @@ function Sheet({
             type="search"
             name="q"
             aria-label="Search"
-            placeholder="Search recipes"
+            placeholder="Search the Keep"
             enterKeyHint="search"
             className={cn(
               'h-12 w-full rounded-md border border-border bg-surface pr-3 pl-11 text-[17px] text-text placeholder:text-muted',
@@ -288,34 +382,25 @@ function Sheet({
 
         <nav aria-label="Places">
           <ul className="divide-y divide-border border-y border-border">
-            {places.map((place) => {
-              const active = isActive(place, pathname);
-              return (
-                <li key={place.to}>
-                  <Link
-                    to={place.to}
-                    aria-current={active ? 'page' : undefined}
-                    className={cn(
-                      'flex h-13 items-center font-serif text-[19px]',
-                      focusRing,
-                      active ? 'font-medium text-text-strong' : 'text-text',
-                    )}
-                  >
-                    {place.label}
-                  </Link>
-                </li>
-              );
-            })}
+            {PLACES.map((place) => row(place, true))}
           </ul>
+          {isAdmin && (
+            <>
+              <p className="eyebrow mt-6 mb-1">Admin · owner only</p>
+              <ul className="divide-y divide-border border-b border-border">
+                {ADMIN_PLACES.map((place) => row(place, false))}
+              </ul>
+            </>
+          )}
         </nav>
+      </div>
 
-        <div className="flex items-center justify-between gap-3">
-          <ThemeToggle />
-          <span className="min-w-0 truncate text-sm text-muted">{email}</span>
-          <Button variant="ghost" size="sm" onClick={onSignOut}>
-            Sign out
-          </Button>
-        </div>
+      <div className="mt-auto flex items-center justify-between gap-3 border-t border-border bg-surface px-4 py-3">
+        <ThemeToggle variant="switch" />
+        <span className="min-w-0 truncate text-[13px] text-muted">{email}</span>
+        <Button variant="ghost" size="sm" onClick={onSignOut}>
+          Sign out
+        </Button>
       </div>
     </div>
   );

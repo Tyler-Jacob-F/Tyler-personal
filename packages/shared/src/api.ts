@@ -70,6 +70,8 @@ export type SearchDocumentsInput = z.input<typeof searchDocumentsQuerySchema>;
 
 export const searchDocumentsResponseSchema = z.object({
   items: z.array(documentWithVersionSchema),
+  /** How many live documents the type has in all, for "6 of 12". */
+  total: z.number().int().nonnegative(),
   /** What was searched, as the server read it. */
   q: z.string(),
   tags: z.array(z.string()),

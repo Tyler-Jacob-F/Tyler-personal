@@ -14,6 +14,7 @@ import {
 import { z } from 'zod';
 import type { Db } from '../db/client.js';
 import {
+  countDocuments,
   createDocument,
   createVersion,
   getDocument,
@@ -50,8 +51,16 @@ export async function searchDocumentsFor(
   query: unknown,
 ): Promise<SearchDocumentsResponse> {
   const { q, type, tags, limit } = parse(searchDocumentsQuerySchema, query ?? {}, 'query');
-  const items = await searchDocuments(db, { q, type, tags, limit });
-  return { items: items.filter((item) => can(identity.caller, 'read', item.document)), q, tags };
+  const [items, total] = await Promise.all([
+    searchDocuments(db, { q, type, tags, limit }),
+    countDocuments(db, type),
+  ]);
+  return {
+    items: items.filter((item) => can(identity.caller, 'read', item.document)),
+    total,
+    q,
+    tags,
+  };
 }
 
 export async function createDocumentFor(

@@ -5,6 +5,8 @@
 export interface Place {
   label: string;
   to: string;
+  /** A few words at the right of the row in the sheet and the Admin menu. */
+  hint?: string;
   /** Path prefixes that light this place; `end` marks an exact match. */
   matches: string[];
   end?: boolean;
@@ -25,9 +27,14 @@ export const ADMIN_PLACE: Place = {
 
 /** The admin's own places, shown as a second row on those screens. */
 export const ADMIN_PLACES: Place[] = [
-  { label: 'Tokens', to: '/admin/tokens', matches: ['/admin/tokens'] },
-  { label: 'Activity', to: '/admin/activity', matches: ['/admin/activity'] },
-  { label: 'Stack', to: '/stack', matches: ['/stack'] },
+  { label: 'Tokens', to: '/admin/tokens', matches: ['/admin/tokens'], hint: 'agents, scopes' },
+  {
+    label: 'Activity',
+    to: '/admin/activity',
+    matches: ['/admin/activity'],
+    hint: 'agents, versions',
+  },
+  { label: 'Stack', to: '/stack', matches: ['/stack'], hint: 'how it is built' },
 ];
 
 export function isActive(place: Place, pathname: string): boolean {

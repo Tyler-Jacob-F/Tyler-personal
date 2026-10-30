@@ -69,3 +69,17 @@ export const MoonIcon = (p: ComponentProps<'svg'>) => (
     <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
   </Icon>
 );
+
+/** The Keep mark (docs/design/keep-mark.svg): always text-strong, never the accent. */
+export const KeepMark = ({ size = 20, ...p }: ComponentProps<'svg'> & { size?: number }) => (
+  <svg viewBox="0 0 64 64" width={size} height={size} fill="currentColor" aria-hidden="true" {...p}>
+    <path
+      fillRule="evenodd"
+      d={
+        size <= 20
+          ? 'M18 12H24V20H29V12H35V20H40V12H46V58H18ZM28 58V48A4 4 0 0 1 36 48V58Z'
+          : 'M18 12H24V20H29V12H35V20H40V12H46V58H18ZM31 26H33V31H36V33H33V40H31V33H28V31H31ZM28 58V48A4 4 0 0 1 36 48V58Z'
+      }
+    />
+  </svg>
+);

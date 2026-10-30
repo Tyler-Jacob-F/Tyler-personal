@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="The Keep">
+  <!-- Cut from docs/design/keep-mark-16.svg: the mark in text-strong for the tab, following the system mode. -->
+  <style>
+    path { fill: #FAF4EA; }
+    @media (prefers-color-scheme: light) { path { fill: #171310; } }
+  </style>
+  <path fill-rule="evenodd" d="M18 12H24V20H29V12H35V20H40V12H46V58H18ZM28 58V48A4 4 0 0 1 36 48V58Z"/>
+</svg>

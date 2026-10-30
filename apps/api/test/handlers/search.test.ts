@@ -92,7 +92,7 @@ describe('GET /api/documents/search', () => {
 
     const breakfast = await search({ tags: 'course:breakfast' });
     expect(titles(breakfast).sort()).toEqual(['Pancakes', 'Shakshuka']);
-    expect(breakfast).toMatchObject({ q: '', tags: ['course:breakfast'] });
+    expect(breakfast).toMatchObject({ q: '', tags: ['course:breakfast'], total: 3 });
     expect(titles(await search({ tags: 'course:breakfast, main:eggs' }))).toEqual(['Shakshuka']);
     expect(titles(await search({ tags: 'course:breakfast', q: 'shakshuka' }))).toEqual([
       'Shakshuka',

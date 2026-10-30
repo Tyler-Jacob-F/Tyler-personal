@@ -13,6 +13,7 @@ describe('RecipeList', () => {
         calls.push(url);
         return HttpResponse.json({
           items: handler(url),
+          total: 12,
           q: url.searchParams.get('q') ?? '',
           tags: (url.searchParams.get('tags') ?? '').split(',').filter(Boolean),
         });
@@ -30,6 +31,7 @@ describe('RecipeList', () => {
     expect(within(item).getByText('Main · Beef · Project · Cookoff')).toBeInTheDocument();
     expect(within(item).getByText('3 h')).toHaveClass('tabular-nums');
     expect(within(item).getByRole('img', { name: 'Proven' })).toBeInTheDocument();
+    expect(screen.getByText('12')).toHaveClass('tabular-nums');
     expect(screen.getByRole('link', { name: /New recipe/ })).toHaveAttribute(
       'href',
       '/recipes/new',
@@ -62,6 +64,7 @@ describe('RecipeList', () => {
     await waitFor(() => expect(calls.at(-1)!.searchParams.get('tags')).toBe('course:breakfast'));
     expect(calls.at(-1)!.searchParams.get('q')).toBe('saturday');
     expect(await screen.findByText('Nothing matches.')).toBeInTheDocument();
+    expect(screen.getByText('0 of 12')).toBeInTheDocument();
 
     const active = screen.getByRole('list', { name: 'Active filters' });
     expect(within(active).getByRole('button', { name: 'Remove Breakfast' })).toHaveAttribute(

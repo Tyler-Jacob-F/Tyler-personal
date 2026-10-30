@@ -83,7 +83,14 @@ export function RecipeList() {
 
   return (
     <div className="grid gap-6">
-      <h1 className="page-title">Recipes</h1>
+      <div className="flex items-baseline justify-between gap-4">
+        <h1 className="page-title">Recipes</h1>
+        {results.data && (
+          <p className="text-sm text-muted tabular-nums">
+            {filtering ? `${items.length} of ${results.data.total}` : `${results.data.total}`}
+          </p>
+        )}
+      </div>
 
       <form
         role="search"
@@ -98,7 +105,7 @@ export function RecipeList() {
           ref={field}
           type="search"
           aria-label="Search recipes"
-          placeholder="Search recipes"
+          placeholder="Search by title, ingredient, or note"
           enterKeyHint="search"
           className="pl-11"
           value={draft}
@@ -164,20 +171,8 @@ export function RecipeList() {
                       )}
                     >
                       <span className="min-w-0 grow">
-                        <span className="flex items-center gap-2">
-                          <span className="font-serif text-[19px] leading-snug text-text-strong">
-                            {titleOf(version.frontmatter)}
-                          </span>
-                          {r?.proven && (
-                            <CheckIcon
-                              width="16"
-                              height="16"
-                              className="shrink-0 text-text-strong"
-                              aria-hidden={false}
-                              aria-label="Proven"
-                              role="img"
-                            />
-                          )}
+                        <span className="block font-serif text-[19px] leading-snug text-text-strong">
+                          {titleOf(version.frontmatter)}
                         </span>
                         {facetLine.length > 0 && (
                           <span className="mt-0.5 block text-[13px] text-muted">
@@ -185,11 +180,19 @@ export function RecipeList() {
                           </span>
                         )}
                       </span>
-                      {r?.totalMinutes !== undefined && (
-                        <span className="shrink-0 text-sm text-muted tabular-nums">
-                          {minutes(r.totalMinutes)}
-                        </span>
-                      )}
+                      <span className="flex shrink-0 items-center gap-2 text-sm text-muted tabular-nums">
+                        {r?.proven && (
+                          <CheckIcon
+                            width="16"
+                            height="16"
+                            className="text-text-strong"
+                            aria-hidden={false}
+                            aria-label="Proven"
+                            role="img"
+                          />
+                        )}
+                        {r?.totalMinutes !== undefined && minutes(r.totalMinutes)}
+                      </span>
                     </Link>
                   </li>
                 );
@@ -215,7 +218,7 @@ const groups: Array<{ key: RecipeFacet | 'flag'; label: string; tagsOf: () => st
 function Filters({ selected, onToggle }: { selected: string[]; onToggle(tag: string): void }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
-    <nav aria-label="Filters" className="w-full shrink-0 md:w-52">
+    <nav aria-label="Filters" className="w-full shrink-0 md:w-60">
       <ul className="divide-y divide-border border-y border-border md:divide-y-0 md:border-0">
         {groups.map((group) => {
           const isOpen = open === group.key;
@@ -225,16 +228,16 @@ function Filters({ selected, onToggle }: { selected: string[]; onToggle(tag: str
               <button
                 type="button"
                 className={cn(
-                  'flex h-11 w-full items-center justify-between gap-2 text-left md:hidden',
+                  'flex h-12 w-full items-center justify-between gap-2 text-left md:hidden',
                   focusRing,
                 )}
                 aria-expanded={isOpen}
                 aria-controls={`filters-${group.key}`}
                 onClick={() => setOpen(isOpen ? null : group.key)}
               >
-                <span className="eyebrow">{group.label}</span>
-                <span className="flex items-center gap-2 text-[13px] text-muted">
-                  {chosen.map(tagLabel).join(', ')}
+                <span className="font-semibold text-text-strong">{group.label}</span>
+                <span className="flex items-center gap-2 text-sm text-muted">
+                  {chosen.length ? chosen.map(tagLabel).join(', ') : 'Any'}
                   <ChevronDownIcon
                     width="16"
                     height="16"
@@ -242,7 +245,12 @@ function Filters({ selected, onToggle }: { selected: string[]; onToggle(tag: str
                   />
                 </span>
               </button>
-              <h2 className="eyebrow mb-2 hidden md:block">{group.label}</h2>
+              <h2 className="mb-2 hidden items-baseline justify-between md:flex">
+                <span className="text-sm font-semibold text-text-strong">{group.label}</span>
+                <span className="text-[13px] text-muted">
+                  {chosen.length ? chosen.map(tagLabel).join(', ') : 'Any'}
+                </span>
+              </h2>
               <ul
                 id={`filters-${group.key}`}
                 className={cn(

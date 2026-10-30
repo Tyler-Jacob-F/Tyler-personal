@@ -426,6 +426,15 @@ export async function searchDocuments(
   }));
 }
 
+/** How many live documents there are, of one type or of all. */
+export async function countDocuments(db: Db, type?: string): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(document)
+    .where(and(isNull(document.deletedAt), type ? eq(document.type, type) : undefined));
+  return Number(rows[0]?.count ?? 0);
+}
+
 /** A live document with its current version, or null (deleted counts as gone). */
 export async function getDocument(db: Db, id: string): Promise<DocumentWithVersion | null> {
   const rows = await db
