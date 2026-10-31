@@ -194,7 +194,7 @@ and approved before the migration was written.
   `keep.device`. A device is good for a year from entering, computed in code.
 - **Three doors, one set of handlers.** `/api/group/*` normalizes onto `/api/*` the way
   `/api/agent/*` does. The caller gained a kind: `{ kind: 'group', deviceId, memberId,
-  role: member | guest }`. `groupIdentity` re-reads the member row on each request, so a
+role: member | guest }`. `groupIdentity` re-reads the member row on each request, so a
   renamed name shows as it is now and a claim on a vanished row falls back to guest.
   `Identity.owner` is null for a device; `writerOf` refuses one a document write.
 - **The group authorizer** refuses an unknown, cleared or year-old device with the
