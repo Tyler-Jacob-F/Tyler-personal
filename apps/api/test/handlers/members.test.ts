@@ -69,14 +69,33 @@ describe('GET /api/members', () => {
       (await asDevice({ deviceId: phone.deviceId }, 'GET', '/api/members/{id}', { id: oscar.id }))
         .statusCode,
     ).toBe(200);
+    // An agent reads the directory with read:members alone, and does nothing else to it.
+    const seeder = { id: oscar.id, name: 'claude', scopes: ['read:documents', 'read:members'] };
     const agent = await api(
+      fakeEvent({ method: 'GET', route: '/api/agent/members', agent: seeder }),
+    );
+    expect(agent.statusCode).toBe(200);
+    expect(bodyOf<ListMembersResponse>(agent).items).toHaveLength(4);
+    const without = await api(
       fakeEvent({
         method: 'GET',
         route: '/api/agent/members',
-        agent: { id: oscar.id, name: 'claude', scopes: ['read:documents'] },
+        agent: { ...seeder, scopes: ['read:documents'] },
       }),
     );
-    expect(agent.statusCode).toBe(401);
+    expect(without.statusCode).toBe(403);
+    expect(
+      (
+        await api(
+          fakeEvent({
+            method: 'POST',
+            route: '/api/agent/members',
+            body: { displayName: 'X' },
+            agent: seeder,
+          }),
+        )
+      ).statusCode,
+    ).toBe(403);
   });
 });
 

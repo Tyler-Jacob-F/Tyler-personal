@@ -3,9 +3,12 @@ import type { DocumentType } from './document.js';
 
 /**
  * Agent scopes are verbs on types (docs/DESIGN.md "Auth and access rings"). The list is
- * the brief's plus the two the Group phase added for the `claude` token to keep the
- * calendar and post the questions (docs/phases/04-group.md); a token carries a subset and
- * nothing here grants promotion, member management, token management or a sign-up.
+ * the brief's plus the four the Group phase added (docs/phases/04-group.md): `write:events`
+ * and `write:questions` for the `claude` token to keep the calendar and post the questions;
+ * `write:signups` (a sheet and the names on its slots) and `read:members` (the directory,
+ * so a name can be matched to a row) for the one-time seed from the Google Sheet, removed
+ * from the token once it is done. A token carries a subset and nothing here grants
+ * promotion, member management or token management.
  */
 export const agentScopes = [
   'read:documents',
@@ -15,6 +18,8 @@ export const agentScopes = [
   'read:reading',
   'write:events',
   'write:questions',
+  'write:signups',
+  'read:members',
 ] as const;
 export const agentScopeSchema = z.enum(agentScopes);
 export type AgentScope = z.infer<typeof agentScopeSchema>;
@@ -27,8 +32,7 @@ export const writeScopeByType: Record<DocumentType, AgentScope | null> = {
   recipe: 'write:recipes',
   brief: 'write:briefs',
   questions: 'write:questions',
-  // No agent writes a sign-up until one needs to (`write:signups` waits, per the directive).
-  signup: null,
+  signup: 'write:signups',
   event: 'write:events',
 };
 

@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import {
+  createClaimRequestSchema,
   createDocumentRequestSchema,
   createVersionRequestSchema,
   type DocumentWithVersion,
@@ -18,6 +19,7 @@ import { NotFoundError } from '../db/repositories.js';
 import { HttpError } from '../lib/http.js';
 import type { Logger } from '../lib/logger.js';
 import type { Identity } from '../middleware/identity.js';
+import { createClaimFor, listClaimsFor } from '../services/claims.js';
 import {
   createDocumentFor,
   createVersionFor,
@@ -26,9 +28,10 @@ import {
   searchDocumentsFor,
   setTagsFor,
 } from '../services/documents.js';
+import { listMembersFor } from '../services/members.js';
 
 export const SERVER_NAME = 'the-keep';
-export const SERVER_VERSION = '0.4.0';
+export const SERVER_VERSION = '0.5.0';
 
 const idField = z
   .uuid()
@@ -43,9 +46,10 @@ const instructions = [
   'list_documents before create_document so an existing recipe gets a version instead of a',
   'duplicate. When importing an older file, pass authoredAt as the date the content was written.',
   'Facets and flags are tags on the document, not frontmatter: set_tags replaces the whole set',
-  'without writing a version. The small group’s types (questions, event) start in the group',
-  'ring, where every member reads them; a signup is written by people only, and no scope',
-  'claims a slot or touches a member.',
+  'without writing a version. The small group’s types (questions, signup, event) start in the',
+  'group ring, where every member reads them. With write:signups a token may also make a',
+  'sheet and put names on its slots (claim_slot), and with read:members look the names up',
+  '(list_members): the one-time seed from the old Google Sheet. Nothing touches a member row.',
 ].join(' ');
 
 /** A model-sized view of a document: identity and the current version's facts, not its body. */
@@ -252,6 +256,60 @@ export function createKeepServer(db: Db, identity: Identity, log: Logger): McpSe
         const updated = await setTagsFor(db, identity, id, { tags }, log);
         const view = summarize(updated);
         return ok(`Tagged ${view.type} "${view.title}": ${view.tags.join(' ') || '(none)'}.`, view);
+      }),
+  );
+
+  server.registerTool(
+    'list_members',
+    {
+      title: 'List the group’s members',
+      description:
+        'The small group’s directory: each member’s id, name, role (admin, colead, group), and ' +
+        'whether a phone has claimed the row. Use it to match a name from the old sign-up sheet ' +
+        'to a member id before claim_slot; when a name matches no row, or two, stop and ask ' +
+        'rather than guess. Needs read:members.',
+      inputSchema: z.object({}),
+      annotations: { readOnlyHint: true, idempotentHint: true },
+    },
+    () =>
+      attempt(async () => {
+        const { items } = await listMembersFor(db, identity);
+        return ok(null, {
+          count: items.length,
+          items: items.map((m) => ({
+            id: m.id,
+            name: m.displayName,
+            role: m.role,
+            claimed: m.claimedAt !== null,
+          })),
+        });
+      }),
+  );
+
+  server.registerTool(
+    'claim_slot',
+    {
+      title: 'Put a name on a sign-up slot',
+      description:
+        'Record that a member has a slot on a signup document: id is the signup’s document id, ' +
+        'slot is the slot’s label exactly as the sheet’s frontmatter has it, memberId is the ' +
+        'member from list_members. One claim per member per slot; a full slot is refused ' +
+        '(slot_full). This is how the old Google Sheet is ported: make the week’s signup with ' +
+        'create_document (type signup, the Thursday’s date, the slots as they were, a closesAt in ' +
+        'the past), then one claim_slot per name on it. Returns the slot’s claims after. Needs ' +
+        'write:signups.',
+      inputSchema: createClaimRequestSchema.extend({ id: idField, memberId: z.uuid() }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+    },
+    ({ id, ...body }) =>
+      attempt(async () => {
+        const claim = await createClaimFor(db, identity, id, body, log);
+        const { items } = await listClaimsFor(db, identity, id);
+        return ok(`${claim.memberName} is on "${claim.slot}".`, {
+          claim,
+          slot: claim.slot,
+          names: items.filter((c) => c.slot === claim.slot).map((c) => c.memberName),
+        });
       }),
   );
 

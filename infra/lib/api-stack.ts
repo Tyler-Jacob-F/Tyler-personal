@@ -236,6 +236,10 @@ export class ApiStack extends cdk.Stack {
       ['/api/agent/documents/{id}/versions', [GET, POST], versions],
       ['/api/agent/documents/{id}/versions/{number}', [GET], versions],
       ['/api/agent/documents/{id}/diff', [GET], versions],
+      // The seed from the Google Sheet (docs/runbooks/seed-the-sheet.md): a sheet's claims
+      // and the directory to match names against, behind write:signups and read:members.
+      ['/api/agent/documents/{id}/claims', [GET, POST], claims],
+      ['/api/agent/members', [GET], members],
       // One MCP endpoint, same door. Streamable HTTP uses POST for messages; GET and
       // DELETE get the transport's 405 in stateless mode.
       ['/mcp', [ANY], mcp],

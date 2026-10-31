@@ -1,9 +1,11 @@
 # Runbook · the calendar and the questions through MCP
 
 The `claude` token keeps the group's calendar and posts the weekly questions
-(docs/phases/04-group.md "Three new types"). It cannot touch a sign-up, a member, a claim
-or the link: no scope exists for those, and none will until an agent needs one. Sheets are
-made by hand (`docs/runbooks/bring-the-group-in.md`, step 3).
+(docs/phases/04-group.md "Three new types"). Day to day it cannot touch a sign-up, a
+member, a claim or the link; the two scopes that reach sheets and the directory exist for
+the one-time seed from the Google Sheet (`docs/runbooks/seed-the-sheet.md`) and come off
+the token after. Weekly sheets are made by hand or by a co-lead
+(`docs/runbooks/bring-the-group-in.md`, step 3).
 
 ## One-time setup (Tyler)
 

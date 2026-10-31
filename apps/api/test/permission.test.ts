@@ -38,6 +38,8 @@ const callers = {
   reader: { kind: 'agent', id: ids.token, scopes: ['read:documents'] },
   recipeWriter: { kind: 'agent', id: ids.token, scopes: ['write:recipes'] },
   scopeless: { kind: 'agent', id: ids.token, scopes: [] },
+  /** The seed from the Google Sheet: a sheet and its names, and the directory to match them. */
+  seeder: { kind: 'agent', id: ids.token, scopes: ['write:signups', 'read:members'] },
 } satisfies Record<string, Caller>;
 type CallerName = keyof typeof callers;
 
@@ -90,6 +92,11 @@ const recipeTable: Record<CallerName, Record<Action, Record<(typeof rings)[numbe
     write: { me: false, group: false, public: false },
     delete: { me: false, group: false, public: false },
   },
+  seeder: {
+    read: { me: false, group: false, public: false },
+    write: { me: false, group: false, public: false },
+    delete: { me: false, group: false, public: false },
+  },
 };
 
 describe('permission: documents, every caller × action × ring', () => {
@@ -133,6 +140,7 @@ describe('permission: documents, every caller × action × ring', () => {
             let expected = recipeTable[name][action][ring];
             if (name === 'colead' && action !== 'read') expected = ring === 'group';
             if (name === 'recipeWriter' && action === 'write') expected = false;
+            if (name === 'seeder' && action === 'write') expected = type === 'signup';
             expect(can(caller, action, { ring, type }), `${name} ${action} ${type} ${ring}`).toBe(
               expected,
             );
@@ -173,6 +181,7 @@ describe('permission: claiming a slot', () => {
     reader: { own: false, other: false },
     recipeWriter: { own: false, other: false },
     scopeless: { own: false, other: false },
+    seeder: { own: true, other: true },
   };
 
   for (const [name, caller] of Object.entries(callers) as Array<[CallerName, Caller]>) {
@@ -264,6 +273,14 @@ describe('permission: members', () => {
       clear: [false, false],
       promote: [false, false],
     },
+    seeder: {
+      read: [true, true],
+      add: [false, false],
+      edit: [false, false],
+      claim: [false, false],
+      clear: [false, false],
+      promote: [false, false],
+    },
   };
 
   for (const [name, caller] of Object.entries(callers) as Array<[CallerName, Caller]>) {
@@ -295,6 +312,7 @@ describe('permission: the link and the admin’s own', () => {
       reader: false,
       recipeWriter: false,
       scopeless: false,
+      seeder: false,
     };
     for (const [name, caller] of Object.entries(callers) as Array<[CallerName, Caller]>) {
       expect(canKeepLink(caller), name).toBe(keepers[name]);

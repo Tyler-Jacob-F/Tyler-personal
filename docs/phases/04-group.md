@@ -111,6 +111,9 @@ to ask the group yet, and a sign-up with names on it is the thing they do every 
 - Calendar sync with Google or anyone; recurring events; reminders.
 - Any member seeing Recipes, the morning page, Writing or Admin. Any public page.
 - Importing the Google Sheet's history; only the current sheet's slots are entered.
+  (Brought back in on Oct 31, once the phase was live: a one-time seed through MCP, not a
+  migration, with `write:signups` and `read:members` on the `claude` token for the evening
+  and off it after. `docs/runbooks/seed-the-sheet.md`.)
 - Attachments and photos on any of the new types.
 - Any agent path that claims a member, edits a member, rotates the link, or promotes a
   ring. Never.
@@ -236,8 +239,11 @@ role: member | guest }`. `groupIdentity` re-reads the member row on each request
   API: the slot must be a current label (the 400 names them); 409 `slot_full`, 409
   `conflict` for a member already on the slot, 409 `closed` after `closesAt` for members
   while co-leads still fix the sheet. Slot order is the sheet's own.
-- **MCP** is at 0.4.0: the same six tools, the instructions and `create_document` naming
-  the group's types and the type's default ring. `write:signups` does not exist.
+- **MCP** is at 0.5.0: the six tools plus `list_members` and `claim_slot`, added Oct 31
+  for the seed from the Google Sheet behind `read:members` and `write:signups`. The claim
+  rules moved into `services/claims.ts`, shared by the REST routes and the tool; an agent
+  puts names on slots as a co-lead does (no device on the claim) and never takes one off.
+  `write:signups` also lets an agent make a sheet.
 - **Infra.** Twelve Lambdas in `TheKeepApi` (group authorizer, enter, admin group link,
   members, claims joined), 49 routes, a second REQUEST authorizer, the members function
   alone granted `cognito-idp:AdminCreateUser`. `cdk synth` bundles.

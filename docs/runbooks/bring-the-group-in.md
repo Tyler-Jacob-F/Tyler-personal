@@ -28,7 +28,12 @@ Your own row already exists (it is the admin's) and shows as "co-lead" in the di
 edit it like any other to add your number. Oscar and Medhin can add their surnames
 themselves: every member edits their own name.
 
-## 3. Port the current sheet
+## 3. Port the sheet
+
+Two ways. For the current week alone, by hand, as below. For the Sheet's history as well,
+`docs/runbooks/seed-the-sheet.md`: Duet reads the Sheet and ports every week through MCP,
+with two scopes on the `claude` token for the evening. Either way, do it after step 2, since
+names on slots need member rows.
 
 **Group → Sign-up → New sign-up.** Title it the way the thread would ("Dinner at Tyler
 and Kelly's"), set the Thursday, set when it closes (5:00 that afternoon is the render's
