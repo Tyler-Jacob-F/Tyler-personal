@@ -46,7 +46,8 @@ export class ApiStack extends cdk.Stack {
     | 'mcp'
     | 'groupAuthorizer'
     | 'groupEnter'
-    | 'adminGroupLink',
+    | 'adminGroupLink'
+    | 'members',
     lambda.IFunction
   >;
   /** The agents' door, for the MCP route to share. */
@@ -127,6 +128,14 @@ export class ApiStack extends cdk.Stack {
       environment: { ...environment, SITE_ORIGIN: siteOrigin },
       timeout,
     });
+    const members = apiFunction(this, 'MembersFunction', {
+      entry: 'handlers/members.ts',
+      description: `${config.siteName}: /api/members and /api/group/members, the directory, claims and co-leads`,
+      environment: { ...environment, USER_POOL_ID: userPool.userPoolId },
+      timeout,
+    });
+    // Making a co-lead creates their Cognito user; nothing else in the API touches the pool.
+    userPool.grant(members, 'cognito-idp:AdminCreateUser');
     this.functions = {
       me,
       documents,
@@ -138,6 +147,7 @@ export class ApiStack extends cdk.Stack {
       groupAuthorizer: groupAuthorizerFn,
       groupEnter,
       adminGroupLink,
+      members,
     };
     for (const fn of Object.values(this.functions)) cluster.grantDataApiAccess(fn);
 
@@ -188,6 +198,10 @@ export class ApiStack extends cdk.Stack {
       ['/api/admin/tokens/{id}', [PATCH, DELETE], adminTokens],
       ['/api/admin/activity', [GET], adminActivity],
       ['/api/admin/group-link', [GET, POST], adminGroupLink],
+      ['/api/members', [GET, POST], members],
+      ['/api/members/{id}', [GET, PATCH], members],
+      ['/api/members/{id}/devices', [DELETE], members],
+      ['/api/members/{id}/colead', [POST], members],
     ];
     // The group's door: what a device may reach. Reads of documents, and its own caller;
     // the members and claims routes join in the next two deliverables. Nothing under
@@ -197,6 +211,9 @@ export class ApiStack extends cdk.Stack {
       ['/api/group/documents', [GET], documents],
       ['/api/group/documents/search', [GET], documents],
       ['/api/group/documents/{id}', [GET], documents],
+      ['/api/group/members', [GET], members],
+      ['/api/group/members/{id}', [GET, PATCH], members],
+      ['/api/group/members/{id}/claim', [POST], members],
     ];
     // The agents' door mirrors the document routes, minus delete: no agent deletes.
     const agentRoutes: Array<[string, apigwv2.HttpMethod[], lambda.IFunction]> = [

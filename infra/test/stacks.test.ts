@@ -228,13 +228,13 @@ describe('ApiStack', () => {
       JwtConfiguration: { Audience: [Match.anyValue(), Match.anyValue()] },
     });
     const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
-    expect(routes).toHaveLength(33);
+    expect(routes).toHaveLength(43);
     const members = routes.filter(
       (r) =>
         /\/api\//.test(String(r.Properties.RouteKey)) &&
         !/\/api\/(agent|group)\//.test(String(r.Properties.RouteKey)),
     );
-    expect(members).toHaveLength(18);
+    expect(members).toHaveLength(24);
     for (const route of members) {
       expect(route.Properties.AuthorizationType).toBe('JWT');
       expect(route.Properties.RouteKey).toMatch(/^(GET|POST|PUT|PATCH|DELETE) \/api\//);
@@ -274,7 +274,7 @@ describe('ApiStack', () => {
     expect(fns.some((f) => String(f.Properties.Description).includes('MCP server'))).toBe(true);
   });
 
-  it('opens the group door on /api/group/* through its own authorizer, reads only, and the enter route to anyone', () => {
+  it('opens the group door on /api/group/* through its own authorizer, and the enter route to anyone', () => {
     const authorizers = Object.values(template.findResources('AWS::ApiGatewayV2::Authorizer'));
     const lambdas = authorizers.filter((a) => a.Properties.AuthorizerType === 'REQUEST');
     expect(lambdas).toHaveLength(2);
@@ -292,23 +292,34 @@ describe('ApiStack', () => {
       'GET /api/group/documents/search',
       'GET /api/group/documents/{id}',
       'GET /api/group/me',
+      'GET /api/group/members',
+      'GET /api/group/members/{id}',
+      'PATCH /api/group/members/{id}',
       'POST /api/group/enter',
+      'POST /api/group/members/{id}/claim',
     ]);
     for (const route of group) {
       if (route.Properties.RouteKey === 'POST /api/group/enter') {
         expect(route.Properties.AuthorizationType).toBe('NONE');
       } else {
         expect(route.Properties.AuthorizationType).toBe('CUSTOM');
-        expect(route.Properties.RouteKey).toMatch(/^GET /);
       }
     }
+    // No document write and nothing under /api/admin reaches a device.
+    expect(
+      group.some(
+        (r) =>
+          /\/documents/.test(String(r.Properties.RouteKey)) &&
+          !/^GET /.test(String(r.Properties.RouteKey)),
+      ),
+    ).toBe(false);
     // The group authorizer and the agent authorizer are different functions.
     const ids = lambdas.map((a) => JSON.stringify(a.Properties.AuthorizerUri));
     expect(ids[0]).not.toBe(ids[1]);
   });
 
   it('runs one Lambda per resource, outside the VPC, with Data API access', () => {
-    template.resourceCountIs('AWS::Lambda::Function', 10);
+    template.resourceCountIs('AWS::Lambda::Function', 11);
     const fns = Object.values(template.findResources('AWS::Lambda::Function'));
     for (const fn of fns) {
       expect(fn.Properties.VpcConfig).toBeUndefined();
@@ -317,10 +328,22 @@ describe('ApiStack', () => {
     }
     const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
     expect(policies).toContain('rds-data:ExecuteStatement');
-    template.resourceCountIs('AWS::Logs::LogGroup', 10);
+    template.resourceCountIs('AWS::Logs::LogGroup', 11);
     template.allResourcesProperties('AWS::Logs::LogGroup', { RetentionInDays: 30 });
     const link = fns.find((f) => String(f.Properties.Description).includes('group-link'))!;
     expect(link.Properties.Environment.Variables.SITE_ORIGIN).toBe(`https://${config.domainName}`);
+  });
+
+  it('lets only the members function create a Cognito user, for making co-leads', () => {
+    const fns = Object.values(template.findResources('AWS::Lambda::Function'));
+    const members = fns.find((f) => String(f.Properties.Description).includes('/api/members'))!;
+    expect(members.Properties.Environment.Variables.USER_POOL_ID).toBeDefined();
+    const policies = Object.values(template.findResources('AWS::IAM::Policy'));
+    const creators = policies.filter((p) =>
+      JSON.stringify(p).includes('cognito-idp:AdminCreateUser'),
+    );
+    expect(creators).toHaveLength(1);
+    expect(JSON.stringify(creators[0])).toContain('MembersFunction');
   });
 
   it('keeps token, activity and link management under the Cognito authorizer, never an agent or group route', () => {
