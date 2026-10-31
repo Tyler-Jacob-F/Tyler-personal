@@ -18,9 +18,9 @@ export interface GroupLinkOptions {
 
 /**
  * The group link (docs/phases/04-group.md "The group link is the key"): minted once,
- * rotated when it leaks, by the admin or a co-lead signed in through Cognito. These routes
- * have no agent door and no group door: a device holding the link cannot mint another,
- * and no scope reaches here. The token appears in exactly one response, as the URL to
+ * rotated when it leaks, by the admin alone, signed in through Cognito. These routes have
+ * no agent door and no group door: a device holding the link cannot mint another, no
+ * co-lead rotates it, and no scope reaches here. The token appears in exactly one response, as the URL to
  * paste into the group thread; after that only its hash exists.
  */
 export function build(db: Db, { siteOrigin }: GroupLinkOptions): ApiHandler {

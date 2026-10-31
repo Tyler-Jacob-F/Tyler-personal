@@ -46,8 +46,10 @@ to ask the group yet, and a sign-up with names on it is the thing they do every 
   names sit under "already on another device, tap if it is you" with one confirmation.
   Each device is recorded; a co-lead clears a member's devices when a phone is lost.
 - **Co-leads are verified.** Kelly and two friends get the `colead` role: add and edit
-  members, clear claims, write and edit sign-ups, events and questions, see every claim,
-  rotate the link. That power sits on a real sign-in (the emailed code, once a year, the
+  members, clear claims, write and edit sign-ups, events and questions, see every claim.
+  (Rotating the link was on this list; Tyler took it back on Oct 31 once the door was
+  built: a co-lead would never do it, so the key is the admin's alone.) That power sits on
+  a real sign-in (the emailed code, once a year, the
   session already lasts), never on a claim, because anyone holding the link could tap a
   name. Co-leads cannot touch tokens, rings beyond `group`, promotion to public, or
   anything in `me`.
@@ -202,9 +204,9 @@ role: member | guest }`. `groupIdentity` re-reads the member row on each request
   as "forget the token, show the link landing". Bearer only; the agent door's
   connector-dialog leniencies are not repeated. `POST /api/group/enter` is the one route
   with no authorizer; an unknown and a rotated link get the same 404.
-- **The link** is minted and rotated by the admin and the co-leads (the Decided list gives
-  co-leads the power) under `/api/admin/group-link`; rotation leaves devices in place
-  unless `clearDevices: true`. The token appears once, as the full URL, built from
+- **The link** is minted and rotated by the admin alone under `/api/admin/group-link`
+  (first built for co-leads too, per the Decided list; Tyler narrowed it the same day);
+  rotation leaves devices in place unless `clearDevices: true`. The token appears once, as the full URL, built from
   `SITE_ORIGIN` on the Lambda because CloudFront does not forward the host.
 - **Sessions are a year for co-leads** through a second Cognito app client, `group`, with
   a 365-day refresh token; the JWT authorizer accepts both clients. A refresh token's life
@@ -281,7 +283,7 @@ What a fresh session should know that the files alone do not say.
   Cognito client. The deploy workflow then needs to pass `GroupClientId` to the web
   build. The Stack page's copy (six tools, twenty-six routes, seven Lambdas) is stale
   and should be updated in the same commit.
-- **Only Tyler does,** once it is live: mint the link from Admin; enter the seventeen
+- **Only Tyler does,** once it is live: mint the link from Admin (and rotate it, ever); enter the seventeen
   names (the sheet's slots too) through the admin screens or the runbook; make Kelly,
   Cam and Meg co-leads (which creates their Cognito users) and verify their addresses in
   SES; paste the link into the group thread; the gate.

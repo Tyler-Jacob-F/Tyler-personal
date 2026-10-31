@@ -58,11 +58,11 @@ describe('the group link', () => {
     expect((await rotate({ clearDevices: 'yes' })).statusCode).toBe(400);
   });
 
-  it('lets a co-lead keep the link and refuses the group role, a stranger and an agent', async () => {
+  it('is the admin’s alone: a co-lead, the group role, a stranger, an agent and a device are refused', async () => {
     const kelly = await createMember(t.db, { displayName: 'Kelly' });
     await makeColead(t.db, kelly.id, 'kelly@example.com');
-    expect((await rotate(undefined, 'kelly@example.com')).statusCode).toBe(201);
-    expect((await status('kelly@example.com')).statusCode).toBe(200);
+    expect((await rotate(undefined, 'kelly@example.com')).statusCode).toBe(403);
+    expect((await status('kelly@example.com')).statusCode).toBe(403);
 
     await t.db
       .insert(member)

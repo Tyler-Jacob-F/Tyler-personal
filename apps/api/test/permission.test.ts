@@ -285,10 +285,10 @@ describe('permission: members', () => {
 });
 
 describe('permission: the link and the admin’s own', () => {
-  it('lets the admin and co-leads keep the link, and no device or agent', () => {
+  it('lets the admin alone keep the link: no co-lead, device or agent', () => {
     const keepers: Record<CallerName, boolean> = {
       admin: true,
-      colead: true,
+      colead: false,
       groupRole: false,
       member: false,
       guest: false,
@@ -299,8 +299,9 @@ describe('permission: the link and the admin’s own', () => {
     for (const [name, caller] of Object.entries(callers) as Array<[CallerName, Caller]>) {
       expect(canKeepLink(caller), name).toBe(keepers[name]);
     }
-    expect(() => requireLinkKeeper(callers.member)).toThrow(/admin or co-lead only/);
-    expect(() => requireLinkKeeper(callers.colead)).not.toThrow();
+    expect(() => requireLinkKeeper(callers.member)).toThrow(/admin only/);
+    expect(() => requireLinkKeeper(callers.colead)).toThrow(/admin only/);
+    expect(() => requireLinkKeeper(callers.admin)).not.toThrow();
   });
 
   it('reserves tokens and promotion for the admin alone', () => {

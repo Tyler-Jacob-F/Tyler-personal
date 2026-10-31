@@ -113,13 +113,17 @@ export function authorizeMember(caller: Caller, action: MemberAction, subjectId?
   if (!canMember(caller, action, subjectId)) throw forbidden(`cannot ${action} this member`);
 }
 
-/** The group link is minted and rotated by the admin and the co-leads, never from a device or an agent. */
+/**
+ * The group link is minted and rotated by the admin alone (Tyler, Oct 31: a co-lead would
+ * never do it), never from a device or an agent. A co-lead's power is over members and the
+ * group's documents, not over the key.
+ */
 export function canKeepLink(caller: Caller): boolean {
-  return caller.kind === 'member' && (caller.role === 'admin' || caller.role === 'colead');
+  return caller.kind === 'member' && caller.role === 'admin';
 }
 
 export function requireLinkKeeper(caller: Caller): asserts caller is MemberCaller {
-  if (!canKeepLink(caller)) throw forbidden('admin or co-lead only');
+  if (!canKeepLink(caller)) throw forbidden('admin only');
 }
 
 /**
