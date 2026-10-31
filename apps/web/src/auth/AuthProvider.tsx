@@ -1,6 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AuthContext, type AuthContextValue, type AuthState } from '@/auth/context';
-import { type AuthGateway, type Challenge, type Tokens } from '@/auth/gateway';
+import { type AuthClient, type AuthGateway, type Challenge, type Tokens } from '@/auth/gateway';
 import { remembered } from '@/auth/storage';
 
 const REFRESH_WINDOW_MS = 60_000;
@@ -32,11 +32,12 @@ export function AuthProvider({ gateway, children }: { gateway: AuthGateway; chil
   );
 
   const signOut = useCallback(() => {
-    const token = tokens.current?.refreshToken;
+    const current = tokens.current;
     tokens.current = null;
     remembered.forgetToken();
     setState({ status: 'anonymous' });
-    if (token) void gateway.revoke(token).catch(() => {});
+    if (current?.refreshToken)
+      void gateway.revoke(current.refreshToken, current.client ?? 'web').catch(() => {});
   }, [gateway]);
 
   // Restore a remembered session once, on mount.
@@ -44,12 +45,16 @@ export function AuthProvider({ gateway, children }: { gateway: AuthGateway; chil
     if (!initial) return;
     let cancelled = false;
     gateway
-      .refresh(initial.refreshToken)
+      .refresh(initial.refreshToken, initial.client)
       .then((next) => {
         if (cancelled) return;
-        tokens.current = next;
+        tokens.current = { ...next, client: next.client ?? initial.client };
         if (next.refreshToken)
-          remembered.save({ refreshToken: next.refreshToken, email: initial.email });
+          remembered.save({
+            refreshToken: next.refreshToken,
+            email: initial.email,
+            client: initial.client,
+          });
         setState({ status: 'signedIn', email: emailFromIdToken(next.idToken) || initial.email });
       })
       .catch(() => {
@@ -63,16 +68,20 @@ export function AuthProvider({ gateway, children }: { gateway: AuthGateway; chil
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const requestCode = useCallback((email: string) => gateway.requestCode(email.trim()), [gateway]);
+  const requestCode = useCallback(
+    (email: string, client: AuthClient = 'web') => gateway.requestCode(email.trim(), client),
+    [gateway],
+  );
 
   const submitCode = useCallback(
     async (challenge: Challenge, code: string) => {
       const result = await gateway.submitCode(challenge, code);
       if (result.kind === 'retry') return false;
-      tokens.current = result.tokens;
+      const client = result.tokens.client ?? challenge.client ?? 'web';
+      tokens.current = { ...result.tokens, client };
       const email = emailFromIdToken(result.tokens.idToken) || challenge.email;
       if (result.tokens.refreshToken) {
-        remembered.save({ refreshToken: result.tokens.refreshToken, email });
+        remembered.save({ refreshToken: result.tokens.refreshToken, email, client });
       }
       setRememberedEmail(email);
       setState({ status: 'signedIn', email });
@@ -90,11 +99,16 @@ export function AuthProvider({ gateway, children }: { gateway: AuthGateway; chil
       return null;
     }
     try {
-      refreshing.current ??= gateway.refresh(current.refreshToken);
+      const client = current.client ?? 'web';
+      refreshing.current ??= gateway.refresh(current.refreshToken, client);
       const next = await refreshing.current;
-      tokens.current = next;
+      tokens.current = { ...next, client };
       if (next.refreshToken && next.refreshToken !== current.refreshToken) {
-        remembered.save({ refreshToken: next.refreshToken, email: emailFromIdToken(next.idToken) });
+        remembered.save({
+          refreshToken: next.refreshToken,
+          email: emailFromIdToken(next.idToken),
+          client,
+        });
       }
       return next.idToken;
     } catch {

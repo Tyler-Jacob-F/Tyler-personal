@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { type Db, getDb } from '../db/client.js';
 import { getDocument, softDeleteDocument } from '../db/repositories.js';
 import { type ApiHandler, createApi, json, noContent, notFound, parse } from '../lib/http.js';
-import { agentIdentity, cognitoIdentity } from '../middleware/identity.js';
+import { agentIdentity, cognitoIdentity, groupIdentity } from '../middleware/identity.js';
 import { authorize } from '../middleware/permission.js';
 import {
   createDocumentFor,
@@ -17,7 +17,9 @@ const idSchema = z.uuid();
 export function build(db: Db): ApiHandler {
   return createApi({
     service: 'documents',
-    identify: { member: cognitoIdentity(db), agent: agentIdentity(db) },
+    // Three doors. The group's door reaches only the read routes in the gateway (infra);
+    // the permission middleware refuses a device every write regardless.
+    identify: { member: cognitoIdentity(db), agent: agentIdentity(db), group: groupIdentity(db) },
     routes: {
       'GET /api/documents': async ({ identity, query }) =>
         json(200, await listDocumentsFor(db, identity, query)),

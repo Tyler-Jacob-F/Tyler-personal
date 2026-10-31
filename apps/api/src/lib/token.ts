@@ -1,5 +1,9 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { AGENT_TOKEN_PREFIX, AGENT_TOKEN_SECRET_BYTES } from '@the-keep/shared';
+import {
+  AGENT_TOKEN_PREFIX,
+  AGENT_TOKEN_SECRET_BYTES,
+  DEVICE_TOKEN_PREFIX,
+} from '@the-keep/shared';
 
 /** A fresh secret: `keep_` then 32 random bytes as base64url. Shown once; never stored. */
 export function generateAgentSecret(): string {
@@ -13,3 +17,16 @@ export function generateAgentSecret(): string {
 export function hashAgentSecret(secret: string): string {
   return createHash('sha256').update(secret, 'utf8').digest('hex');
 }
+
+/** The group link's token: 32 random bytes as base64url, bare; `/g/` is its prefix. */
+export function generateGroupLinkToken(): string {
+  return randomBytes(AGENT_TOKEN_SECRET_BYTES).toString('base64url');
+}
+
+/** A device's token: `keepd_` then 32 random bytes as base64url. Shown once; never stored. */
+export function generateDeviceToken(): string {
+  return DEVICE_TOKEN_PREFIX + randomBytes(AGENT_TOKEN_SECRET_BYTES).toString('base64url');
+}
+
+/** Link and device tokens are kept the same way agent secrets are, for the same reason. */
+export const hashSecret = hashAgentSecret;

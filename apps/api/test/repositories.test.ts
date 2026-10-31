@@ -209,7 +209,16 @@ describe('the Drizzle schema against the Data API', () => {
       { table_name: 'document', column_name: 'search', udt_name: 'tsvector' },
     ]);
     expect(Object.keys(schema.document)).not.toContain('search');
-    for (const table of [schema.document, schema.version, schema.tagChange, schema.agentToken]) {
+    for (const table of [
+      schema.member,
+      schema.document,
+      schema.version,
+      schema.tagChange,
+      schema.agentToken,
+      schema.groupLink,
+      schema.device,
+      schema.signupClaim,
+    ]) {
       for (const column of Object.values(getTableColumns(table))) {
         expect(['uuid', 'text', 'jsonb', 'timestampstring', 'integer', 'bigint53']).toContain(
           column.columnType.replace(/^Pg/, '').toLowerCase(),

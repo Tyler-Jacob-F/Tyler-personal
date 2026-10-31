@@ -18,31 +18,49 @@ export interface ApiStackProps extends cdk.StackProps {
   cluster: rds.DatabaseCluster;
   userPool: cognito.IUserPool;
   userPoolClient: cognito.IUserPoolClient;
+  /** The co-leads' client, whose JWTs the same authorizer accepts. */
+  groupClient?: cognito.IUserPoolClient;
   /** Other functions (the Cognito triggers) to show on the dashboard. */
   otherFunctions?: lambda.IFunction[];
 }
 
 /**
- * The HTTP API: a Cognito JWT authorizer in front of one Lambda per resource, and a second
+ * The HTTP API: a Cognito JWT authorizer in front of one Lambda per resource, a second
  * door for agents at `/api/agent/*` where a Lambda authorizer looks the bearer token up and
- * the same Lambdas answer. Every route lives under /api so CloudFront can forward that
- * prefix unchanged. Lambdas reach the database through the Data API, so none is in the VPC.
+ * the same Lambdas answer, and a third for the group's devices at `/api/group/*` where
+ * another Lambda authorizer looks the device token up. Every route lives under /api so
+ * CloudFront can forward that prefix unchanged. Lambdas reach the database through the
+ * Data API, so none is in the VPC.
  */
 export class ApiStack extends cdk.Stack {
   readonly httpApi: apigwv2.HttpApi;
   /** Hostname of the API's default endpoint, for the CloudFront origin. */
   readonly apiDomainName: string;
   readonly functions: Record<
-    'me' | 'documents' | 'versions' | 'adminTokens' | 'adminActivity' | 'agentAuthorizer' | 'mcp',
+    | 'me'
+    | 'documents'
+    | 'versions'
+    | 'adminTokens'
+    | 'adminActivity'
+    | 'agentAuthorizer'
+    | 'mcp'
+    | 'groupAuthorizer'
+    | 'groupEnter'
+    | 'adminGroupLink'
+    | 'members'
+    | 'claims',
     lambda.IFunction
   >;
   /** The agents' door, for the MCP route to share. */
   readonly agentAuthorizer: HttpLambdaAuthorizer;
+  /** The group's door. */
+  readonly groupAuthorizer: HttpLambdaAuthorizer;
 
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
 
-    const { cluster, userPool, userPoolClient } = props;
+    const { cluster, userPool, userPoolClient, groupClient } = props;
+    const siteOrigin = `https://${config.domainName}`;
     const environment = {
       DB_CLUSTER_ARN: cluster.clusterArn,
       DB_SECRET_ARN: cluster.secret!.secretArn,
@@ -93,6 +111,38 @@ export class ApiStack extends cdk.Stack {
       environment,
       timeout,
     });
+    const groupAuthorizerFn = apiFunction(this, 'GroupAuthorizerFunction', {
+      entry: 'auth/group-authorizer.ts',
+      description: `${config.siteName}: device token authorizer for /api/group/*`,
+      environment,
+      timeout,
+    });
+    const groupEnter = apiFunction(this, 'GroupEnterFunction', {
+      entry: 'handlers/group-enter.ts',
+      description: `${config.siteName}: POST /api/group/enter, the group link becomes a device token`,
+      environment,
+      timeout,
+    });
+    const adminGroupLink = apiFunction(this, 'AdminGroupLinkFunction', {
+      entry: 'handlers/admin-group-link.ts',
+      description: `${config.siteName}: /api/admin/group-link, mint and rotate (admin and co-leads)`,
+      environment: { ...environment, SITE_ORIGIN: siteOrigin },
+      timeout,
+    });
+    const members = apiFunction(this, 'MembersFunction', {
+      entry: 'handlers/members.ts',
+      description: `${config.siteName}: /api/members and /api/group/members, the directory, claims and co-leads`,
+      environment: { ...environment, USER_POOL_ID: userPool.userPoolId },
+      timeout,
+    });
+    // Making a co-lead creates their Cognito user; nothing else in the API touches the pool.
+    userPool.grant(members, 'cognito-idp:AdminCreateUser');
+    const claims = apiFunction(this, 'ClaimsFunction', {
+      entry: 'handlers/claims.ts',
+      description: `${config.siteName}: /api/documents/{id}/claims, slots taken on a sign-up`,
+      environment,
+      timeout,
+    });
     this.functions = {
       me,
       documents,
@@ -101,11 +151,16 @@ export class ApiStack extends cdk.Stack {
       adminActivity,
       agentAuthorizer: agentAuthorizerFn,
       mcp,
+      groupAuthorizer: groupAuthorizerFn,
+      groupEnter,
+      adminGroupLink,
+      members,
+      claims,
     };
     for (const fn of Object.values(this.functions)) cluster.grantDataApiAccess(fn);
 
     const authorizer = new HttpUserPoolAuthorizer('CognitoAuthorizer', userPool, {
-      userPoolClients: [userPoolClient],
+      userPoolClients: groupClient ? [userPoolClient, groupClient] : [userPoolClient],
     });
     // Simple responses. The identity source stays `Authorization` so a request with no
     // header at all gets the gateway's 401, which is what MCP clients (and claude.ai's
@@ -116,6 +171,15 @@ export class ApiStack extends cdk.Stack {
     // the other's answer. A revoke therefore takes effect at once and `last_used_at` is
     // exact; the cost is one hash lookup per request.
     this.agentAuthorizer = new HttpLambdaAuthorizer('AgentAuthorizer', agentAuthorizerFn, {
+      responseTypes: [HttpLambdaResponseType.SIMPLE],
+      identitySource: ['$request.header.Authorization'],
+      resultsCacheTtl: cdk.Duration.seconds(0),
+    });
+
+    // The group's door: the same shape, for the same reasons. No cache, so clearing a lost
+    // phone's device refuses it on its next request; `Authorization` as the identity source,
+    // so a request with no token gets the gateway's 401 and the client asks for the link.
+    this.groupAuthorizer = new HttpLambdaAuthorizer('GroupAuthorizer', groupAuthorizerFn, {
       responseTypes: [HttpLambdaResponseType.SIMPLE],
       identitySource: ['$request.header.Authorization'],
       resultsCacheTtl: cdk.Duration.seconds(0),
@@ -141,6 +205,27 @@ export class ApiStack extends cdk.Stack {
       ['/api/admin/tokens', [GET, POST], adminTokens],
       ['/api/admin/tokens/{id}', [PATCH, DELETE], adminTokens],
       ['/api/admin/activity', [GET], adminActivity],
+      ['/api/admin/group-link', [GET, POST], adminGroupLink],
+      ['/api/members', [GET, POST], members],
+      ['/api/members/{id}', [GET, PATCH], members],
+      ['/api/members/{id}/devices', [DELETE], members],
+      ['/api/members/{id}/colead', [POST], members],
+      ['/api/documents/{id}/claims', [GET, POST], claims],
+      ['/api/documents/{id}/claims/{claimId}', [DELETE], claims],
+    ];
+    // The group's door: what a device may reach. Reads of documents, its own caller, the
+    // directory and its own row, a name to claim, and the slots on a sign-up. Nothing
+    // under /api/admin and no document write.
+    const groupRoutes: Array<[string, apigwv2.HttpMethod[], lambda.IFunction]> = [
+      ['/api/group/me', [GET], me],
+      ['/api/group/documents', [GET], documents],
+      ['/api/group/documents/search', [GET], documents],
+      ['/api/group/documents/{id}', [GET], documents],
+      ['/api/group/members', [GET], members],
+      ['/api/group/members/{id}', [GET, PATCH], members],
+      ['/api/group/members/{id}/claim', [POST], members],
+      ['/api/group/documents/{id}/claims', [GET, POST], claims],
+      ['/api/group/documents/{id}/claims/{claimId}', [DELETE], claims],
     ];
     // The agents' door mirrors the document routes, minus delete: no agent deletes.
     const agentRoutes: Array<[string, apigwv2.HttpMethod[], lambda.IFunction]> = [
@@ -170,6 +255,22 @@ export class ApiStack extends cdk.Stack {
         authorizer: this.agentAuthorizer,
       });
     }
+    for (const [path, methods, fn] of groupRoutes) {
+      this.httpApi.addRoutes({
+        path,
+        methods,
+        integration: new HttpLambdaIntegration(`${fn.node.id}${path.replace(/[^a-z]/gi, '')}`, fn),
+        authorizer: this.groupAuthorizer,
+      });
+    }
+    // The one open route: a device has nothing to present until it has been through it.
+    // The link's token travels in the body and is checked by the handler against its hash.
+    this.httpApi.addRoutes({
+      path: '/api/group/enter',
+      methods: [POST],
+      integration: new HttpLambdaIntegration('GroupEnterFunctionapigroupenter', groupEnter),
+      authorizer: new apigwv2.HttpNoneAuthorizer(),
+    });
 
     // https://abc123.execute-api.us-east-1.amazonaws.com -> abc123.execute-api.us-east-1.amazonaws.com
     this.apiDomainName = cdk.Fn.select(2, cdk.Fn.split('/', this.httpApi.apiEndpoint));

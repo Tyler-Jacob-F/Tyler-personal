@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
+import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { useMe } from '@/api/me';
 import { useAuth } from '@/auth/useAuth';
 import {
@@ -42,6 +42,7 @@ export function AppShell() {
   const menuButton = useRef<HTMLButtonElement>(null);
 
   const isAdmin = me.data?.caller.kind === 'member' && me.data.caller.role === 'admin';
+  const isColead = me.data?.caller.kind === 'member' && me.data.caller.role === 'colead';
   const creatable = currentCreatable(location.pathname);
 
   const openSearch = () => navigate(SEARCH_PATH, { state: FOCUS_SEARCH_STATE });
@@ -63,6 +64,10 @@ export function AppShell() {
   // The sheet closes when the page changes.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setOpen(false), [location.pathname, location.search]);
+
+  // A co-lead's whole site is the group slice (docs/phases/04-group.md "Out of scope":
+  // no member sees Recipes, the morning page, Writing or Admin).
+  if (isColead && !location.pathname.startsWith('/group')) return <Navigate to="/group" replace />;
 
   return (
     <div className="flex h-dvh flex-col">

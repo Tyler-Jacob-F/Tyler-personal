@@ -19,6 +19,7 @@ describe('migration runner', () => {
       '0004_import_chili_lineage.sql',
       '0005_tag_change.sql',
       '0006_search.sql',
+      '0007_group.sql',
     ];
     expect(files.map((f) => f.name)).toEqual(names);
 
@@ -39,9 +40,12 @@ describe('migration runner', () => {
     expect(tables.rows.map((r) => r.table_name)).toEqual([
       'agent_token',
       'attachment',
+      'device',
       'document',
+      'group_link',
       'member',
       'schema_migration',
+      'signup_claim',
       'tag_change',
       'version',
     ]);
@@ -111,6 +115,52 @@ describe('0001_spine', () => {
         [doc.rows[0]!.id],
       ),
     ).rejects.toThrow(/check constraint/);
+    await pg.close();
+  });
+});
+
+describe('0007_group', () => {
+  it('lets a member have no email, admits the colead role and refuses any other', async () => {
+    const pg = await freshPglite();
+    await migrate(pgliteRunner(pg), await readMigrationFiles(migrationsDir));
+    await pg.query("insert into member (role, display_name) values ('group', 'Oscar')");
+    await pg.query(
+      "insert into member (email, role, display_name) values ('kelly@example.com', 'colead', 'Kelly')",
+    );
+    await expect(
+      pg.query("insert into member (role, display_name) values ('owner', 'X')"),
+    ).rejects.toThrow(/member_role_check/);
+    await expect(
+      pg.query(
+        "insert into member (email, role, display_name) values ('kelly@example.com', 'group', 'Kelly 2')",
+      ),
+    ).rejects.toThrow(/unique/);
+    const admin = await pg.query<{ email: string | null; claimed_at: string | null }>(
+      "select email, claimed_at from member where role = 'admin'",
+    );
+    expect(admin.rows).toEqual([{ email: 'tyler.fuqua@icloud.com', claimed_at: null }]);
+    await pg.close();
+  });
+
+  it('holds the group to one active link and one claim per member per slot', async () => {
+    const pg = await freshPglite();
+    await migrate(pgliteRunner(pg), await readMigrationFiles(migrationsDir));
+    const member = await pg.query<{ id: string }>('select id from member limit 1');
+    const owner = member.rows[0]!.id;
+    await pg.query("insert into group_link (secret_hash, created_by) values ('a', $1)", [owner]);
+    await expect(
+      pg.query("insert into group_link (secret_hash, created_by) values ('b', $1)", [owner]),
+    ).rejects.toThrow(/group_link_active_idx/);
+    await pg.query('update group_link set rotated_at = now()');
+    await pg.query("insert into group_link (secret_hash, created_by) values ('b', $1)", [owner]);
+
+    const doc = await pg.query<{ id: string }>(
+      "insert into document (type, slug, owner, ring) values ('signup', 'thursday', $1, 'group') returning id",
+      [owner],
+    );
+    const claim = `insert into signup_claim (document_id, slot, member_id) values ($1, 'Dessert', $2)`;
+    await pg.query(claim, [doc.rows[0]!.id, owner]);
+    await expect(pg.query(claim, [doc.rows[0]!.id, owner])).rejects.toThrow(/unique/);
     await pg.close();
   });
 });

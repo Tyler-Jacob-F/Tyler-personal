@@ -110,7 +110,7 @@ describe('AuthProvider', () => {
     act(() => result.current.signOut());
     expect(result.current.state.status).toBe('anonymous');
     expect(await result.current.getToken()).toBeNull();
-    expect(revoke).toHaveBeenCalledWith('r');
+    expect(revoke).toHaveBeenCalledWith('r', 'web');
     expect(window.localStorage.getItem('keep.refreshToken')).toBeNull();
     expect(window.localStorage.getItem('keep.email')).toBe('tyler.fuqua@icloud.com');
     expect(result.current.rememberedEmail).toBe('tyler.fuqua@icloud.com');
@@ -123,7 +123,7 @@ describe('AuthProvider', () => {
     const { result } = hook(gatewayWith({ refresh }));
     expect(result.current.state.status).toBe('restoring');
     await waitFor(() => expect(result.current.state.status).toBe('signedIn'));
-    expect(refresh).toHaveBeenCalledWith('stored-r');
+    expect(refresh).toHaveBeenCalledWith('stored-r', 'web');
     expect(await result.current.getToken()).toBe(tokens(0, 'id-3').idToken);
   });
 

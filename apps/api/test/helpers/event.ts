@@ -1,11 +1,23 @@
 import type { APIGatewayRequestAuthorizerEventV2, Context } from 'aws-lambda';
-import type { AgentEvent, ApiEvent, ApiResult, MemberEvent } from '../../src/lib/http.js';
+import type {
+  AgentEvent,
+  ApiEvent,
+  ApiResult,
+  GroupEvent,
+  MemberEvent,
+} from '../../src/lib/http.js';
 
 /** The authorizer context a token leaves on a request through the agents' door. */
 export interface FakeAgent {
   id: string;
   name: string;
   scopes: string[];
+}
+
+/** The authorizer context a device leaves on a request through the group's door. */
+export interface FakeDevice {
+  deviceId: string;
+  memberId?: string;
 }
 
 export interface FakeRequest {
@@ -19,6 +31,8 @@ export interface FakeRequest {
   email?: string | null;
   /** Set for a request through `/api/agent/*`: what the Lambda authorizer attached. */
   agent?: FakeAgent | null;
+  /** Set for a request through `/api/group/*`: what the group authorizer attached. */
+  device?: FakeDevice | null;
   rawBody?: string;
   /** Extra request headers, lowercased as HTTP API delivers them. */
   headers?: Record<string, string>;
@@ -33,6 +47,7 @@ export function fakeEvent({
   body,
   email = 'tyler.fuqua@icloud.com',
   agent,
+  device,
   rawBody,
   headers = {},
 }: FakeRequest): ApiEvent {
@@ -61,6 +76,18 @@ export function fakeEvent({
       timeEpoch: 1793016000000,
     },
   };
+  if (device !== undefined) {
+    const authorizer = device
+      ? {
+          lambda: {
+            deviceId: device.deviceId,
+            ...(device.memberId ? { memberId: device.memberId } : {}),
+            role: device.memberId ? 'member' : 'guest',
+          },
+        }
+      : { lambda: {} };
+    return { ...base, requestContext: { ...base.requestContext, authorizer } } as GroupEvent;
+  }
   if (agent !== undefined) {
     const authorizer = agent
       ? { lambda: { id: agent.id, name: agent.name, scopes: JSON.stringify(agent.scopes) } }

@@ -154,11 +154,22 @@ describe('AuthStack', () => {
     });
   });
 
-  it('lets the web client use only the custom flow and refresh', () => {
-    template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
+  it('lets both clients use only the custom flow and refresh, the group client for a year', () => {
+    template.resourceCountIs('AWS::Cognito::UserPoolClient', 2);
+    template.allResourcesProperties('AWS::Cognito::UserPoolClient', {
       ExplicitAuthFlows: ['ALLOW_CUSTOM_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH'],
       GenerateSecret: false,
       PreventUserExistenceErrors: 'ENABLED',
+    });
+    template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
+      ClientName: 'web',
+      RefreshTokenValidity: 30 * 24 * 60,
+      TokenValidityUnits: Match.objectLike({ RefreshToken: 'minutes' }),
+    });
+    template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
+      ClientName: 'group',
+      RefreshTokenValidity: 365 * 24 * 60,
+      TokenValidityUnits: Match.objectLike({ RefreshToken: 'minutes' }),
     });
   });
 
@@ -201,6 +212,7 @@ describe('ApiStack', () => {
       cluster: data.cluster,
       userPool: auth.userPool,
       userPoolClient: auth.webClient,
+      groupClient: auth.groupClient,
       otherFunctions: auth.triggers,
     }),
   );
@@ -209,17 +221,20 @@ describe('ApiStack', () => {
     expect(stable(template)).toMatchSnapshot();
   });
 
-  it('puts the Cognito JWT authorizer on every member route', () => {
-    template.resourceCountIs('AWS::ApiGatewayV2::Authorizer', 2);
-    template.hasResourceProperties('AWS::ApiGatewayV2::Authorizer', { AuthorizerType: 'JWT' });
+  it('puts the Cognito JWT authorizer, accepting both clients, on every member route', () => {
+    template.resourceCountIs('AWS::ApiGatewayV2::Authorizer', 3);
+    template.hasResourceProperties('AWS::ApiGatewayV2::Authorizer', {
+      AuthorizerType: 'JWT',
+      JwtConfiguration: { Audience: [Match.anyValue(), Match.anyValue()] },
+    });
     const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
-    expect(routes).toHaveLength(26);
+    expect(routes).toHaveLength(49);
     const members = routes.filter(
       (r) =>
         /\/api\//.test(String(r.Properties.RouteKey)) &&
-        !/\/api\/agent\//.test(String(r.Properties.RouteKey)),
+        !/\/api\/(agent|group)\//.test(String(r.Properties.RouteKey)),
     );
-    expect(members).toHaveLength(16);
+    expect(members).toHaveLength(27);
     for (const route of members) {
       expect(route.Properties.AuthorizationType).toBe('JWT');
       expect(route.Properties.RouteKey).toMatch(/^(GET|POST|PUT|PATCH|DELETE) \/api\//);
@@ -259,8 +274,53 @@ describe('ApiStack', () => {
     expect(fns.some((f) => String(f.Properties.Description).includes('MCP server'))).toBe(true);
   });
 
+  it('opens the group door on /api/group/* through its own authorizer, and the enter route to anyone', () => {
+    const authorizers = Object.values(template.findResources('AWS::ApiGatewayV2::Authorizer'));
+    const lambdas = authorizers.filter((a) => a.Properties.AuthorizerType === 'REQUEST');
+    expect(lambdas).toHaveLength(2);
+    for (const a of lambdas) {
+      expect(a.Properties).toMatchObject({
+        EnableSimpleResponses: true,
+        AuthorizerResultTtlInSeconds: 0,
+        IdentitySource: ['$request.header.Authorization'],
+      });
+    }
+    const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
+    const group = routes.filter((r) => String(r.Properties.RouteKey).includes('/api/group/'));
+    expect(group.map((r) => r.Properties.RouteKey).sort()).toEqual([
+      'DELETE /api/group/documents/{id}/claims/{claimId}',
+      'GET /api/group/documents',
+      'GET /api/group/documents/search',
+      'GET /api/group/documents/{id}',
+      'GET /api/group/documents/{id}/claims',
+      'GET /api/group/me',
+      'GET /api/group/members',
+      'GET /api/group/members/{id}',
+      'PATCH /api/group/members/{id}',
+      'POST /api/group/documents/{id}/claims',
+      'POST /api/group/enter',
+      'POST /api/group/members/{id}/claim',
+    ]);
+    for (const route of group) {
+      if (route.Properties.RouteKey === 'POST /api/group/enter') {
+        expect(route.Properties.AuthorizationType).toBe('NONE');
+      } else {
+        expect(route.Properties.AuthorizationType).toBe('CUSTOM');
+      }
+    }
+    // No document write (claims are rows, not versions) and nothing under /api/admin.
+    const writes = group
+      .map((r) => String(r.Properties.RouteKey))
+      .filter((k) => /\/documents/.test(k) && !/^GET /.test(k) && !/\/claims/.test(k));
+    expect(writes).toEqual([]);
+    expect(group.some((r) => /\/admin\//.test(String(r.Properties.RouteKey)))).toBe(false);
+    // The group authorizer and the agent authorizer are different functions.
+    const ids = lambdas.map((a) => JSON.stringify(a.Properties.AuthorizerUri));
+    expect(ids[0]).not.toBe(ids[1]);
+  });
+
   it('runs one Lambda per resource, outside the VPC, with Data API access', () => {
-    template.resourceCountIs('AWS::Lambda::Function', 7);
+    template.resourceCountIs('AWS::Lambda::Function', 12);
     const fns = Object.values(template.findResources('AWS::Lambda::Function'));
     for (const fn of fns) {
       expect(fn.Properties.VpcConfig).toBeUndefined();
@@ -269,18 +329,34 @@ describe('ApiStack', () => {
     }
     const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
     expect(policies).toContain('rds-data:ExecuteStatement');
-    template.resourceCountIs('AWS::Logs::LogGroup', 7);
+    template.resourceCountIs('AWS::Logs::LogGroup', 12);
     template.allResourcesProperties('AWS::Logs::LogGroup', { RetentionInDays: 30 });
+    const link = fns.find((f) => String(f.Properties.Description).includes('group-link'))!;
+    expect(link.Properties.Environment.Variables.SITE_ORIGIN).toBe(`https://${config.domainName}`);
   });
 
-  it('keeps token management under the Cognito authorizer, never an agent route', () => {
+  it('lets only the members function create a Cognito user, for making co-leads', () => {
+    const fns = Object.values(template.findResources('AWS::Lambda::Function'));
+    const members = fns.find((f) => String(f.Properties.Description).includes('/api/members'))!;
+    expect(members.Properties.Environment.Variables.USER_POOL_ID).toBeDefined();
+    const policies = Object.values(template.findResources('AWS::IAM::Policy'));
+    const creators = policies.filter((p) =>
+      JSON.stringify(p).includes('cognito-idp:AdminCreateUser'),
+    );
+    expect(creators).toHaveLength(1);
+    expect(JSON.stringify(creators[0])).toContain('MembersFunction');
+  });
+
+  it('keeps token, activity and link management under the Cognito authorizer, never an agent or group route', () => {
     const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
     const admin = routes.filter((r) => String(r.Properties.RouteKey).includes('/api/admin/'));
     expect(admin.map((r) => r.Properties.RouteKey).sort()).toEqual([
       'DELETE /api/admin/tokens/{id}',
       'GET /api/admin/activity',
+      'GET /api/admin/group-link',
       'GET /api/admin/tokens',
       'PATCH /api/admin/tokens/{id}',
+      'POST /api/admin/group-link',
       'POST /api/admin/tokens',
     ]);
     for (const route of admin) expect(route.Properties.AuthorizationType).toBe('JWT');

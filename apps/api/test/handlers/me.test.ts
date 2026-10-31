@@ -35,3 +35,49 @@ describe('GET /api/me', () => {
     expect(res.statusCode).toBe(404);
   });
 });
+
+describe('GET /api/group/me', () => {
+  it('answers a device with the member it holds, or as a guest', async () => {
+    const { createDevice, claimMember, createMember } = await import('../../src/db/group.js');
+    const device = await createDevice(t.db, 'd1');
+    const guest = await build(t.db)(
+      fakeEvent({ method: 'GET', route: '/api/group/me', device: { deviceId: device.id } }),
+    );
+    expect(guest.statusCode).toBe(200);
+    expect(bodyOf(guest)).toEqual({
+      caller: { kind: 'group', deviceId: device.id, memberId: null, role: 'guest' },
+      email: null,
+      displayName: 'Guest',
+    });
+
+    const kelly = await createMember(t.db, { displayName: 'Kelly Candeto' });
+    await claimMember(t.db, device.id, kelly.id);
+    const member = await build(t.db)(
+      fakeEvent({
+        method: 'GET',
+        route: '/api/group/me',
+        device: { deviceId: device.id, memberId: kelly.id },
+      }),
+    );
+    expect(bodyOf(member)).toEqual({
+      caller: { kind: 'group', deviceId: device.id, memberId: kelly.id, role: 'member' },
+      email: null,
+      displayName: 'Kelly Candeto',
+    });
+
+    // A claim on a row that has since gone falls back to guest rather than failing.
+    const gone = await build(t.db)(
+      fakeEvent({
+        method: 'GET',
+        route: '/api/group/me',
+        device: { deviceId: device.id, memberId: '00000000-0000-0000-0000-000000000000' },
+      }),
+    );
+    expect(bodyOf(gone)).toMatchObject({ caller: { role: 'guest' }, displayName: 'Guest' });
+
+    const none = await build(t.db)(
+      fakeEvent({ method: 'GET', route: '/api/group/me', device: null }),
+    );
+    expect(none.statusCode).toBe(401);
+  });
+});

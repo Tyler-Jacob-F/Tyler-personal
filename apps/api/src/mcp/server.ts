@@ -28,7 +28,7 @@ import {
 } from '../services/documents.js';
 
 export const SERVER_NAME = 'the-keep';
-export const SERVER_VERSION = '0.3.0';
+export const SERVER_VERSION = '0.4.0';
 
 const idField = z
   .uuid()
@@ -43,7 +43,9 @@ const instructions = [
   'list_documents before create_document so an existing recipe gets a version instead of a',
   'duplicate. When importing an older file, pass authoredAt as the date the content was written.',
   'Facets and flags are tags on the document, not frontmatter: set_tags replaces the whole set',
-  'without writing a version.',
+  'without writing a version. The small group’s types (questions, event) start in the group',
+  'ring, where every member reads them; a signup is written by people only, and no scope',
+  'claims a slot or touches a member.',
 ].join(' ');
 
 /** A model-sized view of a document: identity and the current version's facts, not its body. */
@@ -188,7 +190,8 @@ export function createKeepServer(db: Db, identity: Identity, log: Logger): McpSe
     {
       title: 'Create a document',
       description:
-        `Create a new document of a type (${types}) as its version 1, in the private "me" ring. ` +
+        `Create a new document of a type (${types}) as its version 1, in the type's default ring ` +
+        `("me" for Tyler's own types, "group" for the small group's). ` +
         `frontmatter must fit the type's schema; body is markdown; summary is one line for the ` +
         `history ("imported from the 2014 card"); tags are optional short strings; authoredAt is ` +
         `the date the content was written (YYYY-MM-DD) when that is earlier than today, as when ` +

@@ -9,6 +9,7 @@ const noDocuments = () =>
     http.get('/api/documents/search', () =>
       HttpResponse.json({ items: [], total: 0, q: '', tags: [] }),
     ),
+    http.get('/api/members', () => HttpResponse.json({ items: [] })),
   );
 
 describe('the top bar', () => {
@@ -73,7 +74,7 @@ describe('the top bar', () => {
     expect(screen.queryByRole('menu')).toBeNull();
   });
 
-  it('leads Writing and Group to a one-line page until their phases', async () => {
+  it('leads Writing to a one-line page until its phase, and Group to the group home inside the shell', async () => {
     const user = userEvent.setup();
     noDocuments();
     render(<App />, { route: '/recipes' });
@@ -81,8 +82,14 @@ describe('the top bar', () => {
     expect(await screen.findByRole('heading', { name: 'Writing' })).toBeInTheDocument();
     expect(screen.getByText(/Not yet\. Phase 5\./)).toBeInTheDocument();
     await user.click(screen.getByRole('link', { name: 'Group' }));
-    expect(await screen.findByRole('heading', { name: 'Group' })).toBeInTheDocument();
-    expect(screen.getByText(/Not yet\. Phase 4\./)).toBeInTheDocument();
+    expect(await screen.findByRole('article', { name: 'Group' })).toBeInTheDocument();
+    // The admin keeps The Keep's nav and gets the group's places as a second row.
+    expect(screen.getByRole('navigation', { name: 'Places' })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('navigation', { name: 'Group' }))
+        .getAllByRole('link')
+        .map((a) => a.textContent),
+    ).toEqual(['Home', 'Questions', 'Sign-up', 'Calendar', 'Members']);
   });
 
   it('opens search with ⌘K and with the search button: the Recipes field takes focus', async () => {
@@ -94,7 +101,7 @@ describe('the top bar', () => {
     const field = await screen.findByRole('searchbox', { name: 'Search recipes' });
     expect(field).toHaveFocus();
     await user.click(screen.getByRole('link', { name: 'Group' }));
-    await screen.findByRole('heading', { name: 'Group' });
+    await screen.findByRole('article', { name: 'Group' });
     await user.click(screen.getAllByRole('button', { name: 'Search' })[0]!);
     expect(await screen.findByRole('searchbox', { name: 'Search recipes' })).toHaveFocus();
   });
@@ -155,7 +162,7 @@ describe('the phone sheet', () => {
     );
 
     await user.click(within(sheet).getByRole('link', { name: 'Group' }));
-    await screen.findByRole('heading', { name: 'Group' });
+    await screen.findByRole('article', { name: 'Group' });
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
