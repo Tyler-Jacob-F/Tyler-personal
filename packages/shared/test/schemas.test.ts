@@ -147,7 +147,9 @@ describe('recipe taxonomy', () => {
       'occasion',
     ]);
     expect(recipeFacets.course).toHaveLength(9);
-    expect(recipeFacets.main).toHaveLength(10);
+    expect(recipeFacets.main).toHaveLength(11);
+    expect(recipeFacets.main).toContain('turkey');
+    expect(recipeTagsSchema.parse(['main:turkey'])).toEqual(['main:turkey']);
     expect(recipeFacets.technique).toContain('ferment-preserve');
     expect([...recipeFlags]).toEqual(['kid-approved', 'vegetarian', 'gluten-free']);
     expect(valueLabel('soup-stew')).toBe('Soup & stew');
