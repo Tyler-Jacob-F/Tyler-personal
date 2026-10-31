@@ -1,5 +1,6 @@
 import { useClaims, useGroupDocuments, useMembers } from '@/api/group';
-import { Alert } from '@/components/Alert';
+import { Loading, QueryError } from '@/components/QueryState';
+import { anyError, anyPending } from '@/lib/queries';
 import { canEdit, useGroup } from '@/group/context';
 import {
   currentSignup,
@@ -9,10 +10,10 @@ import {
   thisWeek,
   upcomingEvents,
 } from '@/group/format';
-import { todayIso } from '@/routes/briefs/brief';
+import { todayIso } from '@/lib/dates';
 import {
-  Control,
   Directory,
+  EditOrNew,
   MeetingRows,
   QuestionsBlock,
   SectionHead,
@@ -37,15 +38,9 @@ export function GroupHome() {
   const next = events.data ? upcomingEvents(eventsOf(events.data.items), today)[0] : undefined;
   const editor = canEdit(viewer);
 
-  const pending =
-    questions.isPending ||
-    signups.isPending ||
-    events.isPending ||
-    members.isPending ||
-    (sheet !== null && claims.isPending);
-  const failed = [questions, signups, events, members, claims].find((q) => q.isError);
-  if (failed) return <Alert tone="danger">{failed.error!.message}</Alert>;
-  if (pending) return <p className="text-sm text-muted">Loading…</p>;
+  const queries = [questions, signups, events, members, ...(sheet ? [claims] : [])];
+  if (anyError(queries)) return <QueryError queries={queries} />;
+  if (anyPending(queries)) return <Loading />;
 
   return (
     <article className="mx-auto grid max-w-[42rem] gap-12" aria-label="Group">
@@ -54,13 +49,7 @@ export function GroupHome() {
           id="week-heading"
           action={
             editor && (
-              <Control
-                to={
-                  week ? `/group/questions/${week.item.document.id}/edit` : '/group/questions/new'
-                }
-              >
-                {week ? 'Edit' : 'Write this week’s'}
-              </Control>
+              <EditOrNew item={week?.item} base="/group/questions" newLabel="Write this week’s" />
             )
           }
         >
@@ -77,13 +66,7 @@ export function GroupHome() {
         <SectionHead
           id="signup-heading"
           action={
-            editor && (
-              <Control
-                to={sheet ? `/group/signups/${sheet.item.document.id}/edit` : '/group/signups/new'}
-              >
-                {sheet ? 'Edit' : 'New sign-up'}
-              </Control>
-            )
+            editor && <EditOrNew item={sheet?.item} base="/group/signups" newLabel="New sign-up" />
           }
         >
           Sign-up
@@ -104,11 +87,7 @@ export function GroupHome() {
           id="meeting-heading"
           action={
             editor && (
-              <Control
-                to={next ? `/group/calendar/${next.item.document.id}/edit` : '/group/calendar/new'}
-              >
-                {next ? 'Edit' : 'Add a meeting'}
-              </Control>
+              <EditOrNew item={next?.item} base="/group/calendar" newLabel="Add a meeting" />
             )
           }
         >
@@ -126,7 +105,7 @@ export function GroupHome() {
       <section aria-labelledby="members-heading">
         <SectionHead
           id="members-heading"
-          action={editor && <Control to="/group/members/new">Add a member</Control>}
+          action={editor && <EditOrNew base="/group/members" newLabel="Add a member" />}
         >
           Members
         </SectionHead>

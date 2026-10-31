@@ -8,9 +8,10 @@ import {
   searchDocumentsResponseSchema,
   versionSchema,
 } from '@the-keep/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
-import { useApi } from '@/api/context';
+import type { ApiFetch } from '@/api/client';
+import { useApi, useInvalidateAll } from '@/api/context';
 
 export const documentKeys = {
   all: ['documents'] as const,
@@ -71,30 +72,36 @@ export function useDiff(id: string, from: number, to: number) {
   });
 }
 
-export function useCreateDocument() {
-  const api = useApi();
-  const queryClient = useQueryClient();
+/**
+ * The writes. Each takes the fetch to write through, so the group's screens, whose fetch
+ * is bound to a different credential, use the same hooks (default: the signed-in one).
+ */
+export function useCreateDocument(api?: ApiFetch) {
+  const fallback = useApi();
+  const fetch = api ?? fallback;
+  const invalidate = useInvalidateAll();
   return useMutation({
     mutationFn: (body: CreateDocumentRequest) =>
-      api('/api/documents', { method: 'POST', body, schema: documentWithVersionSchema }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: documentKeys.all }),
+      fetch('/api/documents', { method: 'POST', body, schema: documentWithVersionSchema }),
+    onSuccess: invalidate,
   });
 }
 
-export function useCreateVersion(id: string) {
-  const api = useApi();
-  const queryClient = useQueryClient();
+export function useCreateVersion(id: string, api?: ApiFetch) {
+  const fallback = useApi();
+  const fetch = api ?? fallback;
+  const invalidate = useInvalidateAll();
   return useMutation({
     mutationFn: (body: CreateVersionRequest) =>
-      api(`/api/documents/${id}/versions`, { method: 'POST', body, schema: versionSchema }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: documentKeys.all }),
+      fetch(`/api/documents/${id}/versions`, { method: 'POST', body, schema: versionSchema }),
+    onSuccess: invalidate,
   });
 }
 
 /** Replace the document's tags; no version is written. */
 export function useSetTags(id: string) {
   const api = useApi();
-  const queryClient = useQueryClient();
+  const invalidate = useInvalidateAll();
   return useMutation({
     mutationFn: (tags: string[]) =>
       api(`/api/documents/${id}/tags`, {
@@ -102,16 +109,17 @@ export function useSetTags(id: string) {
         body: { tags },
         schema: documentWithVersionSchema,
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: documentKeys.all }),
+    onSuccess: invalidate,
   });
 }
 
-export function useDeleteDocument() {
-  const api = useApi();
-  const queryClient = useQueryClient();
+export function useDeleteDocument(api?: ApiFetch) {
+  const fallback = useApi();
+  const fetch = api ?? fallback;
+  const invalidate = useInvalidateAll();
   return useMutation({
     mutationFn: (id: string) =>
-      api(`/api/documents/${id}`, { method: 'DELETE', schema: z.undefined() }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: documentKeys.all }),
+      fetch(`/api/documents/${id}`, { method: 'DELETE', schema: z.undefined() }),
+    onSuccess: invalidate,
   });
 }

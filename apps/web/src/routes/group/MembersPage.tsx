@@ -2,25 +2,28 @@ import type { RotateGroupLinkResponse } from '@the-keep/shared';
 import { useState } from 'react';
 import { useClearDevices, useGroupLink, useMembers, useRotateLink } from '@/api/group';
 import { Alert } from '@/components/Alert';
+import { ConfirmButton } from '@/components/ConfirmDialog';
+import { Loading, QueryError } from '@/components/QueryState';
 import { Button } from '@/components/ui/button';
 import { canEdit, useGroup } from '@/group/context';
-import { Control, Directory, SectionHead } from '@/routes/group/parts';
-import { when } from '@/routes/recipes/format';
+import { phonesLine } from '@/group/format';
+import { when } from '@/lib/dates';
+import { Directory, EditOrNew, SectionHead } from '@/routes/group/parts';
 
 /** The directory; for the admin, the link above it; for co-leads and the admin, the lost-phone control. */
 export function MembersPage() {
   const { viewer } = useGroup();
   const members = useMembers();
   const editor = canEdit(viewer);
-  if (members.isPending) return <p className="text-sm text-muted">Loading…</p>;
-  if (members.isError) return <Alert tone="danger">{members.error.message}</Alert>;
+  if (members.isError) return <QueryError queries={[members]} />;
+  if (members.isPending) return <Loading />;
   return (
     <article className="mx-auto grid max-w-[42rem] gap-12" aria-label="Members">
       {viewer.kind === 'admin' && <LinkPanel />}
       <section aria-labelledby="directory-heading">
         <SectionHead
           id="directory-heading"
-          action={editor && <Control to="/group/members/new">Add a member</Control>}
+          action={editor && <EditOrNew base="/group/members" newLabel="Add a member" />}
         >
           Members
         </SectionHead>
@@ -48,15 +51,13 @@ function LinkPanel() {
       <h2 id="link-heading" className="eyebrow">
         The group link
       </h2>
-      {link.isError && (
-        <Alert tone="danger" className="mt-3">
-          {link.error.message}
-        </Alert>
-      )}
+      <div className="mt-3 empty:hidden">
+        <QueryError queries={[link]} />
+      </div>
       {link.data && (
         <p className="mt-3 text-[15px] text-muted">
           {status
-            ? `Minted ${when(status.createdAt)} · ${link.data.deviceCount} ${link.data.deviceCount === 1 ? 'device holds' : 'devices hold'} it`
+            ? `Minted ${when(status.createdAt)} · on ${phonesLine(link.data.deviceCount)}`
             : 'No link yet. Mint one and paste it into the group thread.'}
         </p>
       )}
@@ -119,18 +120,17 @@ function LostPhones({
           <li key={m.id} className="flex items-center justify-between gap-4 py-1 text-[15px]">
             <span>
               {m.displayName}
-              <span className="ml-2 text-[13px] text-muted">
-                {m.deviceCount === 1 ? 'a phone' : `${m.deviceCount} phones`}
-              </span>
+              <span className="ml-2 text-[13px] text-muted">{phonesLine(m.deviceCount)}</span>
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={clear.isPending}
-              onClick={() => clear.mutate(m.id)}
+            <ConfirmButton
+              label="Clear"
+              title={`Sign ${m.displayName}’s phones out?`}
+              confirmLabel="Yes, clear them"
+              pending={clear.isPending}
+              onConfirm={() => clear.mutate(m.id)}
             >
-              Clear
-            </Button>
+              They open the link again and tap their name.
+            </ConfirmButton>
           </li>
         ))}
       </ul>

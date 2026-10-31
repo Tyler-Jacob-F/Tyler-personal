@@ -15,10 +15,9 @@ import { QuestionsPage } from '@/routes/group/QuestionsPage';
 import { SignupsPage } from '@/routes/group/SignupsPage';
 import { Home } from '@/routes/home/Home';
 import { NotYet } from '@/routes/NotYet';
-import { EditRecipe } from '@/routes/recipes/EditRecipe';
-import { NewRecipe } from '@/routes/recipes/NewRecipe';
 import { RecipeDetail } from '@/routes/recipes/RecipeDetail';
 import { RecipeDiff } from '@/routes/recipes/RecipeDiff';
+import { RecipeEditor } from '@/routes/recipes/RecipeEditor';
 import { RecipeHistory } from '@/routes/recipes/RecipeHistory';
 import { RecipeList } from '@/routes/recipes/RecipeList';
 import { SignIn } from '@/routes/SignIn';
@@ -60,9 +59,9 @@ export function App() {
           <Route index element={<Home />} />
           <Route path="/briefs/:id" element={<BriefDetail />} />
           <Route path="/recipes" element={<RecipeList />} />
-          <Route path="/recipes/new" element={<NewRecipe />} />
+          <Route path="/recipes/new" element={<RecipeEditor />} />
           <Route path="/recipes/:id" element={<RecipeDetail />} />
-          <Route path="/recipes/:id/edit" element={<EditRecipe />} />
+          <Route path="/recipes/:id/edit" element={<RecipeEditor />} />
           <Route path="/recipes/:id/history" element={<RecipeHistory />} />
           <Route path="/recipes/:id/diff" element={<RecipeDiff />} />
           <Route path="/writing" element={<NotYet place="Writing" phase="Phase 5" />} />

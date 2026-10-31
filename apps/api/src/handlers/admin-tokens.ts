@@ -5,7 +5,6 @@ import {
   type ListAgentTokensResponse,
   updateAgentTokenRequestSchema,
 } from '@the-keep/shared';
-import { z } from 'zod';
 import { type Db, getDb } from '../db/client.js';
 import {
   createAgentToken,
@@ -13,12 +12,18 @@ import {
   revokeAgentToken,
   updateAgentTokenScopes,
 } from '../db/repositories.js';
-import { type ApiHandler, createApi, json, noContent, notFound, parse } from '../lib/http.js';
+import {
+  type ApiHandler,
+  createApi,
+  json,
+  noContent,
+  notFound,
+  parse,
+  parseId,
+} from '../lib/http.js';
 import { generateAgentSecret, hashAgentSecret } from '../lib/token.js';
 import { cognitoIdentity } from '../middleware/identity.js';
 import { requireAdmin } from '../middleware/permission.js';
-
-const idSchema = z.uuid();
 
 /**
  * Token management is the admin's alone (docs/DESIGN.md "Auth and access rings"). These
@@ -57,7 +62,7 @@ export function build(db: Db): ApiHandler {
 
       'PATCH /api/admin/tokens/{id}': async ({ identity, params, body, log }) => {
         requireAdmin(identity.caller);
-        const id = parse(idSchema, params.id, 'id');
+        const id = parseId(params.id);
         const input = parse(updateAgentTokenRequestSchema, body, 'token');
         const updated = await updateAgentTokenScopes(db, id, input.scopes);
         if (!updated) throw notFound('token');
@@ -72,7 +77,7 @@ export function build(db: Db): ApiHandler {
 
       'DELETE /api/admin/tokens/{id}': async ({ identity, params, log }) => {
         requireAdmin(identity.caller);
-        const id = parse(idSchema, params.id, 'id');
+        const id = parseId(params.id);
         const revoked = await revokeAgentToken(db, id);
         if (!revoked) throw notFound('token');
         log.info('agent token revoked', { tokenId: id, name: revoked.name });

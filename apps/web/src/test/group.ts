@@ -1,6 +1,6 @@
 import type { DocumentWithVersion, Member, SignupClaim } from '@the-keep/shared';
 import { http, HttpResponse } from 'msw/http';
-import { todayIso } from '@/routes/briefs/brief';
+import { todayIso } from '@/lib/dates';
 import { adminMe, server } from '@/test/server';
 
 /** The render's sample group (docs/design/group-home-*.png), as the API would return it. */

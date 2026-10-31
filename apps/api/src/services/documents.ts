@@ -11,7 +11,6 @@ import {
   setTagsRequestSchema,
   type Version,
 } from '@the-keep/shared';
-import { z } from 'zod';
 import type { Db } from '../db/client.js';
 import {
   countDocuments,
@@ -22,12 +21,27 @@ import {
   searchDocuments,
   setDocumentTags,
 } from '../db/repositories.js';
-import { notFound, parse } from '../lib/http.js';
+import { notFound, parse, parseId } from '../lib/http.js';
 import type { Logger } from '../lib/logger.js';
 import { type Identity, writerOf } from '../middleware/identity.js';
-import { authorize, can } from '../middleware/permission.js';
+import { type Action, authorize, can } from '../middleware/permission.js';
 
-const idSchema = z.uuid();
+/**
+ * The step every document route starts with: a uuid, a live document, and the caller's
+ * right to this action on it, or the 400, 404 or 403 that says why not.
+ */
+export async function loadDocumentFor(
+  db: Db,
+  identity: Identity,
+  rawId: unknown,
+  action: Action,
+): Promise<DocumentWithVersion> {
+  const id = parseId(rawId);
+  const found = await getDocument(db, id);
+  if (!found) throw notFound('document');
+  authorize(identity.caller, action, found.document);
+  return found;
+}
 
 /**
  * The one validation path for documents: the REST routes and the MCP tools both call
@@ -100,10 +114,7 @@ export async function getDocumentFor(
   identity: Identity,
   rawId: unknown,
 ): Promise<DocumentWithVersion> {
-  const id = parse(idSchema, rawId, 'id');
-  const found = await getDocument(db, id);
-  if (!found) throw notFound('document');
-  authorize(identity.caller, 'read', found.document);
+  const found = await loadDocumentFor(db, identity, rawId, 'read');
   // Stored frontmatter is already validated; re-parse so a later schema change surfaces here.
   parseFrontmatter(found.document.type, found.version.frontmatter);
   return found;
@@ -116,10 +127,8 @@ export async function createVersionFor(
   body: unknown,
   log: Logger,
 ): Promise<Version> {
-  const id = parse(idSchema, rawId, 'id');
-  const found = await getDocument(db, id);
-  if (!found) throw notFound('document');
-  authorize(identity.caller, 'write', found.document);
+  const found = await loadDocumentFor(db, identity, rawId, 'write');
+  const id = found.document.id;
   const input = parse(createVersionRequestSchema, body, 'version');
   const frontmatter = parse(
     schemaFor(found.document.type).schema,
@@ -149,10 +158,8 @@ export async function setTagsFor(
   body: unknown,
   log: Logger,
 ): Promise<DocumentWithVersion> {
-  const id = parse(idSchema, rawId, 'id');
-  const found = await getDocument(db, id);
-  if (!found) throw notFound('document');
-  authorize(identity.caller, 'write', found.document);
+  const found = await loadDocumentFor(db, identity, rawId, 'write');
+  const id = found.document.id;
   const input = parse(setTagsRequestSchema, body, 'tags');
   const tags = parse(schemaFor(found.document.type).tags, input.tags, 'tags');
   const updated = await setDocumentTags(db, id, tags, writerOf(identity).author);

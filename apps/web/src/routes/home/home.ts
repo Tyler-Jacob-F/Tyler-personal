@@ -17,5 +17,3 @@ export function pickBrief(
   const latest = dated.sort((a, b) => b.brief!.date.localeCompare(a.brief!.date))[0];
   return latest ? { item: latest.item, isToday: false } : null;
 }
-
-export const typeLabels: Record<string, string> = { recipe: 'Recipe', brief: 'Brief' };

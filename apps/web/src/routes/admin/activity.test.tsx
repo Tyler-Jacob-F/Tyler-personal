@@ -47,6 +47,30 @@ describe('ActivityPage', () => {
     expect(within(rows[2]!).getByText('from the 2014 card')).toBeInTheDocument();
   });
 
+  it('links the group’s types to the group, not to a recipe', async () => {
+    const event = {
+      kind: 'version',
+      versionId: '9c2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4c',
+      documentId: '7c2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4c',
+      documentType: 'event',
+      slug: 'small-group',
+      title: 'Small group',
+      token: { id: '4b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b', name: 'claude' },
+      createdAt: '2026-10-31T12:00:00.000Z',
+      number: 1,
+      summary: 'next Thursday',
+      authoredAt: null,
+    };
+    server.use(http.get('/api/admin/activity', () => HttpResponse.json({ items: [event] })));
+    render(<App />, { route: '/admin/activity' });
+    const row = (await screen.findAllByRole('listitem'))[0]!;
+    expect(within(row).getByText('Event')).toBeInTheDocument();
+    expect(within(row).getByRole('link', { name: 'Small group' })).toHaveAttribute(
+      'href',
+      '/group/calendar',
+    );
+  });
+
   it('says so when no agent has written anything', async () => {
     server.use(http.get('/api/admin/activity', () => HttpResponse.json({ items: [] })));
     render(<App />, { route: '/admin/activity' });

@@ -4,10 +4,12 @@ import { Navigate, useNavigate } from 'react-router';
 import { ApiRequestError } from '@/api/client';
 import { useClaimName, useMembers } from '@/api/group';
 import { Alert } from '@/components/Alert';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { ChevronRightIcon } from '@/components/icons';
-import { Button } from '@/components/ui/button';
+import { Loading, QueryError } from '@/components/QueryState';
 import { focusRing } from '@/components/ui/styles';
 import { useGroup } from '@/group/context';
+import { phonesLine } from '@/group/format';
 import { cn } from '@/lib/utils';
 
 /**
@@ -23,8 +25,8 @@ export function ClaimPage() {
   const [asking, setAsking] = useState<Member | null>(null);
 
   if (viewer.kind !== 'member' && viewer.kind !== 'guest') return <Navigate to="/group" replace />;
-  if (members.isPending) return <p className="text-sm text-muted">Loading…</p>;
-  if (members.isError) return <Alert tone="danger">{members.error.message}</Alert>;
+  if (members.isError) return <QueryError queries={[members]} />;
+  if (members.isPending) return <Loading />;
 
   const mine = viewer.kind === 'member' ? viewer.memberId : null;
   const unclaimed = members.data.items.filter((m) => m.deviceCount === 0 && m.id !== mine);
@@ -63,7 +65,6 @@ export function ClaimPage() {
     </li>
   );
 
-  const phones = (n: number) => (n === 1 ? 'a phone' : n === 2 ? 'two phones' : `${n} phones`);
   const refusal =
     claim.error &&
     !(claim.error instanceof ApiRequestError && claim.error.code === 'already_claimed')
@@ -92,32 +93,20 @@ export function ClaimPage() {
             className="mt-3 divide-y divide-border border-y border-border"
             aria-label="Claimed names"
           >
-            {claimed.map((m) => row(m, phones(m.deviceCount)))}
+            {claimed.map((m) => row(m, phonesLine(m.deviceCount)))}
           </ul>
         </section>
       )}
       {asking && (
-        <div
-          role="dialog"
-          aria-labelledby="confirm-heading"
-          className="rounded-lg border border-border bg-surface px-5 py-5"
+        <ConfirmDialog
+          title={`You are ${asking.displayName}, and this phone should be yours too?`}
+          confirmLabel="Yes, it is me"
+          pending={claim.isPending}
+          onConfirm={() => take(asking, true)}
+          onCancel={() => setAsking(null)}
         >
-          <h2
-            id="confirm-heading"
-            className="font-serif text-[22px] leading-snug font-medium text-text-strong"
-          >
-            You are {asking.displayName}, and this phone should be yours too?
-          </h2>
-          <p className="mt-3 text-[15px] text-muted">
-            The other device stays signed in. If this is not you, go back and tap your own name.
-          </p>
-          <div className="mt-5 flex justify-end gap-3">
-            <Button onClick={() => setAsking(null)}>Back</Button>
-            <Button variant="accent" disabled={claim.isPending} onClick={() => take(asking, true)}>
-              Yes, it is me
-            </Button>
-          </div>
-        </div>
+          The other device stays signed in. If this is not you, go back and tap your own name.
+        </ConfirmDialog>
       )}
     </article>
   );

@@ -11,7 +11,6 @@ import {
   type Member,
   updateMemberRequestSchema,
 } from '@the-keep/shared';
-import { z } from 'zod';
 import { type Db, getDb } from '../db/client.js';
 import {
   claimMember,
@@ -32,11 +31,10 @@ import {
   noContent,
   notFound,
   parse,
+  parseId,
 } from '../lib/http.js';
 import { cognitoIdentity, groupIdentity } from '../middleware/identity.js';
 import { authorizeMember, requireAdmin } from '../middleware/permission.js';
-
-const idSchema = z.uuid();
 
 export interface MembersOptions {
   /**
@@ -75,7 +73,7 @@ export function cognitoUserCreator(client: CognitoIdentityProviderClient, userPo
  */
 export function build(db: Db, { createUser }: MembersOptions): ApiHandler {
   async function found(rawId: unknown): Promise<Member> {
-    const id = parse(idSchema, rawId, 'id');
+    const id = parseId(rawId);
     const member = await getMember(db, id);
     if (!member) throw notFound('member');
     return member;

@@ -8,8 +8,3 @@ export const GROUP_PLACES: Place[] = [
   { label: 'Calendar', to: '/group/calendar', matches: ['/group/calendar'] },
   { label: 'Members', to: '/group/members', matches: ['/group/members', '/group/claim'] },
 ];
-
-export function groupPlaceActive(place: Place, pathname: string): boolean {
-  if (place.end) return pathname === place.to;
-  return place.matches.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
-}

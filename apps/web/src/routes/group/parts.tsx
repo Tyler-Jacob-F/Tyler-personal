@@ -14,16 +14,8 @@ import { Markdown } from '@/components/Markdown';
 import { Button } from '@/components/ui/button';
 import { focusRing } from '@/components/ui/styles';
 import { canEdit, type GroupViewer, memberIdOf, useGroup } from '@/group/context';
-import {
-  capacityLine,
-  closesLine,
-  dayLine,
-  icsUrl,
-  longDay,
-  telHref,
-  type Typed,
-  whenLine,
-} from '@/group/format';
+import { capacityLine, icsUrl, telHref, type Typed } from '@/group/format';
+import { closesLine, dayLine, longDay, whenLine } from '@/lib/dates';
 import { quietLink } from '@/group/styles';
 import { cn } from '@/lib/utils';
 
@@ -52,6 +44,66 @@ export function Control({ to, children }: { to: string; children: ReactNode }) {
     <Link to={to} className={cn(quietLink, 'text-[13px] text-muted')}>
       {children}
     </Link>
+  );
+}
+
+/** The section's control: Edit when there is a document, else the way to make one. */
+export function EditOrNew({
+  item,
+  base,
+  newLabel,
+}: {
+  item?: { document: { id: string } };
+  base: string;
+  newLabel: string;
+}) {
+  return item ? (
+    <Control to={`${base}/${item.document.id}/edit`}>Edit</Control>
+  ) : (
+    <Control to={`${base}/new`}>{newLabel}</Control>
+  );
+}
+
+/** The other weeks, the other sign-ups: a hairline list under the current one, with a way to add. */
+export function OtherList({
+  heading,
+  items,
+  newTo,
+  newLabel,
+}: {
+  heading: string;
+  items: Array<{ id: string; to: string; title: string; aside: string }>;
+  newTo?: string;
+  newLabel: string;
+}) {
+  if (items.length === 0 && !newTo) return null;
+  const id = `${heading.toLowerCase().replace(/\W+/g, '-')}-heading`;
+  return (
+    <section aria-labelledby={id}>
+      <SectionHead id={id} action={newTo && <Control to={newTo}>{newLabel}</Control>}>
+        {heading}
+      </SectionHead>
+      {items.length === 0 ? (
+        <p className="mt-3 text-[15px] text-muted italic">None yet.</p>
+      ) : (
+        <ul className="mt-3 divide-y divide-border border-y border-border">
+          {items.map((item) => (
+            <li key={item.id}>
+              <Link
+                to={item.to}
+                className={cn(
+                  quietLink,
+                  'flex w-full justify-between gap-4 py-1 text-[17px] no-underline',
+                )}
+              >
+                <span className="font-serif">{item.title}</span>
+                <span className="text-[13px] text-muted tabular-nums">{item.aside}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

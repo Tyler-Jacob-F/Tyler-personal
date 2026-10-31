@@ -1,17 +1,17 @@
 import { useGroupDocuments } from '@/api/group';
-import { Alert } from '@/components/Alert';
+import { Loading, QueryError } from '@/components/QueryState';
 import { canEdit, useGroup } from '@/group/context';
-import { eventsOf, pastEvents, upcomingEvents, whenLine } from '@/group/format';
-import { todayIso } from '@/routes/briefs/brief';
-import { Control, MeetingRows, SectionHead } from '@/routes/group/parts';
+import { eventsOf, pastEvents, upcomingEvents } from '@/group/format';
+import { todayIso, whenLine } from '@/lib/dates';
+import { Control, EditOrNew, MeetingRows, SectionHead } from '@/routes/group/parts';
 
 /** The calendar is the list of upcoming events (docs/phases/04-group.md), the past folded under. */
 export function CalendarPage() {
   const { viewer } = useGroup();
   const today = todayIso();
   const events = useGroupDocuments('event');
-  if (events.isPending) return <p className="text-sm text-muted">Loading…</p>;
-  if (events.isError) return <Alert tone="danger">{events.error.message}</Alert>;
+  if (events.isError) return <QueryError queries={[events]} />;
+  if (events.isPending) return <Loading />;
   const all = eventsOf(events.data.items);
   const upcoming = upcomingEvents(all, today);
   const past = pastEvents(all, today);
@@ -22,7 +22,7 @@ export function CalendarPage() {
       <section aria-labelledby="upcoming-heading">
         <SectionHead
           id="upcoming-heading"
-          action={editor && <Control to="/group/calendar/new">Add a meeting</Control>}
+          action={editor && <EditOrNew base="/group/calendar" newLabel="Add a meeting" />}
         >
           Coming up
         </SectionHead>

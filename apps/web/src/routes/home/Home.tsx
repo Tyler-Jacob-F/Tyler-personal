@@ -1,6 +1,7 @@
 import { useDocuments } from '@/api/documents';
-import { Alert } from '@/components/Alert';
-import { briefDay, briefOf, todayIso } from '@/routes/briefs/brief';
+import { Loading, QueryError } from '@/components/QueryState';
+import { briefDay, todayIso } from '@/lib/dates';
+import { briefOf } from '@/routes/briefs/brief';
 import { pickBrief } from '@/routes/home/home';
 import { Morning } from '@/routes/home/Morning';
 
@@ -8,8 +9,8 @@ import { Morning } from '@/routes/home/Morning';
 export function Home() {
   const briefs = useDocuments('brief');
   const today = todayIso();
-  if (briefs.isPending) return <p className="text-sm text-muted">Loading…</p>;
-  if (briefs.isError) return <Alert tone="danger">{briefs.error.message}</Alert>;
+  if (briefs.isError) return <QueryError queries={[briefs]} />;
+  if (briefs.isPending) return <Loading />;
   const picked = pickBrief(briefs.data.items, today);
   const brief = picked ? briefOf(picked.item.version.frontmatter) : null;
   return (

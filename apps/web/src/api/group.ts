@@ -1,8 +1,6 @@
 import {
   type CreateClaimRequest,
-  type CreateDocumentRequest,
   type CreateMemberRequest,
-  type CreateVersionRequest,
   documentWithVersionSchema,
   groupLinkStatusSchema,
   listClaimsResponseSchema,
@@ -15,18 +13,19 @@ import {
   rotateGroupLinkResponseSchema,
   signupClaimSchema,
   type UpdateMemberRequest,
-  versionSchema,
 } from '@the-keep/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import type { ApiFetch } from '@/api/client';
+import { useInvalidateAll } from '@/api/context';
 import { useGroup } from '@/group/context';
 
 /**
- * The group slice's resources, each read through the viewer's own door: `/api/...` with
- * the Cognito token for the admin and co-leads, `/api/group/...` with the device token for
- * everyone else. Keys carry the prefix so a signed-in tab and a device tab never share a
- * cache entry.
+ * The group slice's own resources (members, claims, the link), each read through the
+ * viewer's door: `/api/...` with the Cognito token for the admin and co-leads,
+ * `/api/group/...` with the device token for everyone else. Documents go through the
+ * shared hooks in api/documents.ts with the group's fetch. Keys carry the prefix so a
+ * signed-in tab and a device tab never share a cache entry.
  */
 export const groupKeys = {
   all: ['group'] as const,
@@ -81,15 +80,10 @@ export function useMembers() {
   });
 }
 
-function useInvalidate() {
-  const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: groupKeys.all });
-}
-
 /** Take a slot: for the device's own member, or, from a co-lead, for the member named. */
 export function useTakeSlot(id: string) {
   const { api, prefix } = useGroup();
-  const invalidate = useInvalidate();
+  const invalidate = useInvalidateAll();
   return useMutation({
     mutationFn: (body: CreateClaimRequest) =>
       api(`${prefix}/documents/${id}/claims`, { method: 'POST', body, schema: signupClaimSchema }),
@@ -99,7 +93,7 @@ export function useTakeSlot(id: string) {
 
 export function useReleaseSlot(id: string) {
   const { api, prefix } = useGroup();
-  const invalidate = useInvalidate();
+  const invalidate = useInvalidateAll();
   return useMutation({
     mutationFn: (claimId: string) =>
       api(`${prefix}/documents/${id}/claims/${claimId}`, {
@@ -113,7 +107,7 @@ export function useReleaseSlot(id: string) {
 /** "Who are you?": the device takes a name; `confirm` when the name is already on another device. */
 export function useClaimName() {
   const { api } = useGroup();
-  const invalidate = useInvalidate();
+  const invalidate = useInvalidateAll();
   return useMutation({
     mutationFn: ({ id, confirm }: { id: string; confirm: boolean }) =>
       api(`/api/group/members/${id}/claim`, {
@@ -127,7 +121,7 @@ export function useClaimName() {
 
 export function useUpdateMember() {
   const { api, prefix } = useGroup();
-  const invalidate = useInvalidate();
+  const invalidate = useInvalidateAll();
   return useMutation({
     mutationFn: ({ id, ...body }: UpdateMemberRequest & { id: string }) =>
       api(`${prefix}/members/${id}`, { method: 'PATCH', body, schema: memberSchema }),
@@ -137,7 +131,7 @@ export function useUpdateMember() {
 
 export function useAddMember() {
   const { api, prefix } = useGroup();
-  const invalidate = useInvalidate();
+  const invalidate = useInvalidateAll();
   return useMutation({
     mutationFn: (body: CreateMemberRequest) =>
       api(`${prefix}/members`, { method: 'POST', body, schema: memberSchema }),
@@ -147,7 +141,7 @@ export function useAddMember() {
 
 export function useClearDevices() {
   const { api, prefix } = useGroup();
-  const invalidate = useInvalidate();
+  const invalidate = useInvalidateAll();
   return useMutation({
     mutationFn: (id: string) =>
       api(`${prefix}/members/${id}/devices`, { method: 'DELETE', schema: z.undefined() }),
@@ -157,7 +151,7 @@ export function useClearDevices() {
 
 export function useMakeColead() {
   const { api, prefix } = useGroup();
-  const invalidate = useInvalidate();
+  const invalidate = useInvalidateAll();
   return useMutation({
     mutationFn: ({ id, ...body }: MakeColeadRequest & { id: string }) =>
       api(`${prefix}/members/${id}/colead`, { method: 'POST', body, schema: memberSchema }),
@@ -175,41 +169,10 @@ export function useGroupLink() {
 
 export function useRotateLink() {
   const { api } = useGroup();
-  const invalidate = useInvalidate();
+  const invalidate = useInvalidateAll();
   return useMutation({
     mutationFn: (body: RotateGroupLinkRequest) =>
       api('/api/admin/group-link', { method: 'POST', body, schema: rotateGroupLinkResponseSchema }),
-    onSuccess: invalidate,
-  });
-}
-
-/** The admin and co-leads write the group's documents through the people's door. */
-export function useCreateGroupDocument() {
-  const { api } = useGroup();
-  const invalidate = useInvalidate();
-  return useMutation({
-    mutationFn: (body: CreateDocumentRequest) =>
-      api('/api/documents', { method: 'POST', body, schema: documentWithVersionSchema }),
-    onSuccess: invalidate,
-  });
-}
-
-export function useCreateGroupVersion(id: string) {
-  const { api } = useGroup();
-  const invalidate = useInvalidate();
-  return useMutation({
-    mutationFn: (body: CreateVersionRequest) =>
-      api(`/api/documents/${id}/versions`, { method: 'POST', body, schema: versionSchema }),
-    onSuccess: invalidate,
-  });
-}
-
-export function useDeleteGroupDocument() {
-  const { api } = useGroup();
-  const invalidate = useInvalidate();
-  return useMutation({
-    mutationFn: (id: string) =>
-      api(`/api/documents/${id}`, { method: 'DELETE', schema: z.undefined() }),
     onSuccess: invalidate,
   });
 }

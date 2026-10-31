@@ -43,6 +43,10 @@ pnpm -C infra cdk diff
   management or token management.
 - **Tokens only in styling.** Semantic Tailwind tokens from the `@theme` block in
   `index.css`; no raw palette classes, no inline radius or color.
+- **Shared code lives in `lib/` or `components/`.** A route never imports from another
+  route's folder; the day two screens want the same helper, it moves. Dates go through
+  `lib/dates.ts`, document types through `lib/document-types.ts`, forms through `FormRow`,
+  confirmations through `ConfirmDialog`, never `window.confirm`.
 - **Tests travel with code.** Every Lambda gets a handler test with a fake event; every
   CDK stack gets a snapshot test.
 - **Decide and flag.** Make routine calls and note them in the PR description. Ask Tyler

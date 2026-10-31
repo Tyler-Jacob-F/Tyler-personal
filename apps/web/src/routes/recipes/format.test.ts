@@ -1,9 +1,8 @@
+import { shortDay, versionLine } from '@/lib/dates';
 import {
+  minutes,
   splitHeadnote,
   splitIngredient,
-  versionLine,
-  shortDay,
-  minutes,
   withoutMethodHeading,
 } from '@/routes/recipes/format';
 describe('format', () => {

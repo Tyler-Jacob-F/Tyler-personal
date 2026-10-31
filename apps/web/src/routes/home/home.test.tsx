@@ -1,9 +1,9 @@
 import { http, HttpResponse } from 'msw/http';
 import { App } from '@/App';
 import { briefDoc, recipeDoc } from '@/test/fixtures';
-import { todayIso } from '@/routes/briefs/brief';
+import { dayHeading, todayIso } from '@/lib/dates';
 import { pickBrief } from '@/routes/home/home';
-import { blocksOf, dayHeading, morningParts, parseShapeRow } from '@/routes/home/morning';
+import { blocksOf, morningParts, parseShapeRow } from '@/routes/home/morning';
 import { render, screen, within } from '@/test/render';
 import { server } from '@/test/server';
 
