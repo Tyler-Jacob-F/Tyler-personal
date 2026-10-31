@@ -5,7 +5,6 @@ import {
   signupFrontmatterSchema,
   signupOpen,
 } from '@the-keep/shared';
-import { z } from 'zod';
 import { type Db, getDb } from '../db/client.js';
 import { createClaim, deleteClaim, getClaim, getMember, listClaims } from '../db/group.js';
 import { getDocument } from '../db/repositories.js';
@@ -19,11 +18,10 @@ import {
   noContent,
   notFound,
   parse,
+  parseId,
 } from '../lib/http.js';
 import { cognitoIdentity, groupIdentity } from '../middleware/identity.js';
 import { authorize, authorizeClaim, type Target } from '../middleware/permission.js';
-
-const idSchema = z.uuid();
 
 export interface ClaimsOptions {
   /** Injected by tests; production uses the clock. */
@@ -40,7 +38,7 @@ export interface ClaimsOptions {
  */
 export function build(db: Db, { now = () => new Date() }: ClaimsOptions = {}): ApiHandler {
   async function signupOf(rawId: unknown) {
-    const id = parse(idSchema, rawId, 'id');
+    const id = parseId(rawId);
     const found = await getDocument(db, id);
     if (!found) throw notFound('document');
     if (found.document.type !== 'signup') throw badRequest('not a signup');
@@ -102,7 +100,7 @@ export function build(db: Db, { now = () => new Date() }: ClaimsOptions = {}): A
 
       'DELETE /api/documents/{id}/claims/{claimId}': async ({ identity, params, log }) => {
         const { id, target, frontmatter } = await signupOf(params.id);
-        const claimId = parse(idSchema, params.claimId, 'claim id');
+        const claimId = parseId(params.claimId, 'claim id');
         const claim = await getClaim(db, claimId);
         if (!claim || claim.documentId !== id) throw notFound('claim');
         authorizeClaim(identity.caller, target, claim.memberId);

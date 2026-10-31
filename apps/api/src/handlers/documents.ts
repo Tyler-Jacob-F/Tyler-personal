@@ -1,18 +1,15 @@
-import { z } from 'zod';
 import { type Db, getDb } from '../db/client.js';
-import { getDocument, softDeleteDocument } from '../db/repositories.js';
-import { type ApiHandler, createApi, json, noContent, notFound, parse } from '../lib/http.js';
+import { softDeleteDocument } from '../db/repositories.js';
+import { type ApiHandler, createApi, json, noContent } from '../lib/http.js';
 import { agentIdentity, cognitoIdentity, groupIdentity } from '../middleware/identity.js';
-import { authorize } from '../middleware/permission.js';
 import {
   createDocumentFor,
   getDocumentFor,
   listDocumentsFor,
+  loadDocumentFor,
   searchDocumentsFor,
   setTagsFor,
 } from '../services/documents.js';
-
-const idSchema = z.uuid();
 
 export function build(db: Db): ApiHandler {
   return createApi({
@@ -42,12 +39,9 @@ export function build(db: Db): ApiHandler {
       // Delete has no agent counterpart: the agent door never exposes it, and the
       // permission middleware refuses it regardless.
       'DELETE /api/documents/{id}': async ({ identity, params, log }) => {
-        const id = parse(idSchema, params.id, 'id');
-        const found = await getDocument(db, id);
-        if (!found) throw notFound('document');
-        authorize(identity.caller, 'delete', found.document);
-        await softDeleteDocument(db, id);
-        log.info('document deleted', { documentId: id });
+        const { document } = await loadDocumentFor(db, identity, params.id, 'delete');
+        await softDeleteDocument(db, document.id);
+        log.info('document deleted', { documentId: document.id });
         return noContent();
       },
     },

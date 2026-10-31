@@ -46,6 +46,12 @@ export function cognitoIdentity(db: Db): Identify {
   };
 }
 
+/** What a Lambda authorizer attached to the request, if one ran. */
+function lambdaContext(event: ApiEvent): unknown {
+  const authorizer = event.requestContext?.authorizer;
+  return authorizer && 'lambda' in authorizer ? authorizer.lambda : undefined;
+}
+
 const agentContextSchema = z.object({
   id: z.uuid(),
   name: z.string().min(1),
@@ -64,9 +70,7 @@ const agentContextSchema = z.object({
  */
 export function agentIdentity(db: Db): Identify {
   return async (event) => {
-    const authorizer = event.requestContext?.authorizer;
-    const raw = authorizer && 'lambda' in authorizer ? authorizer.lambda : undefined;
-    const context = agentContextSchema.safeParse(raw);
+    const context = agentContextSchema.safeParse(lambdaContext(event));
     if (!context.success) throw unauthorized('no agent token on the request');
     const admin = await findAdminMember(db);
     if (!admin) throw new Error('no admin member to own agent documents');
@@ -93,9 +97,7 @@ const groupContextSchema = z.object({
  */
 export function groupIdentity(db: Db): Identify {
   return async (event, log) => {
-    const authorizer = event.requestContext?.authorizer;
-    const raw = authorizer && 'lambda' in authorizer ? authorizer.lambda : undefined;
-    const context = groupContextSchema.safeParse(raw);
+    const context = groupContextSchema.safeParse(lambdaContext(event));
     if (!context.success) throw unauthorized('no device on the request');
     const { deviceId, memberId } = context.data;
     const member = memberId ? await getMember(db, memberId) : null;

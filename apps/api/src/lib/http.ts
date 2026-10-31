@@ -4,7 +4,7 @@ import type {
   APIGatewayProxyStructuredResultV2,
   Context,
 } from 'aws-lambda';
-import { ZodError, type z } from 'zod';
+import { ZodError, z } from 'zod';
 import type { AgentAuthorizerContext } from '../auth/agent-authorizer.js';
 import type { GroupAuthorizerContext } from '../auth/group-authorizer.js';
 import { ConflictError, NotFoundError } from '../db/repositories.js';
@@ -90,6 +90,13 @@ export function parse<T extends z.ZodType>(schema: T, value: unknown, what: stri
   return result.data;
 }
 
+const uuidSchema = z.uuid();
+
+/** A path parameter that must be a uuid, or a 400 naming it. */
+export function parseId(value: unknown, what = 'id'): string {
+  return parse(uuidSchema, value, what);
+}
+
 export function parseBody(event: ApiEvent): unknown {
   if (!event.body) return undefined;
   const raw = event.isBase64Encoded
@@ -163,6 +170,30 @@ export function createApi<TIdentity>({
       return errorResponse(error, log, started);
     }
   };
+}
+
+/**
+ * The request wrapper for a Lambda that is not a route map (the MCP server, the enter
+ * route): the same logger fields, timing and error responses `createApi` gives its routes.
+ */
+export async function handleRequest(
+  service: string,
+  event: ApiEvent,
+  context: Context | undefined,
+  run: (log: Logger, started: number) => Promise<ApiResult>,
+  fields: Record<string, unknown> = {},
+): Promise<ApiResult> {
+  const log = createLogger(service, {
+    requestId: event.requestContext?.requestId ?? context?.awsRequestId,
+    route: event.routeKey ?? event.requestContext?.routeKey,
+    ...fields,
+  });
+  const started = Date.now();
+  try {
+    return await run(log, started);
+  } catch (error) {
+    return errorResponse(error, log, started);
+  }
 }
 
 export function errorResponse(error: unknown, log: Logger, started: number): ApiResult {

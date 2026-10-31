@@ -13,7 +13,7 @@ import { and, desc, eq, gte, isNotNull, isNull, like, or, sql } from 'drizzle-or
 import { alias } from 'drizzle-orm/pg-core';
 import type { Db } from './client.js';
 import { agentToken, document, member, tagChange, version } from './schema.js';
-import { toIso } from './time.js';
+import { toIso, toIsoOrNull } from './time.js';
 
 export type MemberRow = typeof member.$inferSelect;
 
@@ -77,8 +77,8 @@ function toAgentToken(row: AgentTokenRow): AgentToken {
     name: row.name,
     scopes: row.scopes as AgentScope[],
     createdAt: toIso(row.createdAt),
-    lastUsedAt: row.lastUsedAt ? toIso(row.lastUsedAt) : null,
-    revokedAt: row.revokedAt ? toIso(row.revokedAt) : null,
+    lastUsedAt: toIsoOrNull(row.lastUsedAt),
+    revokedAt: toIsoOrNull(row.revokedAt),
   };
 }
 
@@ -243,7 +243,7 @@ export async function listAgentActivity(
       summary: row.summary,
       token: { id: row.tokenId, name: row.tokenName },
       createdAt: toIso(row.createdAt),
-      authoredAt: row.authoredAt ? toIso(row.authoredAt) : null,
+      authoredAt: toIsoOrNull(row.authoredAt),
     })),
     ...changes.map((row): AgentActivityItem => ({
       kind: 'tagged',
@@ -276,7 +276,7 @@ function toDocument(row: DocumentRow): Document {
     createdAt: toIso(row.createdAt),
     currentVersionId: row.currentVersionId,
     tags: row.tags,
-    deletedAt: row.deletedAt ? toIso(row.deletedAt) : null,
+    deletedAt: toIsoOrNull(row.deletedAt),
   };
 }
 
@@ -292,7 +292,7 @@ function toVersion(row: VersionRow, memberName: string | null, agentName: string
     frontmatter: row.frontmatter,
     author,
     createdAt: toIso(row.createdAt),
-    authoredAt: row.authoredAt ? toIso(row.authoredAt) : null,
+    authoredAt: toIsoOrNull(row.authoredAt),
     summary: row.summary,
   };
 }
@@ -306,6 +306,31 @@ function versionWithAuthor(db: Db) {
     .leftJoin(authorMember, eq(authorMember.id, version.authorMemberId))
     .leftJoin(agentToken, eq(agentToken.id, version.authorAgentTokenId));
 }
+
+/** A document with its current version and that version's author, the shape every read wants. */
+function documentWithAuthor(db: Db) {
+  return db
+    .select({ document, version, memberName: authorMember.displayName, agentName: agentToken.name })
+    .from(document)
+    .innerJoin(version, eq(version.id, document.currentVersionId))
+    .leftJoin(authorMember, eq(authorMember.id, version.authorMemberId))
+    .leftJoin(agentToken, eq(agentToken.id, version.authorAgentTokenId));
+}
+
+type DocumentWithAuthorRow = Awaited<
+  ReturnType<ReturnType<typeof documentWithAuthor>['execute']>
+>[number];
+
+function toDocumentWithVersion(row: DocumentWithAuthorRow): DocumentWithVersion {
+  return {
+    document: toDocument(row.document),
+    version: toVersion(row.version, row.memberName, row.agentName),
+  };
+}
+
+/** Live documents, of one type or of all. */
+const live = (type?: string) =>
+  and(isNull(document.deletedAt), type ? eq(document.type, type) : undefined);
 
 function authorColumns(author: AuthorRef) {
   return author.kind === 'member'
@@ -367,19 +392,11 @@ export async function listDocuments(
   db: Db,
   { type, limit }: ListDocumentsOptions,
 ): Promise<DocumentWithVersion[]> {
-  const rows = await db
-    .select({ document, version, memberName: authorMember.displayName, agentName: agentToken.name })
-    .from(document)
-    .innerJoin(version, eq(version.id, document.currentVersionId))
-    .leftJoin(authorMember, eq(authorMember.id, version.authorMemberId))
-    .leftJoin(agentToken, eq(agentToken.id, version.authorAgentTokenId))
-    .where(and(isNull(document.deletedAt), type ? eq(document.type, type) : undefined))
+  const rows = await documentWithAuthor(db)
+    .where(live(type))
     .orderBy(desc(document.createdAt), desc(document.id))
     .limit(limit);
-  return rows.map((row) => ({
-    document: toDocument(row.document),
-    version: toVersion(row.version, row.memberName, row.agentName),
-  }));
+  return rows.map(toDocumentWithVersion);
 }
 
 export interface SearchDocumentsOptions {
@@ -400,16 +417,10 @@ export async function searchDocuments(
   { q, type, tags, limit }: SearchDocumentsOptions,
 ): Promise<DocumentWithVersion[]> {
   const query = q.trim() ? sql`websearch_to_tsquery('english', ${q.trim()})` : null;
-  const rows = await db
-    .select({ document, version, memberName: authorMember.displayName, agentName: agentToken.name })
-    .from(document)
-    .innerJoin(version, eq(version.id, document.currentVersionId))
-    .leftJoin(authorMember, eq(authorMember.id, version.authorMemberId))
-    .leftJoin(agentToken, eq(agentToken.id, version.authorAgentTokenId))
+  const rows = await documentWithAuthor(db)
     .where(
       and(
-        isNull(document.deletedAt),
-        type ? eq(document.type, type) : undefined,
+        live(type),
         tags.length > 0 ? sql`${document.tags} @> ${JSON.stringify(tags)}::jsonb` : undefined,
         query ? sql`${document}.search @@ ${query}` : undefined,
       ),
@@ -420,10 +431,7 @@ export async function searchDocuments(
       desc(document.id),
     )
     .limit(limit);
-  return rows.map((row) => ({
-    document: toDocument(row.document),
-    version: toVersion(row.version, row.memberName, row.agentName),
-  }));
+  return rows.map(toDocumentWithVersion);
 }
 
 /** How many live documents there are, of one type or of all. */
@@ -431,26 +439,16 @@ export async function countDocuments(db: Db, type?: string): Promise<number> {
   const rows = await db
     .select({ count: sql<number>`count(*)` })
     .from(document)
-    .where(and(isNull(document.deletedAt), type ? eq(document.type, type) : undefined));
+    .where(live(type));
   return Number(rows[0]?.count ?? 0);
 }
 
 /** A live document with its current version, or null (deleted counts as gone). */
 export async function getDocument(db: Db, id: string): Promise<DocumentWithVersion | null> {
-  const rows = await db
-    .select({ document, version, memberName: authorMember.displayName, agentName: agentToken.name })
-    .from(document)
-    .innerJoin(version, eq(version.id, document.currentVersionId))
-    .leftJoin(authorMember, eq(authorMember.id, version.authorMemberId))
-    .leftJoin(agentToken, eq(agentToken.id, version.authorAgentTokenId))
+  const rows = await documentWithAuthor(db)
     .where(and(eq(document.id, id), isNull(document.deletedAt)))
     .limit(1);
-  const row = rows[0];
-  if (!row) return null;
-  return {
-    document: toDocument(row.document),
-    version: toVersion(row.version, row.memberName, row.agentName),
-  };
+  return rows[0] ? toDocumentWithVersion(rows[0]) : null;
 }
 
 /** Soft delete. Versions stay; the document stops listing. Returns false if nothing matched. */

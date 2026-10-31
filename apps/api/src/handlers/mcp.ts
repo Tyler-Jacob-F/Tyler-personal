@@ -1,8 +1,7 @@
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import type { Context } from 'aws-lambda';
 import { type Db, getDb } from '../db/client.js';
-import { type ApiEvent, type ApiResult, errorResponse } from '../lib/http.js';
-import { createLogger } from '../lib/logger.js';
+import { type ApiEvent, type ApiResult, handleRequest } from '../lib/http.js';
 import { createKeepServer } from '../mcp/server.js';
 import { agentIdentity } from '../middleware/identity.js';
 
@@ -41,51 +40,47 @@ export async function fromResponse(response: Response): Promise<ApiResult> {
  */
 export function build(db: Db): McpHandler {
   const identify = agentIdentity(db);
-  return async (event, context) => {
-    const log = createLogger('mcp', {
-      requestId: event.requestContext?.requestId ?? context?.awsRequestId,
-      route: event.routeKey ?? event.requestContext?.routeKey,
-      method: event.requestContext?.http?.method,
-      door: 'agent',
-    });
-    const started = Date.now();
-    try {
-      // Stateless means no standalone SSE stream to listen on and no session to delete, so
-      // anything but a message POST is refused here rather than left to open a stream the
-      // Lambda would hold until its timeout.
-      if (event.requestContext?.http?.method !== 'POST') {
-        log.info('refused', { status: 405, ms: Date.now() - started });
-        return {
-          statusCode: 405,
-          headers: { allow: 'POST', 'content-type': 'application/json; charset=utf-8' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            error: {
-              code: -32000,
-              message: 'Method not allowed: this server is stateless; POST messages to /mcp.',
-            },
-            id: null,
-          }),
-        };
-      }
-      const identity = await identify(event, log);
-      const server = createKeepServer(db, identity, log.child({ token: identity.displayName }));
-      const transport = new WebStandardStreamableHTTPServerTransport({
-        sessionIdGenerator: undefined,
-        enableJsonResponse: true,
-      });
-      try {
-        await server.connect(transport);
-        const result = await fromResponse(await transport.handleRequest(toRequest(event)));
-        log.info('handled', { status: result.statusCode, ms: Date.now() - started });
-        return result;
-      } finally {
-        await server.close();
-      }
-    } catch (error) {
-      return errorResponse(error, log, started);
-    }
-  };
+  return (event, context) =>
+    handleRequest(
+      'mcp',
+      event,
+      context,
+      async (log, started) => {
+        // Stateless means no standalone SSE stream to listen on and no session to delete, so
+        // anything but a message POST is refused here rather than left to open a stream the
+        // Lambda would hold until its timeout.
+        if (event.requestContext?.http?.method !== 'POST') {
+          log.info('refused', { status: 405, ms: Date.now() - started });
+          return {
+            statusCode: 405,
+            headers: { allow: 'POST', 'content-type': 'application/json; charset=utf-8' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              error: {
+                code: -32000,
+                message: 'Method not allowed: this server is stateless; POST messages to /mcp.',
+              },
+              id: null,
+            }),
+          };
+        }
+        const identity = await identify(event, log);
+        const server = createKeepServer(db, identity, log.child({ token: identity.displayName }));
+        const transport = new WebStandardStreamableHTTPServerTransport({
+          sessionIdGenerator: undefined,
+          enableJsonResponse: true,
+        });
+        try {
+          await server.connect(transport);
+          const result = await fromResponse(await transport.handleRequest(toRequest(event)));
+          log.info('handled', { status: result.statusCode, ms: Date.now() - started });
+          return result;
+        } finally {
+          await server.close();
+        }
+      },
+      { method: event.requestContext?.http?.method, door: 'agent' },
+    );
 }
 
 let instance: McpHandler | undefined;

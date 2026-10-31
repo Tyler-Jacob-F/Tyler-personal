@@ -5,11 +5,10 @@
 import type { Device, GroupLink, Member, MemberRole, SignupClaim } from '@the-keep/shared';
 import { and, count, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { Db } from './client.js';
-import { ConflictError, NotFoundError } from './repositories.js';
+import { ConflictError, type MemberRow, NotFoundError } from './repositories.js';
 import { device, groupLink, member, signupClaim } from './schema.js';
-import { toIso } from './time.js';
+import { toIso, toIsoOrNull } from './time.js';
 
-type MemberRow = typeof member.$inferSelect;
 type GroupLinkRow = typeof groupLink.$inferSelect;
 type DeviceRow = typeof device.$inferSelect;
 
@@ -24,7 +23,7 @@ function toMember(row: MemberRow, deviceCount: number): Member {
     phone: row.phone,
     address: row.address,
     notes: row.notes,
-    claimedAt: row.claimedAt ? toIso(row.claimedAt) : null,
+    claimedAt: toIsoOrNull(row.claimedAt),
     createdAt: toIso(row.createdAt),
     deviceCount,
   };
@@ -35,7 +34,7 @@ function toGroupLink(row: GroupLinkRow): GroupLink {
     id: row.id,
     createdBy: row.createdBy,
     createdAt: toIso(row.createdAt),
-    rotatedAt: row.rotatedAt ? toIso(row.rotatedAt) : null,
+    rotatedAt: toIsoOrNull(row.rotatedAt),
   };
 }
 
@@ -45,7 +44,7 @@ function toDevice(row: DeviceRow): Device {
     memberId: row.memberId,
     createdAt: toIso(row.createdAt),
     lastSeenAt: toIso(row.lastSeenAt),
-    clearedAt: row.clearedAt ? toIso(row.clearedAt) : null,
+    clearedAt: toIsoOrNull(row.clearedAt),
   };
 }
 

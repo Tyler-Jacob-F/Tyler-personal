@@ -3,6 +3,9 @@
  * `2026-10-26 12:00:00.123456+00`, the Data API gives `2026-10-26 12:00:00.123456` in UTC.
  * Everything leaving the data layer is ISO 8601 with millisecond precision.
  */
+export const toIsoOrNull = (value: string | Date | null | undefined): string | null =>
+  value ? toIso(value) : null;
+
 export function toIso(value: string | Date): string {
   if (value instanceof Date) return value.toISOString();
   const match =
