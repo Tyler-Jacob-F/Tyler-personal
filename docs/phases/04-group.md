@@ -154,7 +154,7 @@ Each is one PR, in this order.
 - [x] **Group shell and screens.** `/g/:token`, `/group` (the home), `/group/questions`,
       `/group/signups/:id`, `/group/calendar`, `/group/members`, "Who are you?"; the nav's
       Group place for Tyler and co-leads; the admin controls. MSW tests for each caller.
-- [ ] **Runbooks.** `docs/runbooks/bring-the-group-in.md` and
+- [x] **Runbooks.** `docs/runbooks/bring-the-group-in.md` and
       `docs/runbooks/group-calendar.md`.
 - [ ] **Gate check.** A real Thursday. Record the date here.
 
@@ -321,17 +321,18 @@ co-leads see the same slice from the Group place with the controls added.
 
 What a fresh session should know that the files alone do not say.
 
-- **State of the world.** Six deliverables are built and tested on the branch
-  `claude/youthful-bohr-idvmy2` (the render came the same day); nothing is deployed until
-  it merges. The suite is shared 44, infra 28, web 116, api 183; `cdk synth` bundles.
-  The runbooks and the gate remain.
+- **State of the world.** Every deliverable but the gate is built and tested on the
+  branch `claude/youthful-bohr-idvmy2` (the render came the same day); nothing is deployed
+  until it merges. The suite is shared 44, infra 28, web 116, api 183; `cdk synth`
+  bundles. The gate remains: a real Thursday, after the runbook.
 - **Only the home has a render.** Questions, Sign-up, Calendar, Members, the forms, the
   link panel and the co-lead sign-in were built from the home's idiom; a render added to
   `docs/design/` later wins on layout.
-- **Only Tyler does,** once it is live: mint the link from Admin (and rotate it, ever); enter the seventeen
-  names (the sheet's slots too) through the admin screens or the runbook; make Kelly,
-  Cam and Meg co-leads (which creates their Cognito users) and verify their addresses in
-  SES; paste the link into the group thread; the gate.
+- **Only Tyler does,** once it is live, in the order `docs/runbooks/bring-the-group-in.md`
+  gives: mint the link from Members (and rotate it, ever); enter the seventeen names and
+  port the sheet's slots; make Kelly, Cam and Meg co-leads (which creates their Cognito
+  users) and verify their addresses in SES; add `write:events` and `write:questions` to
+  the `claude` token; paste the link into the group thread; the gate.
 - **Loose ends worth knowing.** Member emails are stored lowercased and compared
   lowercased. `write:signups` does not exist, by the directive. No route demotes a
   co-lead or deletes a member; both are conversations first. The runbooks deliverable is
