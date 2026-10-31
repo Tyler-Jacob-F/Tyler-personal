@@ -15,16 +15,86 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true, mode: 'string' });
 
+/**
+ * A person the site knows (migration 0007 reshaped it): the admin and co-leads have an
+ * email and sign in; the rest of the group hold the link and claim their row from a device.
+ * Everything a member adds (phone, address, notes) is visible to the whole group.
+ */
 export const member = pgTable('member', {
   id: uuid('id').primaryKey().defaultRandom(),
-  email: text('email').notNull().unique(),
-  role: text('role', { enum: ['admin', 'group'] }).notNull(),
+  email: text('email').unique(),
+  role: text('role', { enum: ['admin', 'colead', 'group'] }).notNull(),
   displayName: text('display_name').notNull(),
+  phone: text('phone'),
+  address: text('address'),
+  notes: text('notes'),
+  /** When a device first claimed this row. */
+  claimedAt: timestamptz('claimed_at'),
   createdAt: timestamptz('created_at').notNull().defaultNow(),
 });
+
+/** The group link (migration 0007): one active row, the rest rotated. The token is kept as its hash. */
+export const groupLink = pgTable(
+  'group_link',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    secretHash: text('secret_hash').notNull().unique(),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => member.id),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    rotatedAt: timestamptz('rotated_at'),
+  },
+  (t) => [
+    uniqueIndex('group_link_active_idx')
+      .on(sql`(${t.rotatedAt} is null)`)
+      .where(sql`${t.rotatedAt} is null`),
+  ],
+);
+
+/** A phone that opened the link (migration 0007). Unclaimed until it taps a name; cleared devices stay as history. */
+export const device = pgTable(
+  'device',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    secretHash: text('secret_hash').notNull().unique(),
+    memberId: uuid('member_id').references(() => member.id),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+    lastSeenAt: timestamptz('last_seen_at').notNull().defaultNow(),
+    clearedAt: timestamptz('cleared_at'),
+  },
+  (t) => [
+    index('device_by_member_idx')
+      .on(t.memberId)
+      .where(sql`${t.clearedAt} is null`),
+  ],
+);
+
+/** A member's claim on one slot of a signup, by the slot's label (migration 0007). */
+export const signupClaim = pgTable(
+  'signup_claim',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    documentId: uuid('document_id')
+      .notNull()
+      .references(() => document.id),
+    slot: text('slot').notNull(),
+    memberId: uuid('member_id')
+      .notNull()
+      .references(() => member.id),
+    /** Null when a co-lead or the admin claimed on the member's behalf. */
+    deviceId: uuid('device_id').references(() => device.id),
+    createdAt: timestamptz('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('signup_claim_document_id_slot_member_id_key').on(t.documentId, t.slot, t.memberId),
+    index('signup_claim_by_document_idx').on(t.documentId, t.slot),
+  ],
+);
 
 export const agentToken = pgTable('agent_token', {
   id: uuid('id').primaryKey().defaultRandom(),

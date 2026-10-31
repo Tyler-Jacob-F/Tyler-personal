@@ -36,6 +36,12 @@ import {
   setTagsRequestSchema,
   agentActivityItemSchema,
   versionSchema,
+  groupLinkTokenSchema,
+  deviceTokenSchema,
+  createMemberRequestSchema,
+  updateMemberRequestSchema,
+  makeColeadRequestSchema,
+  memberRoles,
 } from '../src/index.js';
 
 const ids = { id: '9b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b' };
@@ -468,5 +474,37 @@ describe('agent scopes and tokens', () => {
     expect(
       callerSchema.safeParse({ kind: 'agent', id: ids.id, scopes: ['write:recipes'] }).success,
     ).toBe(true);
+  });
+});
+
+describe('members, the link and devices', () => {
+  it('shapes the link token as 43 bare base64url characters and the device token with its prefix', () => {
+    const token = 'A'.repeat(43);
+    expect(groupLinkTokenSchema.safeParse(token).success).toBe(true);
+    expect(groupLinkTokenSchema.safeParse(`keep_${token}`).success).toBe(false);
+    expect(deviceTokenSchema.safeParse(`keepd_${token}`).success).toBe(true);
+    expect(deviceTokenSchema.safeParse(`keep_${token}`).success).toBe(false);
+    expect(deviceTokenSchema.safeParse(token).success).toBe(false);
+  });
+
+  it('asks a new member for a name and nothing else, and lowercases a co-lead email', () => {
+    expect(createMemberRequestSchema.parse({ displayName: ' Oscar ' })).toEqual({
+      displayName: 'Oscar',
+    });
+    expect(createMemberRequestSchema.safeParse({ displayName: '' }).success).toBe(false);
+    expect(updateMemberRequestSchema.parse({ phone: null, notes: '  ' })).toEqual({
+      phone: null,
+      notes: '',
+    });
+    expect(makeColeadRequestSchema.parse({ email: ' Kelly@Example.com ' })).toEqual({
+      email: 'kelly@example.com',
+    });
+  });
+
+  it('admits the colead role on a member caller', () => {
+    expect(callerSchema.safeParse({ kind: 'member', id: ids.id, role: 'colead' }).success).toBe(
+      true,
+    );
+    expect(memberRoles).toEqual(['admin', 'colead', 'group']);
   });
 });
