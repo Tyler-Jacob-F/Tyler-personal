@@ -19,6 +19,26 @@ The renders win on layout, the contract on values.
   `recipe-light-desktop.png`
 - `tokens.png`: the palette, type scale, radii and the accent rule, both modes side by side
 
+## Present (Oct 31, 2026): the group
+
+From `group.pdf`, the Design session for Phase 4 (`docs/phases/04-group.md`), rasterized
+at 150 dpi and stitched the same way:
+
+- `group-home-dark-phone.png`, `group-home-light-phone.png`, `group-home-dark-desktop.png`,
+  `group-home-light-desktop.png`: the group home as a member who has claimed a name
+  (Taylor) sees it: this week's questions, the sign-up with the one accent on the viewer's
+  own "Release", the next meeting, the directory with "you" and "Edit your details"
+- `group-home-guest-dark-phone.png`: the same page for a phone that holds the link but no
+  name: "Tap your name first" carries the accent and the slot buttons repeat it in outline
+- `claim-dark-phone.png`: "Who are you?", unclaimed names first, the claimed ones under
+  "Already on another device" with a phone count, and the one confirmation
+- `link-dark-phone.png`, `link-dead-dark-phone.png`: `/g/<token>` live ("You're in the
+  group", Continue) and dead ("This link is no longer the group's")
+
+The desktop artboards came through the PDF at page width (1275 px), narrower than the
+morning page's; the layout is the reference, not the pixel size. The names, numbers and
+addresses are sample content.
+
 The morning renders were stitched from the canvas's PDF export, whose pages sliced each
 artboard; the later four came as PDFs (`nav.pdf`, `recipes.pdf`, `recipe.pdf`,
 `tokens.pdf`, kept here as the source) and were rasterized at 150 dpi and stitched the
@@ -37,4 +57,7 @@ type, spacing and the one accented element are the reference.
 ## Not rendered
 
 The History and diff screens, Tokens, Activity, Stack and sign-in have no render; the Face
-phase restyles them with the primitives and the idiom above.
+phase restyles them with the primitives and the idiom above. The group's Questions,
+Sign-up, Calendar and Members pages, the edit forms behind the co-leads' controls, the
+link panel and the co-lead sign-in have none either; the Group phase builds them from the
+home's idiom.
