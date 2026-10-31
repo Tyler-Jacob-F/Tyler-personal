@@ -15,6 +15,8 @@ import { apiFunction } from './lambda.js';
 export class AuthStack extends cdk.Stack {
   readonly userPool: cognito.UserPool;
   readonly webClient: cognito.UserPoolClient;
+  /** The co-leads' client: the same code flow, a year between sign-ins (docs/phases/04-group.md). */
+  readonly groupClient: cognito.UserPoolClient;
   /** The three custom-auth triggers, for the dashboard in the API stack. */
   readonly triggers: lambda.IFunction[];
 
@@ -98,7 +100,23 @@ export class AuthStack extends cdk.Stack {
       refreshTokenValidity: cdk.Duration.days(30),
     });
 
+    // Co-leads sign in once a year, Tyler every thirty days: a refresh token's life is a
+    // property of the app client, so the group gets its own. Same pool, same custom flow,
+    // same JWT authorizer (which accepts both clients); only the validity differs.
+    this.groupClient = this.userPool.addClient('Group', {
+      userPoolClientName: 'group',
+      generateSecret: false,
+      authFlows: { custom: true },
+      disableOAuth: true,
+      preventUserExistenceErrors: true,
+      enableTokenRevocation: true,
+      accessTokenValidity: cdk.Duration.hours(1),
+      idTokenValidity: cdk.Duration.hours(1),
+      refreshTokenValidity: cdk.Duration.days(365),
+    });
+
     new cdk.CfnOutput(this, 'UserPoolId', { value: this.userPool.userPoolId });
     new cdk.CfnOutput(this, 'UserPoolClientId', { value: this.webClient.userPoolClientId });
+    new cdk.CfnOutput(this, 'GroupClientId', { value: this.groupClient.userPoolClientId });
   }
 }

@@ -42,6 +42,11 @@ describe('doorOf', () => {
       door: 'agent',
       routeKey: 'GET /api/documents/{id}/versions/{number}',
     });
+    expect(doorOf('GET /api/group/documents/{id}')).toEqual({
+      door: 'group',
+      routeKey: 'GET /api/documents/{id}',
+    });
+    expect(doorOf('POST /api/group/enter')).toEqual({ door: 'group', routeKey: 'POST /api/enter' });
     expect(doorOf('GET /api/documents')).toEqual({
       door: 'member',
       routeKey: 'GET /api/documents',

@@ -24,7 +24,7 @@ import {
 } from '../db/repositories.js';
 import { notFound, parse } from '../lib/http.js';
 import type { Logger } from '../lib/logger.js';
-import type { Identity } from '../middleware/identity.js';
+import { type Identity, writerOf } from '../middleware/identity.js';
 import { authorize, can } from '../middleware/permission.js';
 
 const idSchema = z.uuid();
@@ -74,16 +74,17 @@ export async function createDocumentFor(
   const tags = parse(schemaFor(input.type).tags, input.tags, 'tags');
   const ring = schemaFor(input.type).defaultRing;
   authorize(identity.caller, 'write', { ring, type: input.type });
+  const { owner, author } = writerOf(identity);
   const created = await createDocument(db, {
     type: input.type,
     title: frontmatter.title,
     ring,
-    owner: identity.owner,
+    owner,
     tags,
     body: input.body,
     frontmatter,
     summary: input.summary,
-    author: { kind: identity.caller.kind, id: identity.caller.id },
+    author,
     authoredAt: input.authoredAt ?? null,
   });
   log.info('document created', {
@@ -129,7 +130,7 @@ export async function createVersionFor(
     body: input.body,
     frontmatter,
     summary: input.summary,
-    author: { kind: identity.caller.kind, id: identity.caller.id },
+    author: writerOf(identity).author,
     authoredAt: input.authoredAt ?? null,
   });
   log.info('version created', { documentId: id, number: version.number });
@@ -154,10 +155,7 @@ export async function setTagsFor(
   authorize(identity.caller, 'write', found.document);
   const input = parse(setTagsRequestSchema, body, 'tags');
   const tags = parse(schemaFor(found.document.type).tags, input.tags, 'tags');
-  const updated = await setDocumentTags(db, id, tags, {
-    kind: identity.caller.kind,
-    id: identity.caller.id,
-  });
+  const updated = await setDocumentTags(db, id, tags, writerOf(identity).author);
   log.info('tags set', { documentId: id, tags });
   return updated;
 }

@@ -553,6 +553,153 @@ exports[`ApiStack > matches the snapshot 1`] = `
       },
       "Type": "AWS::IAM::Policy",
     },
+    "AdminGroupLinkFunction4DD350EF": {
+      "DependsOn": [
+        "AdminGroupLinkFunctionServiceRoleDefaultPolicyF11194B8",
+        "AdminGroupLinkFunctionServiceRoleC11098E8",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
+          "S3Key": "<asset-hash>.zip",
+        },
+        "Description": "The Keep: /api/admin/group-link, mint and rotate (admin and co-leads)",
+        "Environment": {
+          "Variables": {
+            "DB_CLUSTER_ARN": {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:",
+                  {
+                    "Ref": "AWS::Partition",
+                  },
+                  ":rds:us-east-1:697941679713:cluster:",
+                  {
+                    "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                  },
+                ],
+              ],
+            },
+            "DB_NAME": "thekeep",
+            "DB_SECRET_ARN": {
+              "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+            },
+            "NODE_OPTIONS": "--enable-source-maps",
+            "SITE_ORIGIN": "https://tylerfuqua.com",
+          },
+        },
+        "Handler": "index.handler",
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "AdminGroupLinkFunctionLogsD2AC863A",
+          },
+        },
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "AdminGroupLinkFunctionServiceRoleC11098E8",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 30,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "AdminGroupLinkFunctionLogsD2AC863A": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "RetentionInDays": 30,
+      },
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Delete",
+    },
+    "AdminGroupLinkFunctionServiceRoleC11098E8": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "AdminGroupLinkFunctionServiceRoleDefaultPolicyF11194B8": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "rds-data:BatchExecuteStatement",
+                "rds-data:BeginTransaction",
+                "rds-data:CommitTransaction",
+                "rds-data:ExecuteStatement",
+                "rds-data:RollbackTransaction",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":rds:us-east-1:697941679713:cluster:",
+                    {
+                      "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                    },
+                  ],
+                ],
+              },
+            },
+            {
+              "Action": [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "AdminGroupLinkFunctionServiceRoleDefaultPolicyF11194B8",
+        "Roles": [
+          {
+            "Ref": "AdminGroupLinkFunctionServiceRoleC11098E8",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
     "AdminTokensFunction644C1C58": {
       "DependsOn": [
         "AdminTokensFunctionServiceRoleDefaultPolicy8B75A47E",
@@ -885,6 +1032,18 @@ exports[`ApiStack > matches the snapshot 1`] = `
               },
               "",{"label":"McpFunction","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
               {
+                "Ref": "GroupAuthorizerFunction259E4F0E",
+              },
+              "",{"label":"GroupAuthorizerFunction","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
+              {
+                "Ref": "GroupEnterFunctionC12D1F79",
+              },
+              "",{"label":"GroupEnterFunction","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
+              {
+                "Ref": "AdminGroupLinkFunction4DD350EF",
+              },
+              "",{"label":"AdminGroupLinkFunction","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
+              {
                 "Fn::ImportValue": "Auth:ExportsOutputRefDefineAuthChallengeE7E3BC7B5357E3C6",
               },
               "",{"label":"DefineAuthChallenge","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
@@ -928,6 +1087,18 @@ exports[`ApiStack > matches the snapshot 1`] = `
                 "Ref": "McpFunctionF370A1F8",
               },
               "",{"label":"McpFunction","stat":"p95"}],["AWS/Lambda","Duration","FunctionName","",
+              {
+                "Ref": "GroupAuthorizerFunction259E4F0E",
+              },
+              "",{"label":"GroupAuthorizerFunction","stat":"p95"}],["AWS/Lambda","Duration","FunctionName","",
+              {
+                "Ref": "GroupEnterFunctionC12D1F79",
+              },
+              "",{"label":"GroupEnterFunction","stat":"p95"}],["AWS/Lambda","Duration","FunctionName","",
+              {
+                "Ref": "AdminGroupLinkFunction4DD350EF",
+              },
+              "",{"label":"AdminGroupLinkFunction","stat":"p95"}],["AWS/Lambda","Duration","FunctionName","",
               {
                 "Fn::ImportValue": "Auth:ExportsOutputRefDefineAuthChallengeE7E3BC7B5357E3C6",
               },
@@ -1121,6 +1292,298 @@ exports[`ApiStack > matches the snapshot 1`] = `
       },
       "Type": "AWS::IAM::Policy",
     },
+    "GroupAuthorizerFunction259E4F0E": {
+      "DependsOn": [
+        "GroupAuthorizerFunctionServiceRoleDefaultPolicyEB52D430",
+        "GroupAuthorizerFunctionServiceRoleF8FC0E3C",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
+          "S3Key": "<asset-hash>.zip",
+        },
+        "Description": "The Keep: device token authorizer for /api/group/*",
+        "Environment": {
+          "Variables": {
+            "DB_CLUSTER_ARN": {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:",
+                  {
+                    "Ref": "AWS::Partition",
+                  },
+                  ":rds:us-east-1:697941679713:cluster:",
+                  {
+                    "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                  },
+                ],
+              ],
+            },
+            "DB_NAME": "thekeep",
+            "DB_SECRET_ARN": {
+              "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+            },
+            "NODE_OPTIONS": "--enable-source-maps",
+          },
+        },
+        "Handler": "index.handler",
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "GroupAuthorizerFunctionLogs3AE40457",
+          },
+        },
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "GroupAuthorizerFunctionServiceRoleF8FC0E3C",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 30,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "GroupAuthorizerFunctionLogs3AE40457": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "RetentionInDays": 30,
+      },
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Delete",
+    },
+    "GroupAuthorizerFunctionServiceRoleDefaultPolicyEB52D430": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "rds-data:BatchExecuteStatement",
+                "rds-data:BeginTransaction",
+                "rds-data:CommitTransaction",
+                "rds-data:ExecuteStatement",
+                "rds-data:RollbackTransaction",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":rds:us-east-1:697941679713:cluster:",
+                    {
+                      "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                    },
+                  ],
+                ],
+              },
+            },
+            {
+              "Action": [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "GroupAuthorizerFunctionServiceRoleDefaultPolicyEB52D430",
+        "Roles": [
+          {
+            "Ref": "GroupAuthorizerFunctionServiceRoleF8FC0E3C",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "GroupAuthorizerFunctionServiceRoleF8FC0E3C": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "GroupEnterFunctionC12D1F79": {
+      "DependsOn": [
+        "GroupEnterFunctionServiceRoleDefaultPolicyAAF59F48",
+        "GroupEnterFunctionServiceRole47BFA86F",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
+          "S3Key": "<asset-hash>.zip",
+        },
+        "Description": "The Keep: POST /api/group/enter, the group link becomes a device token",
+        "Environment": {
+          "Variables": {
+            "DB_CLUSTER_ARN": {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:",
+                  {
+                    "Ref": "AWS::Partition",
+                  },
+                  ":rds:us-east-1:697941679713:cluster:",
+                  {
+                    "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                  },
+                ],
+              ],
+            },
+            "DB_NAME": "thekeep",
+            "DB_SECRET_ARN": {
+              "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+            },
+            "NODE_OPTIONS": "--enable-source-maps",
+          },
+        },
+        "Handler": "index.handler",
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "GroupEnterFunctionLogs73511C21",
+          },
+        },
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "GroupEnterFunctionServiceRole47BFA86F",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 30,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "GroupEnterFunctionLogs73511C21": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "RetentionInDays": 30,
+      },
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Delete",
+    },
+    "GroupEnterFunctionServiceRole47BFA86F": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "GroupEnterFunctionServiceRoleDefaultPolicyAAF59F48": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "rds-data:BatchExecuteStatement",
+                "rds-data:BeginTransaction",
+                "rds-data:CommitTransaction",
+                "rds-data:ExecuteStatement",
+                "rds-data:RollbackTransaction",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":rds:us-east-1:697941679713:cluster:",
+                    {
+                      "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                    },
+                  ],
+                ],
+              },
+            },
+            {
+              "Action": [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "GroupEnterFunctionServiceRoleDefaultPolicyAAF59F48",
+        "Roles": [
+          {
+            "Ref": "GroupEnterFunctionServiceRole47BFA86F",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
     "HttpApiANYmcpEB02869A": {
       "Properties": {
         "ApiId": {
@@ -1257,6 +1720,38 @@ exports[`ApiStack > matches the snapshot 1`] = `
       },
       "Type": "AWS::Lambda::Permission",
     },
+    "HttpApiApiHttpApiGroupAuthorizerE8105126PermissionA71FA310": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "GroupAuthorizerFunction259E4F0E",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/authorizers/",
+              {
+                "Ref": "HttpApiGroupAuthorizer89E41CD3",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
     "HttpApiCognitoAuthorizer935FA0F6": {
       "Properties": {
         "ApiId": {
@@ -1270,6 +1765,9 @@ exports[`ApiStack > matches the snapshot 1`] = `
           "Audience": [
             {
               "Fn::ImportValue": "Auth:ExportsOutputRefUserPoolWebEB3796DDCEF786A8",
+            },
+            {
+              "Fn::ImportValue": "Auth:ExportsOutputRefUserPoolGroup33EED8A6ED8DD24F",
             },
           ],
           "Issuer": {
@@ -1475,6 +1973,75 @@ exports[`ApiStack > matches the snapshot 1`] = `
                 "Ref": "HttpApiF5A9A8A7",
               },
               "/*/*/api/admin/activity",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiGETapiadmingrouplink4F9D824C": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "HttpApiCognitoAuthorizer935FA0F6",
+        },
+        "RouteKey": "GET /api/admin/group-link",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapiadmingrouplinkAdminGroupLinkFunctionapiadmingrouplink95A7AF45",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapiadmingrouplinkAdminGroupLinkFunctionapiadmingrouplink95A7AF45": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "AdminGroupLinkFunction4DD350EF",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapiadmingrouplinkAdminGroupLinkFunctionapiadmingrouplinkPermission6A580CEE": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "AdminGroupLinkFunction4DD350EF",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/admin/group-link",
             ],
           ],
         },
@@ -2378,6 +2945,282 @@ exports[`ApiStack > matches the snapshot 1`] = `
       },
       "Type": "AWS::Lambda::Permission",
     },
+    "HttpApiGETapigroupdocumentsD753218A": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiGroupAuthorizer89E41CD3",
+        },
+        "RouteKey": "GET /api/group/documents",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapigroupdocumentsDocumentsFunctionapigroupdocumentsD66DFC83",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapigroupdocumentsDocumentsFunctionapigroupdocumentsD66DFC83": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapigroupdocumentsDocumentsFunctionapigroupdocumentsPermission5F2C0CF3": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/group/documents",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiGETapigroupdocumentsid20C2F7D7": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiGroupAuthorizer89E41CD3",
+        },
+        "RouteKey": "GET /api/group/documents/{id}",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapigroupdocumentsidDocumentsFunctionapigroupdocumentsidBD251984",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapigroupdocumentsidDocumentsFunctionapigroupdocumentsidBD251984": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapigroupdocumentsidDocumentsFunctionapigroupdocumentsidPermission1A0186AA": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/group/documents/{id}",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiGETapigroupdocumentssearchDocumentsFunctionapigroupdocumentssearch73CF8D7E": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapigroupdocumentssearchDocumentsFunctionapigroupdocumentssearchPermissionD7F8FA47": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "DocumentsFunctionF5D11372",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/group/documents/search",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiGETapigroupdocumentssearchFF705B9A": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiGroupAuthorizer89E41CD3",
+        },
+        "RouteKey": "GET /api/group/documents/search",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapigroupdocumentssearchDocumentsFunctionapigroupdocumentssearch73CF8D7E",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapigroupme7F2E133C": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiGroupAuthorizer89E41CD3",
+        },
+        "RouteKey": "GET /api/group/me",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapigroupmeMeFunctionapigroupme033F2480",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapigroupmeMeFunctionapigroupme033F2480": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "MeFunction4482FBE1",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapigroupmeMeFunctionapigroupmePermissionC9B2BEAB": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "MeFunction4482FBE1",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/group/me",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
     "HttpApiGETapimeD14B6D1C": {
       "Properties": {
         "ApiId": {
@@ -2447,6 +3290,41 @@ exports[`ApiStack > matches the snapshot 1`] = `
       },
       "Type": "AWS::Lambda::Permission",
     },
+    "HttpApiGroupAuthorizer89E41CD3": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizerPayloadFormatVersion": "2.0",
+        "AuthorizerResultTtlInSeconds": 0,
+        "AuthorizerType": "REQUEST",
+        "AuthorizerUri": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":apigateway:us-east-1:lambda:path/2015-03-31/functions/",
+              {
+                "Fn::GetAtt": [
+                  "GroupAuthorizerFunction259E4F0E",
+                  "Arn",
+                ],
+              },
+              "/invocations",
+            ],
+          ],
+        },
+        "EnableSimpleResponses": true,
+        "IdentitySource": [
+          "$request.header.Authorization",
+        ],
+        "Name": "GroupAuthorizer",
+      },
+      "Type": "AWS::ApiGatewayV2::Authorizer",
+    },
     "HttpApiPATCHapiadmintokensid1467C151": {
       "Properties": {
         "ApiId": {
@@ -2510,6 +3388,59 @@ exports[`ApiStack > matches the snapshot 1`] = `
                 "Ref": "HttpApiF5A9A8A7",
               },
               "/*/*/api/admin/tokens/{id}",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiPOSTapiadmingrouplink1BF73F7B": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "HttpApiCognitoAuthorizer935FA0F6",
+        },
+        "RouteKey": "POST /api/admin/group-link",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapiadmingrouplinkAdminGroupLinkFunctionapiadmingrouplink95A7AF45",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiPOSTapiadmingrouplinkAdminGroupLinkFunctionapiadmingrouplinkPermission423B2B3F": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "AdminGroupLinkFunction4DD350EF",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/admin/group-link",
             ],
           ],
         },
@@ -2775,6 +3706,72 @@ exports[`ApiStack > matches the snapshot 1`] = `
                 "Ref": "HttpApiF5A9A8A7",
               },
               "/*/*/api/documents/{id}/versions",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiPOSTapigroupenter7DBC9A90": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "NONE",
+        "RouteKey": "POST /api/group/enter",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiPOSTapigroupenterGroupEnterFunctionapigroupenter9874618C",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiPOSTapigroupenterGroupEnterFunctionapigroupenter9874618C": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "GroupEnterFunctionC12D1F79",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiPOSTapigroupenterGroupEnterFunctionapigroupenterPermission2CBF93FA": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "GroupEnterFunctionC12D1F79",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/group/enter",
             ],
           ],
         },
@@ -3391,6 +4388,11 @@ exports[`ApiStack > matches the snapshot 1`] = `
 exports[`AuthStack > matches the snapshot 1`] = `
 {
   "Outputs": {
+    "GroupClientId": {
+      "Value": {
+        "Ref": "UserPoolGroup33EED8A6",
+      },
+    },
     "UserPoolClientId": {
       "Value": {
         "Ref": "UserPoolWebEB3796DD",
@@ -3852,6 +4854,34 @@ exports[`AuthStack > matches the snapshot 1`] = `
         },
       },
       "Type": "AWS::Lambda::Permission",
+    },
+    "UserPoolGroup33EED8A6": {
+      "Properties": {
+        "AccessTokenValidity": 60,
+        "AllowedOAuthFlowsUserPoolClient": false,
+        "ClientName": "group",
+        "EnableTokenRevocation": true,
+        "ExplicitAuthFlows": [
+          "ALLOW_CUSTOM_AUTH",
+          "ALLOW_REFRESH_TOKEN_AUTH",
+        ],
+        "GenerateSecret": false,
+        "IdTokenValidity": 60,
+        "PreventUserExistenceErrors": "ENABLED",
+        "RefreshTokenValidity": 525600,
+        "SupportedIdentityProviders": [
+          "COGNITO",
+        ],
+        "TokenValidityUnits": {
+          "AccessToken": "minutes",
+          "IdToken": "minutes",
+          "RefreshToken": "minutes",
+        },
+        "UserPoolId": {
+          "Ref": "UserPool6BA7E5F2",
+        },
+      },
+      "Type": "AWS::Cognito::UserPoolClient",
     },
     "UserPoolVerifyAuthChallengeResponseCognito338D71F3": {
       "Properties": {

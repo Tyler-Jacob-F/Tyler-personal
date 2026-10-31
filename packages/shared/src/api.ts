@@ -9,12 +9,28 @@ import {
 import { memberRoleSchema } from './member.js';
 import { agentScopeSchema } from './scopes.js';
 
-/** The brief's normalized caller: `{ kind, id, role?, scopes? }`. */
+/**
+ * The brief's normalized caller, in the four kinds docs/phases/04-group.md decided: a
+ * signed-in member (the admin, a co-lead, or the legacy `group` role), a device holding
+ * the group link (a member once it has claimed a name, a guest until then), and an agent
+ * token with scopes.
+ */
 export const callerSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('member'), id: z.uuid(), role: memberRoleSchema }),
+  z
+    .object({
+      kind: z.literal('group'),
+      deviceId: z.uuid(),
+      memberId: z.uuid().nullable(),
+      role: z.enum(['member', 'guest']),
+    })
+    .refine((c) => (c.role === 'member') === (c.memberId !== null), {
+      message: 'a device is a member exactly when it has claimed one',
+    }),
   z.object({ kind: z.literal('agent'), id: z.uuid(), scopes: z.array(agentScopeSchema) }),
 ]);
 export type Caller = z.infer<typeof callerSchema>;
+export type GroupCaller = Extract<Caller, { kind: 'group' }>;
 
 export const meResponseSchema = z.object({
   caller: callerSchema,

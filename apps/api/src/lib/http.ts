@@ -6,6 +6,7 @@ import type {
 } from 'aws-lambda';
 import { ZodError, type z } from 'zod';
 import type { AgentAuthorizerContext } from '../auth/agent-authorizer.js';
+import type { GroupAuthorizerContext } from '../auth/group-authorizer.js';
 import { ConflictError, NotFoundError } from '../db/repositories.js';
 import { createLogger, type Logger } from './logger.js';
 
@@ -13,21 +14,27 @@ import { createLogger, type Logger } from './logger.js';
 export type MemberEvent = APIGatewayProxyEventV2WithJWTAuthorizer;
 /** A request through the agents' door: the Lambda authorizer looked the token up. */
 export type AgentEvent = APIGatewayProxyEventV2WithLambdaAuthorizer<AgentAuthorizerContext>;
-export type ApiEvent = MemberEvent | AgentEvent;
+/** A request through the group's door: the group authorizer looked the device up. */
+export type GroupEvent = APIGatewayProxyEventV2WithLambdaAuthorizer<GroupAuthorizerContext>;
+export type ApiEvent = MemberEvent | AgentEvent | GroupEvent;
 export type ApiResult = APIGatewayProxyStructuredResultV2;
 
 /**
- * Two doors, one set of handlers (docs/DESIGN.md "Implementation notes"). `/api/agent/*`
- * mirrors `/api/*`; the prefix says which identity middleware runs, and the route key is
- * normalized so a handler registers each route once.
+ * Three doors, one set of handlers (docs/DESIGN.md "Implementation notes"). `/api/agent/*`
+ * and `/api/group/*` mirror `/api/*`; the prefix says which identity middleware runs, and
+ * the route key is normalized so a handler registers each route once.
  */
-export type Door = 'member' | 'agent';
+export type Door = 'member' | 'agent' | 'group';
 export const AGENT_PREFIX = '/api/agent/';
+export const GROUP_PREFIX = '/api/group/';
 
 export function doorOf(routeKey: string): { door: Door; routeKey: string } {
   const [method = '', path = ''] = routeKey.split(' ');
   if (path.startsWith(AGENT_PREFIX)) {
     return { door: 'agent', routeKey: `${method} /api/${path.slice(AGENT_PREFIX.length)}` };
+  }
+  if (path.startsWith(GROUP_PREFIX)) {
+    return { door: 'group', routeKey: `${method} /api/${path.slice(GROUP_PREFIX.length)}` };
   }
   return { door: 'member', routeKey };
 }

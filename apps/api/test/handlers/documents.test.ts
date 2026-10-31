@@ -249,3 +249,61 @@ describe('PUT /api/documents/{id}/tags', () => {
     ]);
   });
 });
+
+describe('the group door', () => {
+  it('lets a device read group and public documents, never me, and never write', async () => {
+    const { createDevice } = await import('../../src/db/group.js');
+    const { document } = await import('../../src/db/schema.js');
+    const { eq } = await import('drizzle-orm');
+    const device = await createDevice(t.db, 'd1');
+    const mine = await createChili();
+    const shared = bodyOf<DocumentWithVersion>(
+      await api(
+        fakeEvent({
+          method: 'POST',
+          route: '/api/documents',
+          body: { ...create, frontmatter: { ...chili, title: 'Group chili' } },
+        }),
+      ),
+    );
+    await t.db.update(document).set({ ring: 'group' }).where(eq(document.id, shared.document.id));
+
+    const asDevice = (method: string, route: string, params = {}, body?: unknown) =>
+      api(fakeEvent({ method, route, params, body, device: { deviceId: device.id } }));
+
+    const list = await asDevice('GET', '/api/group/documents');
+    expect(list.statusCode).toBe(200);
+    expect(bodyOf<ListDocumentsResponse>(list).items.map((i) => i.document.id)).toEqual([
+      shared.document.id,
+    ]);
+    expect(
+      (await asDevice('GET', '/api/group/documents/{id}', { id: shared.document.id })).statusCode,
+    ).toBe(200);
+    expect(
+      (await asDevice('GET', '/api/group/documents/{id}', { id: mine.document.id })).statusCode,
+    ).toBe(403);
+    const search = await asDevice('GET', '/api/group/documents/search');
+    expect(bodyOf<ListDocumentsResponse>(search).items).toHaveLength(1);
+
+    // The gateway exposes no write on this door; the permission middleware refuses one anyway.
+    expect((await asDevice('POST', '/api/group/documents', {}, create)).statusCode).toBe(403);
+    expect(
+      (
+        await asDevice(
+          'PUT',
+          '/api/group/documents/{id}/tags',
+          { id: shared.document.id },
+          { tags: ['x'] },
+        )
+      ).statusCode,
+    ).toBe(403);
+    expect(
+      (await asDevice('DELETE', '/api/group/documents/{id}', { id: shared.document.id }))
+        .statusCode,
+    ).toBe(403);
+    expect(
+      (await api(fakeEvent({ method: 'GET', route: '/api/group/documents', device: null })))
+        .statusCode,
+    ).toBe(401);
+  });
+});
