@@ -1,6 +1,6 @@
 import type { Member } from '@the-keep/shared';
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router';
+import { Link, Navigate, useNavigate } from 'react-router';
 import { ApiRequestError } from '@/api/client';
 import { useClaimName, useMembers } from '@/api/group';
 import { Alert } from '@/components/Alert';
@@ -10,12 +10,14 @@ import { Loading, QueryError } from '@/components/QueryState';
 import { focusRing } from '@/components/ui/styles';
 import { useGroup } from '@/group/context';
 import { phonesLine } from '@/group/format';
+import { quietLink } from '@/group/styles';
 import { cn } from '@/lib/utils';
 
 /**
  * "Who are you?" (docs/design/claim-dark-phone.png): unclaimed names first, one tap each;
  * under them the names already on another device, with one confirmation. A device that
- * already holds a name may take another (a shared phone).
+ * already holds a name may take another (a shared phone). A guest who would rather read
+ * first has "Just look for now"; reading needs only the link.
  */
 export function ClaimPage() {
   const { viewer } = useGroup();
@@ -96,6 +98,13 @@ export function ClaimPage() {
             {claimed.map((m) => row(m, phonesLine(m.deviceCount)))}
           </ul>
         </section>
+      )}
+      {viewer.kind === 'guest' && !asking && (
+        <p className="text-[15px] text-muted">
+          <Link to="/group" className={quietLink}>
+            Just look for now
+          </Link>
+        </p>
       )}
       {asking && (
         <ConfirmDialog
