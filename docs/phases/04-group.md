@@ -175,5 +175,5 @@ learns it was cleared.
 - Only Tyler does: the Design session for the group home; the member names and the
   current sheet's slots; verifying the three co-lead addresses in SES (sandbox mode sends
   only to verified recipients); pasting the link into the group thread; the gate.
-- Loose ends from Phase 3 that this phase inherits: the turkey retag if it has not run;
-  the gate date in `03-face.md`.
+- Loose ends from Phase 3 that this phase inherits: the Lighthouse accessibility run on
+  the home page, which the Face gate asked for and the call on Oct 31 did not include.

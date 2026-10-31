@@ -160,9 +160,12 @@ Each is one PR, in this order. Later ones depend on earlier ones.
       tests.
 - [x] **Stack, Tokens, Activity, sign-in.** Restyled with the primitives; the Stack page's
       agents lane copy updated for whatever this phase changed. Tests already exist.
-- [ ] **Gate check.** On a phone, in the morning. Record the date here. Before it: merge,
-      run `docs/runbooks/tag-recipes.md` so the import carries its facets, let Duet post a
-      brief with the four headings, then the Lighthouse run.
+- [x] **Gate check.** On a phone, in the morning. Record the date here. **Gate true:
+      Oct 31, 2026.** Called by Tyler from his phone that evening: the morning page from
+      the day's brief, which Duet posted under the four headings and which read well in
+      bed, and every recipe tagged by Duet's pass, turkey included. The hex-literal and
+      contrast tests guard the palette in CI. The Lighthouse run was not part of the call
+      and stays open as a loose end for Phase 4's handoff.
 
 ## Ask versus decide
 
@@ -265,7 +268,8 @@ What a fresh session should know that the files alone do not say.
 - **Renders.** All four screens now have renders in `docs/design/`, plus the tokens sheet
   and the mark; the README there says which came from PDFs and how they were stitched.
   History, diff, Tokens, Activity, Stack and sign-in have none.
-- **Loose ends worth knowing.** The `dark` custom variant is wired but unused: every
+- **Loose ends worth knowing.** The Lighthouse accessibility run on the home page has not
+  been done. The `dark` custom variant is wired but unused: every
   component reads the palette through the tokens. `disabled` as a token is gone; controls
   use opacity. The brief writer's older section names ("Waiting on you", "Due soon") still
   render, folded into the brief, until Duet is told the new ones. Phase 4's group ring
