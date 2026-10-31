@@ -3,7 +3,12 @@ import { build as buildAuthorizer } from '../../src/auth/group-authorizer.js';
 import { createDevice, createMember, getMember, makeColead } from '../../src/db/group.js';
 import { findMemberByEmail } from '../../src/db/repositories.js';
 import { member as memberTable } from '../../src/db/schema.js';
-import { build, cognitoUserCreator, userPoolIdFromEnv } from '../../src/handlers/members.js';
+import {
+  build,
+  cognitoUserCreator,
+  sesAddressVerifier,
+  userPoolIdFromEnv,
+} from '../../src/handlers/members.js';
 import type { ApiHandler } from '../../src/lib/http.js';
 import { generateDeviceToken, hashSecret } from '../../src/lib/token.js';
 import { testDb, type TestDb } from '../helpers/db.js';
@@ -12,6 +17,7 @@ import { bodyOf, fakeAuthorizerEvent, fakeEvent, type FakeDevice } from '../help
 let t: TestDb;
 let api: ApiHandler;
 let created: string[];
+let verified: string[];
 let kelly: Member;
 let oscar: Member;
 let phone: FakeDevice;
@@ -19,9 +25,13 @@ let phone: FakeDevice;
 beforeEach(async () => {
   t = await testDb();
   created = [];
+  verified = [];
   api = build(t.db, {
     createUser: async (email) => {
       created.push(email);
+    },
+    verifyAddress: async (email) => {
+      verified.push(email);
     },
   });
   kelly = await createMember(t.db, { displayName: 'Kelly Candeto' });
@@ -283,6 +293,7 @@ describe('POST /api/members/{id}/colead', () => {
     expect(res.statusCode).toBe(200);
     expect(bodyOf<Member>(res)).toMatchObject({ role: 'colead', email: 'oscar@example.com' });
     expect(created).toEqual(['oscar@example.com']);
+    expect(verified).toEqual(['oscar@example.com']);
     expect((await findMemberByEmail(t.db, 'oscar@example.com'))?.role).toBe('colead');
 
     const byKelly = await asKelly(
@@ -335,5 +346,23 @@ describe('POST /api/members/{id}/colead', () => {
     await expect(create('kelly@example.com')).resolves.toBeUndefined();
     expect(userPoolIdFromEnv({ USER_POOL_ID: 'p' })).toBe('p');
     expect(() => userPoolIdFromEnv({})).toThrow(/USER_POOL_ID/);
+  });
+
+  it('asks SES to verify the address, which sends Amazon’s mail, and tolerates one already asked', async () => {
+    const { AlreadyExistsException } = await import('@aws-sdk/client-sesv2');
+    const sent: unknown[] = [];
+    let exists = false;
+    const client = {
+      send: async (command: { input: unknown }) => {
+        sent.push(command.input);
+        if (exists) throw new AlreadyExistsException({ message: 'exists', $metadata: {} });
+        return {};
+      },
+    };
+    const verify = sesAddressVerifier(client as never);
+    await verify('kelly@example.com');
+    expect(sent[0]).toEqual({ EmailIdentity: 'kelly@example.com' });
+    exists = true;
+    await expect(verify('kelly@example.com')).resolves.toBeUndefined();
   });
 });

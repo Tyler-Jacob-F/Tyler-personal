@@ -55,17 +55,19 @@ markdown. Both can be kept through MCP from here on (`docs/runbooks/group-calend
 
 For Kelly, Cam and Meg: **Members → Edit** on their row, then under "Co-leads only", type
 the email their sign-in code should go to and click **Make co-lead**. This gives the row
-the role and creates their Cognito user; no mail is sent.
+the role, creates their Cognito user, and asks SES to verify the address, which sends
+them one mail from Amazon ("Email Address Verification Request") with a link. Tell them
+to click it. SES is in the sandbox, so until they do, their sign-in code bounces
+silently; nothing from The Keep itself is sent at this step.
 
-SES is still in the sandbox, so a code can only reach a verified address. In the AWS
-console, **SES → Identities → Create identity → Email address**, one per co-lead; each gets
-a verification mail from AWS and clicks its link. Until they do, their sign-in code
-bounces silently.
+(Until Oct 31 the SES step was by hand in the console, and Cam's code never arrived
+because it had not been done. It is the Lambda's now.)
 
 ## 6. The co-leads sign in
 
-Each co-lead opens https://tylerfuqua.com/group/sign-in, types the email you used, and
-enters the six-digit code from the mail. The session lasts a year. They see the group's
+Once their address is verified, each co-lead opens https://tylerfuqua.com/group/sign-in,
+types the email you used, and enters the six-digit code from the mail (that one is from
+The Keep, `keep@tylerfuqua.com`). The session lasts a year. They see the group's
 own pages with the controls (Edit, New sign-up, Add a member, Add a name…) and nothing of
 yours. They should also open the group link on their phone like everyone else if they
 want to take slots from the sheet as themselves.

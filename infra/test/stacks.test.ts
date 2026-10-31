@@ -348,6 +348,10 @@ describe('ApiStack', () => {
     );
     expect(creators).toHaveLength(1);
     expect(JSON.stringify(creators[0])).toContain('MembersFunction');
+    const verifiers = policies.filter((p) => JSON.stringify(p).includes('ses:CreateEmailIdentity'));
+    expect(verifiers).toHaveLength(1);
+    expect(JSON.stringify(verifiers[0])).toContain('MembersFunction');
+    expect(JSON.stringify(verifiers[0])).toContain(':identity/*');
   });
 
   it('keeps token, activity and link management under the Cognito authorizer, never an agent or group route', () => {

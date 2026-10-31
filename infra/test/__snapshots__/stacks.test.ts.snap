@@ -5695,6 +5695,11 @@ exports[`ApiStack > matches the snapshot 1`] = `
               },
             },
             {
+              "Action": "ses:CreateEmailIdentity",
+              "Effect": "Allow",
+              "Resource": "arn:aws:ses:us-east-1:697941679713:identity/*",
+            },
+            {
               "Action": [
                 "rds-data:BatchExecuteStatement",
                 "rds-data:BeginTransaction",

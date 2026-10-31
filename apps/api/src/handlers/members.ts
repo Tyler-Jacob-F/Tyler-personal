@@ -4,6 +4,11 @@ import {
   UsernameExistsException,
 } from '@aws-sdk/client-cognito-identity-provider';
 import {
+  AlreadyExistsException,
+  CreateEmailIdentityCommand,
+  SESv2Client,
+} from '@aws-sdk/client-sesv2';
+import {
   claimMemberRequestSchema,
   createMemberRequestSchema,
   makeColeadRequestSchema,
@@ -41,6 +46,13 @@ export interface MembersOptions {
    * the pool is fine (a retry after a half-finished promotion).
    */
   createUser(email: string): Promise<void>;
+  /**
+   * Ask SES to verify the address, which mails the co-lead Amazon's verification link.
+   * While SES is in the sandbox a code can only reach a verified recipient, so this is
+   * the step the sign-in depends on; it was a console step until Oct 31, when Cam's
+   * code never arrived. Idempotent: an identity that exists is fine.
+   */
+  verifyAddress(email: string): Promise<void>;
 }
 
 /** The real thing: one user in the pool, email verified, no welcome mail (the first code is the welcome). */
@@ -71,7 +83,18 @@ export function cognitoUserCreator(client: CognitoIdentityProviderClient, userPo
  * gateway exposes only `GET /api/agent/members`, and permission refuses an agent every
  * other action). No scope touches a member.
  */
-export function build(db: Db, { createUser }: MembersOptions): ApiHandler {
+/** The real thing: an email identity in SES, whose creation sends the verification mail. */
+export function sesAddressVerifier(client: SESv2Client) {
+  return async (email: string): Promise<void> => {
+    try {
+      await client.send(new CreateEmailIdentityCommand({ EmailIdentity: email }));
+    } catch (error) {
+      if (!(error instanceof AlreadyExistsException)) throw error;
+    }
+  };
+}
+
+export function build(db: Db, { createUser, verifyAddress }: MembersOptions): ApiHandler {
   async function found(rawId: unknown): Promise<Member> {
     const id = parseId(rawId);
     const member = await getMember(db, id);
@@ -147,13 +170,15 @@ export function build(db: Db, { createUser }: MembersOptions): ApiHandler {
       },
 
       // Make a co-lead: the admin alone, because it creates a sign-in. The row gets the
-      // email and the role first (it checks the conflicts), then the pool gets the user.
+      // email and the role first (it checks the conflicts), then the pool gets the user,
+      // then SES is asked to verify the address, which is the one mail the co-lead gets.
       'POST /api/members/{id}/colead': async ({ identity, params, body, log }) => {
         requireAdmin(identity.caller);
         const member = await found(params.id);
         const { email } = parse(makeColeadRequestSchema, body, 'co-lead');
         const promoted = await makeColead(db, member.id, email);
         await createUser(promoted.email!);
+        await verifyAddress(promoted.email!);
         log.info('member made co-lead', { memberId: member.id });
         return json(200, promoted);
       },
@@ -171,4 +196,5 @@ let instance: ApiHandler | undefined;
 export const handler: ApiHandler = (event, context) =>
   (instance ??= build(getDb(), {
     createUser: cognitoUserCreator(new CognitoIdentityProviderClient({}), userPoolIdFromEnv()),
+    verifyAddress: sesAddressVerifier(new SESv2Client({})),
   }))(event, context);

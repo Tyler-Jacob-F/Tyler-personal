@@ -231,7 +231,10 @@ role: member | guest }`. `groupIdentity` re-reads the member row on each request
   `already_claimed`; the same call with `confirm: true` takes it too. Making a co-lead is
   admin only: the row first (it checks the email conflicts), then `AdminCreateUser` with a
   verified email and no welcome mail; "user exists" counts as done. The admin's row cannot
-  be made a co-lead; nothing demotes one until someone needs it.
+  be made a co-lead; nothing demotes one until someone needs it. Since Oct 31 the same
+  route also creates the SES email identity, which sends Amazon's verification mail: the
+  sandbox delivers only to verified recipients, and the by-hand console step was the one
+  Cam's first sign-in fell through.
 - **Types.** `weekOf` is the Thursday the questions are for; "this week's" is the newest
   questions document whose `weekOf` is no more than six days ahead of today
   (`currentQuestions` in shared), so next week's can be posted early and last week's stays

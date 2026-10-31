@@ -7,6 +7,7 @@ import {
 } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import type * as cognito from 'aws-cdk-lib/aws-cognito';
 import type * as lambda from 'aws-cdk-lib/aws-lambda';
 import type * as rds from 'aws-cdk-lib/aws-rds';
@@ -135,8 +136,16 @@ export class ApiStack extends cdk.Stack {
       environment: { ...environment, USER_POOL_ID: userPool.userPoolId },
       timeout,
     });
-    // Making a co-lead creates their Cognito user; nothing else in the API touches the pool.
+    // Making a co-lead creates their Cognito user and asks SES to verify their address (the
+    // sandbox delivers only to verified recipients, and creating the identity is what sends
+    // Amazon's verification mail). Nothing else in the API touches the pool or SES identities.
     userPool.grant(members, 'cognito-idp:AdminCreateUser');
+    members.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ses:CreateEmailIdentity'],
+        resources: [`arn:aws:ses:${this.region}:${this.account}:identity/*`],
+      }),
+    );
     const claims = apiFunction(this, 'ClaimsFunction', {
       entry: 'handlers/claims.ts',
       description: `${config.siteName}: /api/documents/{id}/claims, slots taken on a sign-up`,
