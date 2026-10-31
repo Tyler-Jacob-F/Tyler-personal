@@ -228,7 +228,7 @@ describe('ApiStack', () => {
       JwtConfiguration: { Audience: [Match.anyValue(), Match.anyValue()] },
     });
     const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
-    expect(routes).toHaveLength(49);
+    expect(routes).toHaveLength(52);
     const members = routes.filter(
       (r) =>
         /\/api\//.test(String(r.Properties.RouteKey)) &&
@@ -255,10 +255,13 @@ describe('ApiStack', () => {
       'GET /api/agent/documents',
       'GET /api/agent/documents/search',
       'GET /api/agent/documents/{id}',
+      'GET /api/agent/documents/{id}/claims',
       'GET /api/agent/documents/{id}/diff',
       'GET /api/agent/documents/{id}/versions',
       'GET /api/agent/documents/{id}/versions/{number}',
+      'GET /api/agent/members',
       'POST /api/agent/documents',
+      'POST /api/agent/documents/{id}/claims',
       'POST /api/agent/documents/{id}/versions',
       'PUT /api/agent/documents/{id}/tags',
     ]);

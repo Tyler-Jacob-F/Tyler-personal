@@ -64,14 +64,15 @@ export function authorize(caller: Caller, action: Action, target: Target): void 
 /**
  * Taking or releasing a slot on a sign-up for a member: the admin and co-leads for anyone
  * (porting the sheet, fixing a mistake); a device for the member it holds and no one else;
- * never a guest, never an agent (`write:signups` waits until an agent needs it), and only
- * on a signup in the `group` ring.
+ * an agent with `write:signups` for anyone, the way a co-lead does, for the one-time seed
+ * from the Google Sheet (docs/runbooks/seed-the-sheet.md); never a guest; and only on a
+ * signup in the `group` ring.
  */
 export function canClaim(caller: Caller, target: Target, memberId: string): boolean {
   if (target.type !== 'signup' || target.ring !== 'group') return false;
   if (caller.kind === 'member') return caller.role === 'admin' || caller.role === 'colead';
   if (caller.kind === 'group') return caller.memberId === memberId;
-  return false;
+  return caller.scopes.includes('write:signups');
 }
 
 export function authorizeClaim(caller: Caller, target: Target, memberId: string): void {
@@ -95,10 +96,11 @@ export type MemberAction =
  * What may be done to a member row (docs/phases/04-group.md "Members are entities"): the
  * admin everything; a co-lead everything but promotion; a device holding a name reads the
  * directory, edits its own row and may claim another name (a shared phone); a guest reads
- * and claims; an agent nothing, ever.
+ * and claims; an agent reads the directory with `read:members` (to match the Sheet's names
+ * to rows) and nothing else, ever.
  */
 export function canMember(caller: Caller, action: MemberAction, subjectId?: string): boolean {
-  if (caller.kind === 'agent') return false;
+  if (caller.kind === 'agent') return action === 'read' && caller.scopes.includes('read:members');
   if (caller.kind === 'member') {
     if (caller.role === 'admin') return true;
     if (caller.role === 'colead') return action !== 'promote';

@@ -422,6 +422,8 @@ describe('agent scopes and tokens', () => {
       'read:reading',
       'write:events',
       'write:questions',
+      'write:signups',
+      'read:members',
     ]);
     expect(agentScopeSchema.safeParse('write:documents').success).toBe(false);
   });
@@ -569,7 +571,7 @@ describe('the group’s types', () => {
     ).toBeUndefined();
   });
 
-  it('registers the three in the group ring with guides, and scopes events and questions but never signups', () => {
+  it('registers the three in the group ring with guides, and scopes each for the claude token', () => {
     expect(documentTypes).toEqual(['recipe', 'brief', 'questions', 'signup', 'event']);
     for (const type of ['questions', 'signup', 'event'] as const) {
       expect(schemaFor(type).defaultRing).toBe('group');
@@ -578,10 +580,9 @@ describe('the group’s types', () => {
     expect(typeGuides()).toContain('renaming a slot');
     expect(agentScopes).toContain('write:events');
     expect(agentScopes).toContain('write:questions');
-    expect(agentScopes).not.toContain('write:signups');
     expect(writeScopeFor('event')).toBe('write:events');
     expect(writeScopeFor('questions')).toBe('write:questions');
-    expect(writeScopeFor('signup')).toBeNull();
+    expect(writeScopeFor('signup')).toBe('write:signups');
     expect(parseFrontmatter('event', { title: 'x', date: '2026-11-05' })).toEqual({
       title: 'x',
       date: '2026-11-05',

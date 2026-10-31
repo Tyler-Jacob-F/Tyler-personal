@@ -150,7 +150,55 @@ describe('the sign-up claim API', () => {
     );
   });
 
-  it('refuses the group role, an agent, a document that is not a signup, and a claim id from another sheet', async () => {
+  it('lets an agent with write:signups seed a sheet’s names through the agents’ door, and refuses one without it', async () => {
+    const seeder = { id: oscar.id, name: 'claude', scopes: ['read:documents', 'write:signups'] };
+    const asSeeder = (method: string, body?: unknown) =>
+      api(
+        fakeEvent({
+          method,
+          route: '/api/agent/documents/{id}/claims',
+          params: { id: sheet.document.id },
+          body,
+          agent: seeder,
+        }),
+      );
+    const ported = await asSeeder('POST', { slot: 'Dessert', memberId: oscar.id });
+    expect(ported.statusCode).toBe(201);
+    expect(bodyOf<SignupClaim>(ported)).toMatchObject({
+      memberId: oscar.id,
+      memberName: 'Oscar',
+      deviceId: null,
+    });
+    expect((await asSeeder('POST', { slot: 'Dessert' })).statusCode).toBe(400);
+    expect(bodyOf<ListClaimsResponse>(await asSeeder('GET')).items).toHaveLength(1);
+    // Past the close too: a seed is history.
+    clock = new Date('2026-11-06T00:00:00Z');
+    expect((await asSeeder('POST', { slot: 'Dinner', memberId: kelly.id })).statusCode).toBe(201);
+
+    const writer = { ...seeder, scopes: ['read:documents', 'write:events'] };
+    const refused = await api(
+      fakeEvent({
+        method: 'POST',
+        route: '/api/agent/documents/{id}/claims',
+        params: { id: sheet.document.id },
+        body: { slot: 'Drinks', memberId: oscar.id },
+        agent: writer,
+      }),
+    );
+    expect(refused.statusCode).toBe(403);
+    // No agent releases a claim: the gateway has no such route, and the service refuses it regardless.
+    const release = await api(
+      fakeEvent({
+        method: 'DELETE',
+        route: '/api/agent/documents/{id}/claims/{claimId}',
+        params: { id: sheet.document.id, claimId: bodyOf<SignupClaim>(ported).id },
+        agent: seeder,
+      }),
+    );
+    expect(release.statusCode).toBe(403);
+  });
+
+  it('refuses the group role, an agent without the scope, a document that is not a signup, and a claim id from another sheet', async () => {
     await t.db
       .insert((await import('../../src/db/schema.js')).member)
       .values({ email: 'friend@example.com', role: 'group', displayName: 'Friend' });
@@ -172,7 +220,7 @@ describe('the sign-up claim API', () => {
         agent: { id: oscar.id, name: 'claude', scopes: ['read:documents', 'write:events'] },
       }),
     );
-    expect(agent.statusCode).toBe(401);
+    expect(agent.statusCode).toBe(403);
 
     const notASheet = await api(
       fakeEvent({

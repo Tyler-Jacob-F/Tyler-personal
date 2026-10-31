@@ -16,7 +16,7 @@ import { fakeAuthorizerEvent, fakeEvent } from '../helpers/event.js';
 const MCP_URL = 'https://tylerfuqua.com/mcp';
 
 let t: TestDb;
-let secrets: Record<'importer' | 'reader' | 'revoked' | 'claude', string>;
+let secrets: Record<'importer' | 'reader' | 'revoked' | 'claude' | 'seeder', string>;
 
 /**
  * The whole door, in process: the Lambda authorizer decides, then the MCP Lambda answers,
@@ -82,7 +82,13 @@ beforeEach(async () => {
     reader: generateAgentSecret(),
     revoked: generateAgentSecret(),
     claude: generateAgentSecret(),
+    seeder: generateAgentSecret(),
   };
+  await createAgentToken(t.db, {
+    name: 'seeder',
+    scopes: ['read:documents', 'write:signups', 'read:members'],
+    secretHash: hashAgentSecret(secrets.seeder),
+  });
   await createAgentToken(t.db, {
     name: 'claude',
     scopes: ['read:documents', 'write:events', 'write:questions'],
@@ -106,6 +112,82 @@ beforeEach(async () => {
   await revokeAgentToken(t.db, old.id);
 });
 afterEach(() => t.close());
+
+describe('the seed from the Google Sheet through MCP', () => {
+  it('lets a token with write:signups and read:members make a past sheet and put names on it, and no other token', async () => {
+    const { createMember } = await import('../../src/db/group.js');
+    const oscar = await createMember(t.db, { displayName: 'Oscar' });
+    const client = await connect(secrets.seeder);
+    const { tools } = await client.listTools();
+    expect(tools.map((tool) => tool.name)).toEqual(
+      expect.arrayContaining(['list_members', 'claim_slot']),
+    );
+
+    const members = (await client.callTool({
+      name: 'list_members',
+      arguments: {},
+    })) as CallToolResult;
+    expect(members.isError).toBeFalsy();
+    const listed = members.structuredContent as {
+      items: Array<{ id: string; name: string; role: string }>;
+    };
+    expect(listed.items.map((m) => m.name)).toEqual(['Oscar', 'Tyler']);
+    expect(JSON.stringify(listed)).not.toMatch(/phone|address|email/);
+
+    const sheet = (await client.callTool({
+      name: 'create_document',
+      arguments: {
+        type: 'signup',
+        frontmatter: {
+          title: 'Dinner, 2 October',
+          date: '2026-10-02',
+          slots: [{ label: 'Dessert', capacity: 2 }],
+          closesAt: '2026-10-02T21:00:00.000Z',
+        },
+        body: '',
+        summary: 'from the Google Sheet',
+      },
+    })) as CallToolResult;
+    expect(sheet.isError).toBeFalsy();
+    const { id } = sheet.structuredContent as { id: string };
+
+    const claimed = (await client.callTool({
+      name: 'claim_slot',
+      arguments: { id, slot: 'Dessert', memberId: oscar.id },
+    })) as CallToolResult;
+    expect(claimed.isError).toBeFalsy();
+    expect(textOf(claimed)).toMatch(/^Oscar is on "Dessert"\./);
+    expect(claimed.structuredContent).toMatchObject({ slot: 'Dessert', names: ['Oscar'] });
+
+    const again = (await client.callTool({
+      name: 'claim_slot',
+      arguments: { id, slot: 'Dessert', memberId: oscar.id },
+    })) as CallToolResult;
+    expect(again.isError).toBe(true);
+    expect(textOf(again)).toMatch(/conflict/);
+    const unknownSlot = (await client.callTool({
+      name: 'claim_slot',
+      arguments: { id, slot: 'Drinks', memberId: oscar.id },
+    })) as CallToolResult;
+    expect(textOf(unknownSlot)).toMatch(/one of Dessert/);
+    await client.close();
+
+    // The everyday token, with events and questions, has neither tool's scope.
+    const claude = await connect(secrets.claude);
+    const noMembers = (await claude.callTool({
+      name: 'list_members',
+      arguments: {},
+    })) as CallToolResult;
+    expect(noMembers.isError).toBe(true);
+    expect(textOf(noMembers)).toMatch(/forbidden/);
+    const noClaim = (await claude.callTool({
+      name: 'claim_slot',
+      arguments: { id, slot: 'Dessert', memberId: oscar.id },
+    })) as CallToolResult;
+    expect(noClaim.isError).toBe(true);
+    await claude.close();
+  });
+});
 
 describe('the group’s types through MCP', () => {
   it('lets the claude token post an event and this week’s questions, in the group ring, and never a signup', async () => {
@@ -193,16 +275,18 @@ describe('the group’s types through MCP', () => {
 });
 
 describe('MCP server', () => {
-  it('initializes and lists six tools, each with a description and an input schema', async () => {
+  it('initializes and lists eight tools, each with a description and an input schema', async () => {
     const client = await connect(secrets.importer);
     expect(client.getServerVersion()).toMatchObject({ name: 'the-keep' });
     expect(client.getInstructions()).toMatch(/private by default/);
     const { tools } = await client.listTools();
     expect(tools.map((tool) => tool.name).sort()).toEqual([
+      'claim_slot',
       'create_document',
       'create_version',
       'get_document',
       'list_documents',
+      'list_members',
       'search_documents',
       'set_tags',
     ]);

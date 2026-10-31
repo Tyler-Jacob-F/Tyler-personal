@@ -6,7 +6,6 @@ import {
 import {
   claimMemberRequestSchema,
   createMemberRequestSchema,
-  type ListMembersResponse,
   makeColeadRequestSchema,
   type Member,
   updateMemberRequestSchema,
@@ -18,7 +17,6 @@ import {
   createMember,
   getMember,
   listMemberDevices,
-  listMembers,
   makeColead,
   updateMember,
 } from '../db/group.js';
@@ -33,8 +31,9 @@ import {
   parse,
   parseId,
 } from '../lib/http.js';
-import { cognitoIdentity, groupIdentity } from '../middleware/identity.js';
+import { agentIdentity, cognitoIdentity, groupIdentity } from '../middleware/identity.js';
 import { authorizeMember, requireAdmin } from '../middleware/permission.js';
+import { listMembersFor } from '../services/members.js';
 
 export interface MembersOptions {
   /**
@@ -66,10 +65,11 @@ export function cognitoUserCreator(client: CognitoIdentityProviderClient, userPo
 }
 
 /**
- * Members as entities (docs/phases/04-group.md "Members are entities"). Two doors: the
- * admin and co-leads through Cognito, devices through the group authorizer. The
- * permission middleware says who may do what to whom; this file only asks it and acts.
- * No agent door: no scope touches a member, ever.
+ * Members as entities (docs/phases/04-group.md "Members are entities"). Three doors: the
+ * admin and co-leads through Cognito, devices through the group authorizer, and an agent
+ * with `read:members` through the agents' door, which reaches the directory alone (the
+ * gateway exposes only `GET /api/agent/members`, and permission refuses an agent every
+ * other action). No scope touches a member.
  */
 export function build(db: Db, { createUser }: MembersOptions): ApiHandler {
   async function found(rawId: unknown): Promise<Member> {
@@ -81,14 +81,10 @@ export function build(db: Db, { createUser }: MembersOptions): ApiHandler {
 
   return createApi({
     service: 'members',
-    identify: { member: cognitoIdentity(db), group: groupIdentity(db) },
+    identify: { member: cognitoIdentity(db), group: groupIdentity(db), agent: agentIdentity(db) },
     routes: {
       // The directory, and the "Who are you?" list: every caller who holds the link.
-      'GET /api/members': async ({ identity }) => {
-        authorizeMember(identity.caller, 'read');
-        const body: ListMembersResponse = { items: await listMembers(db) };
-        return json(200, body);
-      },
+      'GET /api/members': async ({ identity }) => json(200, await listMembersFor(db, identity)),
 
       'POST /api/members': async ({ identity, body, log }) => {
         authorizeMember(identity.caller, 'add');
