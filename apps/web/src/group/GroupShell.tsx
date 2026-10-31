@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, Outlet, useLocation } from 'react-router';
 import { CloseIcon, KeepMark, MenuIcon } from '@/components/icons';
+import { useSheetDismiss } from '@/components/nav-hooks';
+import { PlaceLink, SheetRow } from '@/components/nav-parts';
 import { Button } from '@/components/ui/button';
 import { focusRing } from '@/components/ui/styles';
 import { useGroup } from '@/group/context';
-import { GROUP_PLACES, groupPlaceActive } from '@/group/places';
+import { GROUP_PLACES } from '@/group/places';
 import { cn } from '@/lib/utils';
 
 /**
@@ -20,6 +22,8 @@ export function GroupShell() {
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setOpen(false), [location.pathname]);
+  const close = useCallback(() => setOpen(false), []);
+  useSheetDismiss(open, close, menuButton);
 
   return (
     <div className="flex h-dvh flex-col">
@@ -37,24 +41,9 @@ export function GroupShell() {
           </Link>
 
           <nav aria-label="Group places" className="ml-auto hidden items-center gap-1 md:flex">
-            {GROUP_PLACES.map((place) => {
-              const active = groupPlaceActive(place, location.pathname);
-              return (
-                <NavLink
-                  key={place.to}
-                  to={place.to}
-                  end={place.end}
-                  aria-current={active ? 'page' : undefined}
-                  className={cn(
-                    'inline-flex h-11 items-center rounded-md px-2 text-[15px] transition-colors',
-                    focusRing,
-                    active ? 'font-semibold text-text-strong' : 'text-muted hover:text-text',
-                  )}
-                >
-                  {place.label}
-                </NavLink>
-              );
-            })}
+            {GROUP_PLACES.map((place) => (
+              <PlaceLink key={place.to} place={place} pathname={location.pathname} />
+            ))}
             {signOut && (
               <Button variant="ghost" size="sm" className="ml-2" onClick={signOut}>
                 Sign out
@@ -86,24 +75,9 @@ export function GroupShell() {
         >
           <nav aria-label="Group places" className="px-4 py-5">
             <ul className="divide-y divide-border border-y border-border">
-              {GROUP_PLACES.map((place) => {
-                const active = groupPlaceActive(place, location.pathname);
-                return (
-                  <li key={place.to}>
-                    <Link
-                      to={place.to}
-                      aria-current={active ? 'page' : undefined}
-                      className={cn(
-                        'flex h-13 items-center font-serif text-[19px]',
-                        focusRing,
-                        active ? 'font-semibold text-text-strong' : 'text-text',
-                      )}
-                    >
-                      {place.label}
-                    </Link>
-                  </li>
-                );
-              })}
+              {GROUP_PLACES.map((place) => (
+                <SheetRow key={place.to} place={place} pathname={location.pathname} />
+              ))}
             </ul>
           </nav>
           {signOut && (

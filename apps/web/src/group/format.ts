@@ -8,6 +8,7 @@ import {
   type SignupFrontmatter,
   signupFrontmatterSchema,
 } from '@the-keep/shared';
+import { frontmatterOf } from '@/lib/frontmatter';
 
 /** A group document with its frontmatter parsed; `null` when a stored version no longer fits. */
 export interface Typed<T> {
@@ -22,19 +23,12 @@ function typed<T>(items: DocumentWithVersion[], parse: (fm: unknown) => T | null
   });
 }
 
-const safe =
-  <T>(schema: { safeParse(v: unknown): { success: boolean; data?: T } }) =>
-  (fm: unknown) => {
-    const parsed = schema.safeParse(fm);
-    return parsed.success ? (parsed.data as T) : null;
-  };
-
 export const questionsOf = (items: DocumentWithVersion[]) =>
-  typed<QuestionsFrontmatter>(items, safe(questionsFrontmatterSchema));
+  typed<QuestionsFrontmatter>(items, frontmatterOf(questionsFrontmatterSchema));
 export const signupsOf = (items: DocumentWithVersion[]) =>
-  typed<SignupFrontmatter>(items, safe(signupFrontmatterSchema));
+  typed<SignupFrontmatter>(items, frontmatterOf(signupFrontmatterSchema));
 export const eventsOf = (items: DocumentWithVersion[]) =>
-  typed<EventFrontmatter>(items, safe(eventFrontmatterSchema));
+  typed<EventFrontmatter>(items, frontmatterOf(eventFrontmatterSchema));
 
 /** "This week's": the newest within six days ahead (`currentQuestions` in shared). */
 export function thisWeek(questions: Typed<QuestionsFrontmatter>[], today: string) {
@@ -72,57 +66,16 @@ export function sortedByDate<T extends { date: string }>(items: Typed<T>[]) {
   return [...items].sort(byDate);
 }
 
-const long = new Intl.DateTimeFormat('en-GB', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-  timeZone: 'UTC',
-});
-const weekdayOnly = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'UTC' });
-
-/** "Thursday, 5 November", the render's heading for a week. */
-export function longDay(date: string): string {
-  const parts = long.formatToParts(new Date(`${date}T00:00:00.000Z`));
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
-  return `${get('weekday')}, ${get('day')} ${get('month')}`;
-}
-
-/** "Thursday 5 November", the render's date line under a sign-up or a meeting. */
-export function dayLine(date: string): string {
-  return longDay(date).replace(',', '');
-}
-
-/** "6:30" from "18:30": the group's own clock, no zone, as the render shows it. */
-export function clock(time: string): string {
-  const [h = '0', m = '00'] = time.split(':');
-  const hour = Number(h) % 12 || 12;
-  return `${hour}:${m}`;
-}
-
-/** "Thursday 5 November, 6:30". */
-export function whenLine(date: string, time?: string): string {
-  return time ? `${dayLine(date)}, ${clock(time)}` : dayLine(date);
-}
-
-/**
- * "closes Thursday 5:00": the close in the viewer's own zone, named by its weekday when it
- * is within the week of the sheet, else by its date.
- */
-export function closesLine(closesAt: string, date: string): string {
-  const at = new Date(closesAt);
-  const time = `${at.getHours() % 12 || 12}:${String(at.getMinutes()).padStart(2, '0')}`;
-  const sameWeek = Math.abs(at.getTime() - new Date(`${date}T12:00:00`).getTime()) < 7 * 86_400_000;
-  const day = sameWeek
-    ? weekdayOnly.format(new Date(Date.UTC(at.getFullYear(), at.getMonth(), at.getDate())))
-    : dayLine(
-        `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`,
-      );
-  return `closes ${day} ${time}`;
-}
-
 /** "one", "up to 3": a slot's capacity as the render words it. */
 export function capacityLine(capacity: number): string {
   return capacity === 1 ? 'one' : `up to ${capacity}`;
+}
+
+/** "a phone", "two phones", "3 phones": how many devices hold a name, as the render words it. */
+export function phonesLine(n: number): string {
+  if (n === 1) return 'a phone';
+  if (n === 2) return 'two phones';
+  return `${n} phones`;
 }
 
 /** A `tel:` href for a phone as a member typed it. */

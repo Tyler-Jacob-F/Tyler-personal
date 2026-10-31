@@ -13,7 +13,7 @@ export interface Place {
 }
 
 export const PLACES: Place[] = [
-  { label: 'Home', to: '/', matches: ['/', '/briefs'], end: true },
+  { label: 'Home', to: '/', matches: ['/', '/briefs'] },
   { label: 'Recipes', to: '/recipes', matches: ['/recipes'] },
   { label: 'Writing', to: '/writing', matches: ['/writing'] },
   { label: 'Group', to: '/group', matches: ['/group'] },
@@ -37,11 +37,11 @@ export const ADMIN_PLACES: Place[] = [
   { label: 'Stack', to: '/stack', matches: ['/stack'], hint: 'how it is built' },
 ];
 
+/** Whether a place lights for a path: exactly its own path when `end`, else any of its prefixes. */
 export function isActive(place: Place, pathname: string): boolean {
+  if (place.end) return pathname === place.to;
   return place.matches.some((prefix) =>
-    prefix === '/'
-      ? pathname === '/'
-      : pathname === prefix || pathname.startsWith(`${prefix}/`) || (!place.end && false),
+    prefix === '/' ? pathname === '/' : pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }
 

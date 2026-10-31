@@ -1,5 +1,5 @@
-import { useEffect, useId, useRef, useState } from 'react';
-import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { Link, Navigate, Outlet, useLocation, useNavigate } from 'react-router';
 import { useMe } from '@/api/me';
 import { useAuth } from '@/auth/useAuth';
 import {
@@ -17,10 +17,11 @@ import {
   currentCreatable,
   FOCUS_SEARCH_STATE,
   isActive,
-  type Place,
   PLACES,
   SEARCH_PATH,
 } from '@/components/nav';
+import { useDismiss, useSheetDismiss } from '@/components/nav-hooks';
+import { PlaceLink, SheetRow } from '@/components/nav-parts';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { focusRing } from '@/components/ui/styles';
@@ -61,9 +62,11 @@ export function AppShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
-  // The sheet closes when the page changes.
+  // The sheet closes when the page changes, on Escape, and hands focus back to the menu button.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setOpen(false), [location.pathname, location.search]);
+  const close = useCallback(() => setOpen(false), []);
+  useSheetDismiss(open, close, menuButton);
 
   // A co-lead's whole site is the group slice (docs/phases/04-group.md "Out of scope":
   // no member sees Recipes, the morning page, Writing or Admin).
@@ -145,10 +148,6 @@ export function AppShell() {
           isAdmin={isAdmin}
           email={state.status === 'signedIn' ? state.email : null}
           pathname={location.pathname}
-          onClose={() => {
-            setOpen(false);
-            menuButton.current?.focus();
-          }}
           onSearch={(q) => navigate(`${SEARCH_PATH}?q=${encodeURIComponent(q)}`)}
           onSignOut={signOut}
         />
@@ -160,24 +159,6 @@ export function AppShell() {
         </div>
       </main>
     </div>
-  );
-}
-
-function PlaceLink({ place, pathname }: { place: Place; pathname: string }) {
-  const active = isActive(place, pathname);
-  return (
-    <NavLink
-      to={place.to}
-      end={place.end}
-      aria-current={active ? 'page' : undefined}
-      className={cn(
-        'inline-flex h-11 items-center rounded-md px-2 text-[15px] transition-colors',
-        focusRing,
-        active ? 'font-semibold text-text-strong' : 'text-muted hover:text-text',
-      )}
-    >
-      {place.label}
-    </NavLink>
   );
 }
 
@@ -289,70 +270,21 @@ function NewSplit({ current }: { current: ReturnType<typeof currentCreatable> })
   );
 }
 
-/** Close a menu on a pointer down outside it or on Escape. */
-function useDismiss(root: React.RefObject<HTMLElement | null>, open: boolean, close: () => void) {
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (event: PointerEvent) => {
-      if (!root.current?.contains(event.target as Node)) close();
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close();
-    };
-    document.addEventListener('pointerdown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('pointerdown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open, root, close]);
-}
-
 function Sheet({
   isAdmin,
   email,
   pathname,
-  onClose,
   onSearch,
   onSignOut,
 }: {
   isAdmin: boolean;
   email: string | null;
   pathname: string;
-  onClose(): void;
   onSearch(q: string): void;
   onSignOut(): void;
 }) {
   const field = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    field.current?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  const row = (place: Place, serif: boolean) => {
-    const active = isActive(place, pathname);
-    return (
-      <li key={place.to}>
-        <Link
-          to={place.to}
-          aria-current={active ? 'page' : undefined}
-          className={cn(
-            'flex h-13 items-center justify-between gap-3',
-            serif ? 'font-serif text-[19px]' : 'text-[17px]',
-            focusRing,
-            active ? 'font-semibold text-text-strong' : 'text-text',
-          )}
-        >
-          {place.label}
-          {place.hint && <span className="text-[13px] text-muted">{place.hint}</span>}
-        </Link>
-      </li>
-    );
-  };
+  useEffect(() => field.current?.focus(), []);
 
   return (
     <div
@@ -387,13 +319,17 @@ function Sheet({
 
         <nav aria-label="Places">
           <ul className="divide-y divide-border border-y border-border">
-            {PLACES.map((place) => row(place, true))}
+            {PLACES.map((place) => (
+              <SheetRow key={place.to} place={place} pathname={pathname} />
+            ))}
           </ul>
           {isAdmin && (
             <>
               <p className="eyebrow mt-6 mb-1">Admin · owner only</p>
               <ul className="divide-y divide-border border-b border-border">
-                {ADMIN_PLACES.map((place) => row(place, false))}
+                {ADMIN_PLACES.map((place) => (
+                  <SheetRow key={place.to} place={place} pathname={pathname} serif={false} />
+                ))}
               </ul>
             </>
           )}

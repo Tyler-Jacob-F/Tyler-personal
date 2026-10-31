@@ -1,21 +1,21 @@
 import { recipeFacetNames, recipeTagsOf, valueLabel } from '@the-keep/shared';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useDeleteDocument, useDocument } from '@/api/documents';
-import { Alert } from '@/components/Alert';
+import { ConfirmButton } from '@/components/ConfirmDialog';
 import { CheckIcon } from '@/components/icons';
+import { Loading, QueryError } from '@/components/QueryState';
 import { Markdown } from '@/components/Markdown';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { focusRing } from '@/components/ui/styles';
+import { shortDay, versionLine } from '@/lib/dates';
+import { titleOf } from '@/lib/frontmatter';
 import { cn } from '@/lib/utils';
 import {
   minutes,
   recipeOf,
-  shortDay,
   splitHeadnote,
   splitIngredient,
-  titleOf,
-  versionLine,
   withoutMethodHeading,
 } from '@/routes/recipes/format';
 
@@ -31,8 +31,8 @@ export function RecipeDetail() {
   const recipe = useDocument(id);
   const remove = useDeleteDocument();
 
-  if (recipe.isPending) return <p className="text-sm text-muted">Loading…</p>;
-  if (recipe.isError) return <Alert tone="danger">{recipe.error.message}</Alert>;
+  if (recipe.isError) return <QueryError queries={[recipe]} />;
+  if (recipe.isPending) return <Loading />;
 
   const { document, version } = recipe.data;
   const r = recipeOf(version.frontmatter);
@@ -183,19 +183,16 @@ export function RecipeDetail() {
       </div>
 
       <div className="border-t border-border pt-4">
-        <Button
-          variant="ghost"
-          size="sm"
+        <ConfirmButton
+          label="Delete"
           className="text-wrong"
-          disabled={remove.isPending}
-          onClick={async () => {
-            if (!window.confirm('Delete this recipe? Its versions stay in the database.')) return;
-            await remove.mutateAsync(document.id);
-            navigate('/recipes');
-          }}
+          title="Delete this recipe?"
+          confirmLabel="Yes, delete"
+          pending={remove.isPending}
+          onConfirm={() => remove.mutate(document.id, { onSuccess: () => navigate('/recipes') })}
         >
-          Delete
-        </Button>
+          Its versions stay in the database; it stops listing.
+        </ConfirmButton>
       </div>
     </article>
   );

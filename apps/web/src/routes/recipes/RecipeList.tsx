@@ -13,13 +13,14 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router';
 import { useSearch } from '@/api/documents';
-import { Alert } from '@/components/Alert';
 import { CheckIcon, ChevronDownIcon, SearchIcon } from '@/components/icons';
+import { Loading, QueryError } from '@/components/QueryState';
 import { Chip } from '@/components/ui/chip';
 import { Input } from '@/components/ui/input';
 import { focusRing } from '@/components/ui/styles';
 import { cn } from '@/lib/utils';
-import { minutes, recipeOf, titleOf } from '@/routes/recipes/format';
+import { titleOf } from '@/lib/frontmatter';
+import { minutes, recipeOf } from '@/routes/recipes/format';
 
 /** The URL is the state: `?q=words&tags=course:breakfast,flag:vegetarian`. */
 function readTags(params: URLSearchParams): string[] {
@@ -146,8 +147,8 @@ export function RecipeList() {
             </ul>
           )}
 
-          {results.isPending && <p className="text-sm text-muted">Loading…</p>}
-          {results.isError && <Alert tone="danger">{results.error.message}</Alert>}
+          <QueryError queries={[results]} />
+          {results.isPending && <Loading />}
           {results.data && items.length === 0 && (
             <p className="text-sm text-muted">
               {filtering ? 'Nothing matches.' : 'Nothing yet. Chili would be a fine first one.'}

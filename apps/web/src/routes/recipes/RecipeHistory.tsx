@@ -1,17 +1,17 @@
 import { Link, useParams } from 'react-router';
 import { useDocument, useVersions } from '@/api/documents';
-import { Alert } from '@/components/Alert';
+import { Loading, QueryError } from '@/components/QueryState';
 import { Button } from '@/components/ui/button';
-import { dates, titleOf } from '@/routes/recipes/format';
+import { dates } from '@/lib/dates';
+import { titleOf } from '@/lib/frontmatter';
 
 export function RecipeHistory() {
   const { id = '' } = useParams();
   const recipe = useDocument(id);
   const versions = useVersions(id);
 
-  if (recipe.isPending || versions.isPending) return <p className="text-sm text-muted">Loading…</p>;
-  if (recipe.isError) return <Alert tone="danger">{recipe.error.message}</Alert>;
-  if (versions.isError) return <Alert tone="danger">{versions.error.message}</Alert>;
+  if (recipe.isError || versions.isError) return <QueryError queries={[recipe, versions]} />;
+  if (recipe.isPending || versions.isPending) return <Loading />;
 
   const items = versions.data.items;
   const latest = items[0]?.number ?? 1;

@@ -141,12 +141,17 @@ describe('TokensPage', () => {
         return new HttpResponse(null, { status: 204 });
       }),
     );
-    vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
     render(<App />, { route: '/admin/tokens' });
-    const button = await screen.findByRole('button', { name: 'Revoke' });
-    await user.click(button);
+    await user.click(await screen.findByRole('button', { name: 'Revoke' }));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent('Revoke importer?');
+    await user.click(within(dialog).getByRole('button', { name: 'Back' }));
     expect(revoked).not.toHaveBeenCalled();
-    await user.click(button);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Revoke' }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Yes, revoke' }),
+    );
     await waitFor(() => expect(revoked).toHaveBeenCalledTimes(1));
     expect(await screen.findByText(/revoked/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Revoke' })).toBeNull();

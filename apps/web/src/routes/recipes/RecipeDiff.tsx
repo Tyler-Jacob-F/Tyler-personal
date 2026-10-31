@@ -3,7 +3,9 @@ import { Link, useParams, useSearchParams } from 'react-router';
 import { useDiff, useDocument } from '@/api/documents';
 import { Alert } from '@/components/Alert';
 import { DiffView } from '@/components/DiffView';
-import { dates, titleOf } from '@/routes/recipes/format';
+import { Loading, QueryError } from '@/components/QueryState';
+import { dates } from '@/lib/dates';
+import { titleOf } from '@/lib/frontmatter';
 import { cn } from '@/lib/utils';
 
 function show(value: unknown): string {
@@ -78,9 +80,8 @@ export function RecipeDiff() {
   const diff = useDiff(id, from, to);
 
   if (!(from > 0 && to > 0)) return <Alert tone="danger">Pick two versions to compare.</Alert>;
-  if (recipe.isPending || diff.isPending) return <p className="text-sm text-muted">Loading…</p>;
-  if (recipe.isError) return <Alert tone="danger">{recipe.error.message}</Alert>;
-  if (diff.isError) return <Alert tone="danger">{diff.error.message}</Alert>;
+  if (recipe.isError || diff.isError) return <QueryError queries={[recipe, diff]} />;
+  if (recipe.isPending || diff.isPending) return <Loading />;
 
   const d = diff.data;
 

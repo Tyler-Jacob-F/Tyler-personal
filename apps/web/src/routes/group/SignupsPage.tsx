@@ -1,12 +1,11 @@
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { useClaims, useGroupDocuments, useMembers } from '@/api/group';
-import { Alert } from '@/components/Alert';
+import { Loading, QueryError } from '@/components/QueryState';
+import { anyError, anyPending } from '@/lib/queries';
 import { canEdit, useGroup } from '@/group/context';
-import { currentSignup, dayLine, signupsOf, sortedByDate } from '@/group/format';
-import { todayIso } from '@/routes/briefs/brief';
-import { quietLink } from '@/group/styles';
-import { Control, SectionHead, SignupSheet } from '@/routes/group/parts';
-import { cn } from '@/lib/utils';
+import { currentSignup, signupsOf, sortedByDate } from '@/group/format';
+import { dayLine, todayIso } from '@/lib/dates';
+import { EditOrNew, OtherList, SectionHead, SignupSheet } from '@/routes/group/parts';
 
 /** The coming Thursday's sheet, or one by id, with the other sign-ups listed under it. */
 export function SignupsPage() {
@@ -19,11 +18,9 @@ export function SignupsPage() {
   const current = currentSignup(all, today);
   const shown = id ? (all.find((s) => s.item.document.id === id) ?? null) : current;
   const claims = useClaims(shown?.item.document.id ?? null);
-  if (signups.isPending || members.isPending || (shown && claims.isPending))
-    return <p className="text-sm text-muted">Loading…</p>;
-  if (signups.isError) return <Alert tone="danger">{signups.error.message}</Alert>;
-  if (members.isError) return <Alert tone="danger">{members.error.message}</Alert>;
-  if (claims.isError) return <Alert tone="danger">{claims.error.message}</Alert>;
+  const queries = [signups, members, ...(shown ? [claims] : [])];
+  if (anyError(queries)) return <QueryError queries={queries} />;
+  if (anyPending(queries)) return <Loading />;
   const others = all.filter((s) => s !== shown).reverse();
   const editor = canEdit(viewer);
 
@@ -33,13 +30,7 @@ export function SignupsPage() {
         <SectionHead
           id="sheet-heading"
           action={
-            editor && (
-              <Control
-                to={shown ? `/group/signups/${shown.item.document.id}/edit` : '/group/signups/new'}
-              >
-                {shown ? 'Edit' : 'New sign-up'}
-              </Control>
-            )
+            editor && <EditOrNew item={shown?.item} base="/group/signups" newLabel="New sign-up" />
           }
         >
           Sign-up
@@ -48,7 +39,7 @@ export function SignupsPage() {
           <SignupSheet
             signup={shown}
             claims={claims.data?.items ?? []}
-            members={members.data.items}
+            members={members.data?.items}
             heading="h1"
           />
         ) : (
@@ -58,36 +49,17 @@ export function SignupsPage() {
         )}
       </section>
 
-      {(others.length > 0 || editor) && (
-        <section aria-labelledby="others-heading">
-          <SectionHead
-            id="others-heading"
-            action={editor && <Control to="/group/signups/new">New sign-up</Control>}
-          >
-            Other sign-ups
-          </SectionHead>
-          {others.length === 0 ? (
-            <p className="mt-3 text-[15px] text-muted italic">None yet.</p>
-          ) : (
-            <ul className="mt-3 divide-y divide-border border-y border-border">
-              {others.map((s) => (
-                <li key={s.item.document.id}>
-                  <Link
-                    to={`/group/signups/${s.item.document.id}`}
-                    className={cn(
-                      quietLink,
-                      'flex w-full justify-between gap-4 py-1 text-[17px] no-underline',
-                    )}
-                  >
-                    <span className="font-serif">{s.frontmatter.title}</span>
-                    <span className="text-[13px] text-muted">{dayLine(s.frontmatter.date)}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
+      <OtherList
+        heading="Other sign-ups"
+        newTo={editor ? '/group/signups/new' : undefined}
+        newLabel="New sign-up"
+        items={others.map((o) => ({
+          id: o.item.document.id,
+          to: `/group/signups/${o.item.document.id}`,
+          title: o.frontmatter.title,
+          aside: dayLine(o.frontmatter.date),
+        }))}
+      />
     </article>
   );
 }

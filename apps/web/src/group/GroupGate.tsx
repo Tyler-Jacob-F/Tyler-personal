@@ -8,6 +8,7 @@ import { useMe } from '@/api/me';
 import { useAuth } from '@/auth/useAuth';
 import { Alert } from '@/components/Alert';
 import { AppShell } from '@/components/AppShell';
+import { Loading, QueryError } from '@/components/QueryState';
 import { GroupNav } from '@/components/GroupNav';
 import { KeepMark } from '@/components/icons';
 import { Button } from '@/components/ui/button';
@@ -33,21 +34,17 @@ export function GroupGate() {
     setHeld({ token: null, lost: true });
   }, []);
 
-  if (state.status === 'restoring') return <Pending />;
+  if (state.status === 'restoring') return <Loading />;
   if (state.status === 'signedIn') return <SignedInGroup signOut={signOut} />;
   if (held.token) return <DeviceGroup token={held.token} onLost={lost} />;
   return <NeedLink reason={held.lost ? 'lost' : 'none'} />;
 }
 
-function Pending() {
-  return <p className="p-6 text-sm text-muted">Loading…</p>;
-}
-
 function SignedInGroup({ signOut }: { signOut(): void }) {
   const me = useMe();
   const api = useApi();
-  if (me.isPending) return <Pending />;
-  if (me.isError) return <Alert tone="danger">{me.error.message}</Alert>;
+  if (me.isError) return <QueryError queries={[me]} />;
+  if (me.isPending) return <Loading />;
   const { caller, displayName } = me.data;
   if (caller.kind !== 'member') return <NeedLink reason="none" />;
   const viewer: GroupViewer =
@@ -85,7 +82,7 @@ function DeviceGroup({ token, onLost }: { token: string; onLost(): void }) {
     };
   }, [token, onLost]);
   const me = useQuery({ queryKey: groupKeys.me(), queryFn: () => fetchGroupMe(api), retry: false });
-  if (me.isPending) return <Pending />;
+  if (me.isPending) return <Loading />;
   if (me.isError) {
     return deviceGone(me.error) ? (
       <NeedLink reason="lost" />

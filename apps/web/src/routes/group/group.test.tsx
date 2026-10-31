@@ -2,14 +2,8 @@ import type { SignupFrontmatter } from '@the-keep/shared';
 import { http, HttpResponse } from 'msw/http';
 import { App } from '@/App';
 import { device } from '@/group/device';
-import {
-  clock,
-  closesLine,
-  currentSignup,
-  longDay,
-  upcomingEvents,
-  whenLine,
-} from '@/group/format';
+import { currentSignup, upcomingEvents } from '@/group/format';
+import { clock, closesLine, longDay, whenLine } from '@/lib/dates';
 import {
   claims,
   coleadMe,

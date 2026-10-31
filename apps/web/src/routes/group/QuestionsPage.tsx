@@ -1,12 +1,10 @@
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { useGroupDocuments } from '@/api/group';
-import { Alert } from '@/components/Alert';
+import { Loading, QueryError } from '@/components/QueryState';
 import { canEdit, useGroup } from '@/group/context';
-import { longDay, questionsOf, thisWeek } from '@/group/format';
-import { todayIso } from '@/routes/briefs/brief';
-import { quietLink } from '@/group/styles';
-import { Control, QuestionsBlock, SectionHead } from '@/routes/group/parts';
-import { cn } from '@/lib/utils';
+import { questionsOf, thisWeek } from '@/group/format';
+import { longDay, todayIso } from '@/lib/dates';
+import { EditOrNew, OtherList, QuestionsBlock, SectionHead } from '@/routes/group/parts';
 
 /** This week's questions in full, or one past week by id, with the past weeks listed under it. */
 export function QuestionsPage() {
@@ -14,8 +12,8 @@ export function QuestionsPage() {
   const { id } = useParams();
   const today = todayIso();
   const questions = useGroupDocuments('questions');
-  if (questions.isPending) return <p className="text-sm text-muted">Loading…</p>;
-  if (questions.isError) return <Alert tone="danger">{questions.error.message}</Alert>;
+  if (questions.isError) return <QueryError queries={[questions]} />;
+  if (questions.isPending) return <Loading />;
   const all = questionsOf(questions.data.items).sort((a, b) =>
     b.frontmatter.weekOf.localeCompare(a.frontmatter.weekOf),
   );
@@ -31,13 +29,7 @@ export function QuestionsPage() {
           id="questions-heading"
           action={
             editor && (
-              <Control
-                to={
-                  shown ? `/group/questions/${shown.item.document.id}/edit` : '/group/questions/new'
-                }
-              >
-                {shown ? 'Edit' : 'Write this week’s'}
-              </Control>
+              <EditOrNew item={shown?.item} base="/group/questions" newLabel="Write this week’s" />
             )
           }
         >
@@ -52,38 +44,17 @@ export function QuestionsPage() {
         )}
       </section>
 
-      {(others.length > 0 || editor) && (
-        <section aria-labelledby="past-heading">
-          <SectionHead
-            id="past-heading"
-            action={editor && <Control to="/group/questions/new">New week</Control>}
-          >
-            Other weeks
-          </SectionHead>
-          {others.length === 0 ? (
-            <p className="mt-3 text-[15px] text-muted italic">None yet.</p>
-          ) : (
-            <ul className="mt-3 divide-y divide-border border-y border-border">
-              {others.map((q) => (
-                <li key={q.item.document.id}>
-                  <Link
-                    to={`/group/questions/${q.item.document.id}`}
-                    className={cn(
-                      quietLink,
-                      'flex w-full justify-between gap-4 py-1 text-[17px] no-underline',
-                    )}
-                  >
-                    <span className="font-serif">{longDay(q.frontmatter.weekOf)}</span>
-                    <span className="text-[13px] text-muted tabular-nums">
-                      {q.frontmatter.weekOf}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
+      <OtherList
+        heading="Other weeks"
+        newTo={editor ? '/group/questions/new' : undefined}
+        newLabel="New week"
+        items={others.map((q) => ({
+          id: q.item.document.id,
+          to: `/group/questions/${q.item.document.id}`,
+          title: longDay(q.frontmatter.weekOf),
+          aside: q.frontmatter.weekOf,
+        }))}
+      />
     </article>
   );
 }

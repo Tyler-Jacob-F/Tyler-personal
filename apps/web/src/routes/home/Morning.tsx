@@ -1,7 +1,7 @@
 import type { BriefFrontmatter, Version } from '@the-keep/shared';
 import { Markdown } from '@/components/Markdown';
-import { dayHeading, morningParts } from '@/routes/home/morning';
-import { when } from '@/routes/recipes/format';
+import { dayHeading, when } from '@/lib/dates';
+import { morningParts } from '@/routes/home/morning';
 
 export interface MorningProps {
   /** The calendar date the page is for. */

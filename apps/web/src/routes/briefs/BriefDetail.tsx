@@ -1,6 +1,7 @@
 import { useParams } from 'react-router';
 import { useDocument } from '@/api/documents';
 import { Alert } from '@/components/Alert';
+import { Loading, QueryError } from '@/components/QueryState';
 import { briefOf } from '@/routes/briefs/brief';
 import { Morning } from '@/routes/home/Morning';
 
@@ -8,8 +9,8 @@ import { Morning } from '@/routes/home/Morning';
 export function BriefDetail() {
   const { id = '' } = useParams();
   const document = useDocument(id);
-  if (document.isPending) return <p className="text-sm text-muted">Loading…</p>;
-  if (document.isError) return <Alert tone="danger">{document.error.message}</Alert>;
+  if (document.isError) return <QueryError queries={[document]} />;
+  if (document.isPending) return <Loading />;
   const brief = briefOf(document.data.version.frontmatter);
   if (!brief) return <Alert tone="danger">This document is not a brief.</Alert>;
   return <Morning date={brief.date} brief={brief} version={document.data.version} />;

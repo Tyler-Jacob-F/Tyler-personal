@@ -7,15 +7,8 @@ import { type AuthClient, AuthError, type Challenge } from '@/auth/gateway';
 import { useAuth } from '@/auth/useAuth';
 import { Alert } from '@/components/Alert';
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form } from '@/components/ui/form';
+import { FormRow } from '@/components/ui/form-row';
 import { Input } from '@/components/ui/input';
 
 const emailSchema = z.object({ email: z.email('Enter the email address on the allowlist.') });
@@ -94,25 +87,21 @@ export function SignIn({ client = 'web' }: { client?: AuthClient }) {
       {!challenge ? (
         <Form {...emailForm}>
           <form onSubmit={onEmail} className="mt-6 grid gap-4" noValidate>
-            <FormField
+            <FormRow
               control={emailForm.control}
               name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      autoComplete="username"
-                      autoFocus={!rememberedEmail}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>A six-digit code goes to this address.</FormDescription>
-                  <FormMessage />
-                </FormItem>
+              label="Email"
+              hint="A six-digit code goes to this address."
+            >
+              {(field) => (
+                <Input
+                  type="email"
+                  autoComplete="username"
+                  autoFocus={!rememberedEmail}
+                  {...field}
+                />
               )}
-            />
+            </FormRow>
             <Button
               type="submit"
               variant="accent"
@@ -126,22 +115,16 @@ export function SignIn({ client = 'web' }: { client?: AuthClient }) {
       ) : (
         <Form {...codeForm}>
           <form onSubmit={onCode} className="mt-6 grid gap-4" noValidate>
-            <FormField
+            <FormRow
               control={codeForm.control}
               name="code"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Code</FormLabel>
-                  <FormControl>
-                    <Input inputMode="numeric" autoComplete="one-time-code" autoFocus {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Sent to {challenge.email}. It expires in ten minutes.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
+              label="Code"
+              hint={`Sent to ${challenge.email}. It expires in ten minutes.`}
+            >
+              {(field) => (
+                <Input inputMode="numeric" autoComplete="one-time-code" autoFocus {...field} />
               )}
-            />
+            </FormRow>
             <Button type="submit" variant="accent" disabled={codeForm.formState.isSubmitting}>
               Sign in
             </Button>

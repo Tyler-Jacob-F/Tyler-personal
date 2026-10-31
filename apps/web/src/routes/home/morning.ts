@@ -128,17 +128,3 @@ export function morningParts(brief: BriefFrontmatter | null): MorningParts {
   parts.items = [...parts.items, ...overflow].slice(0, BRIEF_ITEM_CAP);
   return parts;
 }
-
-const weekdayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'UTC' });
-const dateFormatter = new Intl.DateTimeFormat('en-GB', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-  timeZone: 'UTC',
-});
-
-/** "Saturday" and "31 October 2026" for a calendar date. */
-export function dayHeading(date: string): { weekday: string; date: string } {
-  const at = new Date(`${date}T00:00:00.000Z`);
-  return { weekday: weekdayFormatter.format(at), date: dateFormatter.format(at) };
-}

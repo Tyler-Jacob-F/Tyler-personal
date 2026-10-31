@@ -1,43 +1,34 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  type EventFrontmatter,
   eventFrontmatterSchema,
   memberFieldsSchema,
   questionsFrontmatterSchema,
-  type SignupFrontmatter,
   signupFrontmatterSchema,
 } from '@the-keep/shared';
 import { useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import { z } from 'zod';
+import { useDocumentEditor } from '@/api/editor';
 import {
   useAddMember,
   useClearDevices,
-  useCreateGroupDocument,
-  useCreateGroupVersion,
-  useDeleteGroupDocument,
-  useGroupDocument,
   useMakeColead,
   useMembers,
   useUpdateMember,
 } from '@/api/group';
 import { Alert } from '@/components/Alert';
+import { ConfirmButton } from '@/components/ConfirmDialog';
+import { Loading, QueryError } from '@/components/QueryState';
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form } from '@/components/ui/form';
+import { FormRow, SaveBar, SummaryField } from '@/components/ui/form-row';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { canEdit, memberIdOf, useGroup } from '@/group/context';
-import { eventsOf, questionsOf, signupsOf } from '@/group/format';
+import { eventsOf, phonesLine, questionsOf, signupsOf } from '@/group/format';
 import { quietLink } from '@/group/styles';
+import { fromDateTimeInput, localDateTimeInput } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 
 /**
@@ -58,8 +49,29 @@ function Head({ title, back }: { title: string; back: string }) {
   );
 }
 
-function NotYours() {
-  return <Navigate to="/group" replace />;
+const NotYours = () => <Navigate to="/group" replace />;
+
+function DeleteDocument({
+  what,
+  onDelete,
+  pending,
+}: {
+  what: string;
+  onDelete(): void;
+  pending: boolean;
+}) {
+  return (
+    <ConfirmButton
+      label="Delete"
+      className="text-muted"
+      title={`Delete ${what}?`}
+      confirmLabel="Yes, delete"
+      pending={pending}
+      onConfirm={onDelete}
+    >
+      Its versions stay in the database; it stops showing to the group.
+    </ConfirmButton>
+  );
 }
 
 // ---------- questions ----------
@@ -71,95 +83,58 @@ const questionsForm = z.object({
 });
 
 export function QuestionsEdit() {
-  const { viewer } = useGroup();
+  const { viewer, api } = useGroup();
   const { id } = useParams();
   const navigate = useNavigate();
-  const existing = useGroupDocument(id ?? '');
-  const create = useCreateGroupDocument();
-  const version = useCreateGroupVersion(id ?? '');
-  const remove = useDeleteGroupDocument();
-  const current = id && existing.data ? questionsOf([existing.data]) : [];
+  const editor = useDocumentEditor('questions', id, api);
+  const current = editor.existing.data ? questionsOf([editor.existing.data])[0] : undefined;
   const form = useForm({
     resolver: zodResolver(questionsForm),
-    values:
-      id && current[0]
-        ? { weekOf: current[0].frontmatter.weekOf, body: current[0].item.version.body, summary: '' }
-        : { weekOf: '', body: '', summary: '' },
+    values: current
+      ? { weekOf: current.frontmatter.weekOf, body: current.item.version.body, summary: '' }
+      : { weekOf: '', body: '', summary: '' },
   });
   if (!canEdit(viewer)) return <NotYours />;
-  if (id && existing.isPending) return <p className="text-sm text-muted">Loading…</p>;
-  if (id && existing.isError) return <Alert tone="danger">{existing.error.message}</Alert>;
-  const error = create.error ?? version.error ?? remove.error;
+  if (editor.existing.isError) return <QueryError queries={[editor.existing]} />;
+  if (id && editor.existing.isPending) return <Loading />;
 
   const onSubmit = form.handleSubmit(async ({ weekOf, body, summary }) => {
-    const frontmatter = questionsFrontmatterSchema.parse({ weekOf });
-    if (id) await version.mutateAsync({ frontmatter, body, summary });
-    else await create.mutateAsync({ type: 'questions', frontmatter, body, summary, tags: [] });
+    await editor.save({ frontmatter: questionsFrontmatterSchema.parse({ weekOf }), body, summary });
     navigate('/group/questions');
   });
 
   return (
     <article className="mx-auto grid max-w-[42rem] gap-8" aria-label="Questions form">
       <Head title={id ? 'Edit the questions' : 'This week’s questions'} back="/group/questions" />
-      {error && <Alert tone="danger">{error.message}</Alert>}
+      {editor.error && <Alert tone="danger">{editor.error.message}</Alert>}
       <Form {...form}>
         <form onSubmit={onSubmit} className="grid gap-5" noValidate>
-          <FormField
+          <FormRow
             control={form.control}
             name="weekOf"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Thursday</FormLabel>
-                <FormControl>
-                  <Input type="date" {...field} />
-                </FormControl>
-                <FormDescription>The Thursday these questions are for.</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
+            label="Thursday"
+            hint="The Thursday these questions are for."
+          >
+            {(field) => <Input type="date" {...field} />}
+          </FormRow>
+          <FormRow
             control={form.control}
             name="body"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Questions</FormLabel>
-                <FormControl>
-                  <Textarea rows={12} className="font-serif text-[17px]" {...field} />
-                </FormControl>
-                <FormDescription>Markdown: a short lead, then a numbered list.</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          {id && (
-            <FormField
-              control={form.control}
-              name="summary"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>What changed</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
-          <div className="flex items-center justify-between gap-3">
-            <Button type="submit" variant="accent" disabled={form.formState.isSubmitting}>
-              Save
-            </Button>
+            label="Questions"
+            hint="Markdown: a short lead, then a numbered list."
+          >
+            {(field) => <Textarea rows={12} className="font-serif text-[17px]" {...field} />}
+          </FormRow>
+          {id && <SummaryField control={form.control} name="summary" />}
+          <SaveBar pending={form.formState.isSubmitting}>
             {id && (
-              <DeleteButton
-                id={id}
+              <DeleteDocument
                 what="these questions"
-                onDone={() => navigate('/group/questions')}
-                remove={remove}
+                pending={editor.pending}
+                onDelete={() => void editor.remove().then(() => navigate('/group/questions'))}
               />
             )}
-          </div>
+          </SaveBar>
         </form>
       </Form>
     </article>
@@ -184,84 +159,51 @@ const signupForm = z.object({
   summary: z.string().trim().max(500),
 });
 
-/** `datetime-local` wants local wall time; the API wants an instant. */
-function toLocalInput(iso?: string): string {
-  if (!iso) return '';
-  const at = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}T${pad(at.getHours())}:${pad(at.getMinutes())}`;
-}
-
-function fromLocalInput(value: string): string | undefined {
-  return value ? new Date(value).toISOString() : undefined;
-}
+const defaultSlots = [
+  { label: 'Main', capacity: 1 },
+  { label: 'Salad', capacity: 1 },
+  { label: 'Bread', capacity: 1 },
+  { label: 'Dessert', capacity: 2 },
+  { label: 'Drinks', capacity: 2 },
+];
 
 export function SignupEdit() {
-  const { viewer } = useGroup();
+  const { viewer, api } = useGroup();
   const { id } = useParams();
   const navigate = useNavigate();
-  const existing = useGroupDocument(id ?? '');
-  const create = useCreateGroupDocument();
-  const version = useCreateGroupVersion(id ?? '');
-  const remove = useDeleteGroupDocument();
-  const current = id && existing.data ? signupsOf([existing.data])[0] : undefined;
+  const editor = useDocumentEditor('signup', id, api);
+  const current = editor.existing.data ? signupsOf([editor.existing.data])[0] : undefined;
   const form = useForm({
     resolver: zodResolver(signupForm),
     values: current
       ? {
           title: current.frontmatter.title,
           date: current.frontmatter.date,
-          closesAt: toLocalInput(current.frontmatter.closesAt),
+          closesAt: localDateTimeInput(current.frontmatter.closesAt),
           slots: current.frontmatter.slots,
           body: current.item.version.body,
           summary: '',
         }
-      : {
-          title: '',
-          date: '',
-          closesAt: '',
-          slots: [
-            { label: 'Main', capacity: 1 },
-            { label: 'Salad', capacity: 1 },
-            { label: 'Bread', capacity: 1 },
-            { label: 'Dessert', capacity: 2 },
-            { label: 'Drinks', capacity: 2 },
-          ],
-          body: '',
-          summary: '',
-        },
+      : { title: '', date: '', closesAt: '', slots: defaultSlots, body: '', summary: '' },
   });
   const slots = useFieldArray({ control: form.control, name: 'slots' });
   if (!canEdit(viewer)) return <NotYours />;
-  if (id && existing.isPending) return <p className="text-sm text-muted">Loading…</p>;
-  if (id && existing.isError) return <Alert tone="danger">{existing.error.message}</Alert>;
-  const error = create.error ?? version.error ?? remove.error;
+  if (editor.existing.isError) return <QueryError queries={[editor.existing]} />;
+  if (id && editor.existing.isPending) return <Loading />;
 
   const onSubmit = form.handleSubmit(async ({ title, date, closesAt, slots, body, summary }) => {
     const parsed = signupFrontmatterSchema.safeParse({
       title,
       date,
       slots,
-      closesAt: fromLocalInput(closesAt),
+      closesAt: fromDateTimeInput(closesAt),
     });
     if (!parsed.success) {
       form.setError('slots', { message: parsed.error.issues[0]?.message ?? 'Check the slots.' });
       return;
     }
-    const frontmatter: SignupFrontmatter = parsed.data;
-    if (id) await version.mutateAsync({ frontmatter, body, summary });
-    else {
-      const created = await create.mutateAsync({
-        type: 'signup',
-        frontmatter,
-        body,
-        summary,
-        tags: [],
-      });
-      navigate(`/group/signups/${created.document.id}`);
-      return;
-    }
-    navigate(`/group/signups/${id}`);
+    const saved = await editor.save({ frontmatter: parsed.data, body, summary });
+    navigate(`/group/signups/${saved}`);
   });
 
   return (
@@ -276,93 +218,56 @@ export function SignupEdit() {
           rather than rename one.
         </p>
       )}
-      {error && <Alert tone="danger">{error.message}</Alert>}
+      {editor.error && <Alert tone="danger">{editor.error.message}</Alert>}
       <Form {...form}>
         <form onSubmit={onSubmit} className="grid gap-5" noValidate>
-          <FormField
-            control={form.control}
-            name="title"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Title</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <FormRow control={form.control} name="title" label="Title">
+            {(field) => <Input {...field} />}
+          </FormRow>
           <div className="grid gap-5 sm:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Thursday</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
+            <FormRow control={form.control} name="date" label="Thursday">
+              {(field) => <Input type="date" {...field} />}
+            </FormRow>
+            <FormRow
               control={form.control}
               name="closesAt"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Closes</FormLabel>
-                  <FormControl>
-                    <Input type="datetime-local" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    After this, members can neither take nor release.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              label="Closes"
+              hint="After this, members can neither take nor release."
+            >
+              {(field) => <Input type="datetime-local" {...field} />}
+            </FormRow>
           </div>
           <fieldset className="grid gap-3">
             <legend className="text-sm font-medium text-text-strong">Slots</legend>
             {slots.fields.map((slot, index) => (
               <div key={slot.id} className="flex items-end gap-2">
-                <FormField
+                <FormRow
                   control={form.control}
                   name={`slots.${index}.label`}
-                  render={({ field }) => (
-                    <FormItem className="grow">
-                      <FormLabel className="sr-only">Slot {index + 1} label</FormLabel>
-                      <FormControl>
-                        <Input aria-label={`Slot ${index + 1} label`} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
+                  label={`Slot ${index + 1} label`}
+                  className="grow [&>label]:sr-only"
+                >
+                  {(field) => <Input {...field} />}
+                </FormRow>
+                <FormRow
                   control={form.control}
                   name={`slots.${index}.capacity`}
-                  render={({ field }) => (
-                    <FormItem className="w-24">
-                      <FormLabel className="sr-only">Slot {index + 1} capacity</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={50}
-                          aria-label={`Slot ${index + 1} capacity`}
-                          name={field.name}
-                          ref={field.ref}
-                          onBlur={field.onBlur}
-                          value={Number.isFinite(field.value) ? field.value : ''}
-                          onChange={(event) => field.onChange(event.target.valueAsNumber)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                  label={`Slot ${index + 1} capacity`}
+                  className="w-24 [&>label]:sr-only"
+                >
+                  {(field) => (
+                    <Input
+                      type="number"
+                      min={1}
+                      max={50}
+                      name={field.name}
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      value={Number.isFinite(field.value) ? field.value : ''}
+                      onChange={(event) => field.onChange(event.target.valueAsNumber)}
+                    />
                   )}
-                />
+                </FormRow>
                 <Button
                   type="button"
                   variant="ghost"
@@ -387,47 +292,19 @@ export function SignupEdit() {
               Add a slot
             </Button>
           </fieldset>
-          <FormField
-            control={form.control}
-            name="body"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Notes</FormLabel>
-                <FormControl>
-                  <Textarea rows={3} {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          {id && (
-            <FormField
-              control={form.control}
-              name="summary"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>What changed</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
-          <div className="flex items-center justify-between gap-3">
-            <Button type="submit" variant="accent" disabled={form.formState.isSubmitting}>
-              Save
-            </Button>
+          <FormRow control={form.control} name="body" label="Notes">
+            {(field) => <Textarea rows={3} {...field} />}
+          </FormRow>
+          {id && <SummaryField control={form.control} name="summary" />}
+          <SaveBar pending={form.formState.isSubmitting}>
             {id && (
-              <DeleteButton
-                id={id}
+              <DeleteDocument
                 what="this sign-up"
-                onDone={() => navigate('/group/signups')}
-                remove={remove}
+                pending={editor.pending}
+                onDelete={() => void editor.remove().then(() => navigate('/group/signups'))}
               />
             )}
-          </div>
+          </SaveBar>
         </form>
       </Form>
     </article>
@@ -447,14 +324,11 @@ const eventForm = z.object({
 });
 
 export function EventEdit() {
-  const { viewer } = useGroup();
+  const { viewer, api } = useGroup();
   const { id } = useParams();
   const navigate = useNavigate();
-  const existing = useGroupDocument(id ?? '');
-  const create = useCreateGroupDocument();
-  const version = useCreateGroupVersion(id ?? '');
-  const remove = useDeleteGroupDocument();
-  const current = id && existing.data ? eventsOf([existing.data])[0] : undefined;
+  const editor = useDocumentEditor('event', id, api);
+  const current = editor.existing.data ? eventsOf([editor.existing.data])[0] : undefined;
   const form = useForm({
     resolver: zodResolver(eventForm),
     values: current
@@ -478,186 +352,70 @@ export function EventEdit() {
         },
   });
   if (!canEdit(viewer)) return <NotYours />;
-  if (id && existing.isPending) return <p className="text-sm text-muted">Loading…</p>;
-  if (id && existing.isError) return <Alert tone="danger">{existing.error.message}</Alert>;
-  const error = create.error ?? version.error ?? remove.error;
+  if (editor.existing.isError) return <QueryError queries={[editor.existing]} />;
+  if (id && editor.existing.isPending) return <Loading />;
 
   const onSubmit = form.handleSubmit(async ({ title, date, time, place, notes, body, summary }) => {
-    const frontmatter: EventFrontmatter = eventFrontmatterSchema.parse({
+    const frontmatter = eventFrontmatterSchema.parse({
       title,
       date,
       time: time || undefined,
       place: place || undefined,
       notes: notes || undefined,
     });
-    if (id) await version.mutateAsync({ frontmatter, body, summary });
-    else await create.mutateAsync({ type: 'event', frontmatter, body, summary, tags: [] });
+    await editor.save({ frontmatter, body, summary });
     navigate('/group/calendar');
   });
 
   return (
     <article className="mx-auto grid max-w-[42rem] gap-8" aria-label="Meeting form">
       <Head title={id ? 'Edit the meeting' : 'Add a meeting'} back="/group/calendar" />
-      {error && <Alert tone="danger">{error.message}</Alert>}
+      {editor.error && <Alert tone="danger">{editor.error.message}</Alert>}
       <Form {...form}>
         <form onSubmit={onSubmit} className="grid gap-5" noValidate>
-          <FormField
-            control={form.control}
-            name="title"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Title</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <FormRow control={form.control} name="title" label="Title">
+            {(field) => <Input {...field} />}
+          </FormRow>
           <div className="grid gap-5 sm:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
+            <FormRow control={form.control} name="date" label="Date">
+              {(field) => <Input type="date" {...field} />}
+            </FormRow>
+            <FormRow
               control={form.control}
               name="time"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Time</FormLabel>
-                  <FormControl>
-                    <Input type="time" {...field} />
-                  </FormControl>
-                  <FormDescription>Leave it out for an all-day note.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              label="Time"
+              hint="Leave it out for an all-day note."
+            >
+              {(field) => <Input type="time" {...field} />}
+            </FormRow>
           </div>
-          <FormField
-            control={form.control}
-            name="place"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Place</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
+          <FormRow control={form.control} name="place" label="Place">
+            {(field) => <Input {...field} />}
+          </FormRow>
+          <FormRow
             control={form.control}
             name="notes"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Notes</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormDescription>One line: "Kids welcome. Park on Hanover."</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="body"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>More</FormLabel>
-                <FormControl>
-                  <Textarea rows={3} {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          {id && (
-            <FormField
-              control={form.control}
-              name="summary"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>What changed</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
-          <div className="flex items-center justify-between gap-3">
-            <Button type="submit" variant="accent" disabled={form.formState.isSubmitting}>
-              Save
-            </Button>
+            label="Notes"
+            hint='One line: "Kids welcome. Park on Hanover."'
+          >
+            {(field) => <Input {...field} />}
+          </FormRow>
+          <FormRow control={form.control} name="body" label="More">
+            {(field) => <Textarea rows={3} {...field} />}
+          </FormRow>
+          {id && <SummaryField control={form.control} name="summary" />}
+          <SaveBar pending={form.formState.isSubmitting}>
             {id && (
-              <DeleteButton
-                id={id}
+              <DeleteDocument
                 what="this meeting"
-                onDone={() => navigate('/group/calendar')}
-                remove={remove}
+                pending={editor.pending}
+                onDelete={() => void editor.remove().then(() => navigate('/group/calendar'))}
               />
             )}
-          </div>
+          </SaveBar>
         </form>
       </Form>
     </article>
-  );
-}
-
-function DeleteButton({
-  id,
-  what,
-  onDone,
-  remove,
-}: {
-  id: string;
-  what: string;
-  onDone(): void;
-  remove: ReturnType<typeof useDeleteGroupDocument>;
-}) {
-  const [confirming, setConfirming] = useState(false);
-  if (!confirming) {
-    return (
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="text-muted"
-        onClick={() => setConfirming(true)}
-      >
-        Delete
-      </Button>
-    );
-  }
-  return (
-    <span className="flex items-center gap-2 text-[13px] text-muted">
-      Delete {what}?
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        disabled={remove.isPending}
-        onClick={() => remove.mutate(id, { onSuccess: onDone })}
-      >
-        Yes, delete
-      </Button>
-      <Button type="button" variant="ghost" size="sm" onClick={() => setConfirming(false)}>
-        No
-      </Button>
-    </span>
   );
 }
 
@@ -696,8 +454,8 @@ export function MemberEdit() {
       : { displayName: '', phone: '', address: '', notes: '' },
   });
   if (!(own || editor)) return <NotYours />;
-  if (members.isPending) return <p className="text-sm text-muted">Loading…</p>;
-  if (members.isError) return <Alert tone="danger">{members.error.message}</Alert>;
+  if (members.isError) return <QueryError queries={[members]} />;
+  if (members.isPending) return <Loading />;
   if (!creating && !member) return <Alert tone="danger">No such member.</Alert>;
   const error = update.error ?? add.error ?? promote.error ?? clear.error;
 
@@ -727,71 +485,34 @@ export function MemberEdit() {
       {error && <Alert tone="danger">{error.message}</Alert>}
       <Form {...form}>
         <form onSubmit={onSubmit} className="grid gap-5" noValidate>
-          <FormField
+          <FormRow
             control={form.control}
             name="displayName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Name</FormLabel>
-                <FormControl>
-                  <Input autoComplete="name" {...field} />
-                </FormControl>
-                <FormDescription>As the group knows you; a last name is welcome.</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="phone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Phone</FormLabel>
-                <FormControl>
-                  <Input type="tel" autoComplete="tel" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
+            label="Name"
+            hint="As the group knows you; a last name is welcome."
+          >
+            {(field) => <Input autoComplete="name" {...field} />}
+          </FormRow>
+          <FormRow control={form.control} name="phone" label="Phone">
+            {(field) => <Input type="tel" autoComplete="tel" {...field} />}
+          </FormRow>
+          <FormRow
             control={form.control}
             name="address"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Address</FormLabel>
-                <FormControl>
-                  <Input autoComplete="street-address" {...field} />
-                </FormControl>
-                <FormDescription>A street address, or just the neighborhood.</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
+            label="Address"
+            hint="A street address, or just the neighborhood."
+          >
+            {(field) => <Input autoComplete="street-address" {...field} />}
+          </FormRow>
+          <FormRow
             control={form.control}
             name="notes"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Notes</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormDescription>
-                  "Text, don’t call, after eight." Allergies. Whatever helps.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button
-            type="submit"
-            variant="accent"
-            className="justify-self-start"
-            disabled={form.formState.isSubmitting}
+            label="Notes"
+            hint='"Text, don’t call, after eight." Allergies. Whatever helps.'
           >
-            Save
-          </Button>
+            {(field) => <Input {...field} />}
+          </FormRow>
+          <SaveBar pending={form.formState.isSubmitting} />
         </form>
       </Form>
 
@@ -805,18 +526,17 @@ export function MemberEdit() {
           </h2>
           {member.deviceCount > 0 && (
             <div className="flex items-center justify-between gap-4 text-[15px]">
-              <span>
-                {member.deviceCount === 1 ? 'One phone holds' : `${member.deviceCount} phones hold`}{' '}
-                this name.
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={clear.isPending}
-                onClick={() => clear.mutate(member.id)}
+              <span>This name is on {phonesLine(member.deviceCount)}.</span>
+              <ConfirmButton
+                label="Clear phones"
+                title={`Sign ${member.displayName}’s phones out?`}
+                confirmLabel="Yes, clear them"
+                pending={clear.isPending}
+                onConfirm={() => clear.mutate(member.id)}
               >
-                Clear phones
-              </Button>
+                Every phone holding the name is refused from its next request; they open the link
+                again and tap the name.
+              </ConfirmButton>
             </div>
           )}
           {viewer.kind === 'admin' && member.role === 'group' && (
