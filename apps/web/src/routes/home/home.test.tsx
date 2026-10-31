@@ -120,7 +120,35 @@ describe('morningParts', () => {
       { label: '9:00', text: 'Pancakes' },
       { label: 'Thu', text: 'Small group at ours' },
     ]);
-    expect(morningParts(null)).toEqual({ day: null, office: null, items: [], shape: [] });
+    expect(parts.officeTitle).toBe('Morning Prayer');
+    expect(morningParts(null)).toEqual({
+      day: null,
+      office: null,
+      officeTitle: 'Morning Prayer',
+      items: [],
+      shape: [],
+    });
+  });
+
+  it('lets the office eyebrow follow the content, which changes through the day', () => {
+    const at = (heading: string, body: string) =>
+      morningParts({ title: 'x', date: '2026-10-31', sections: [{ heading, body }] });
+    expect(at('Office · Evening Prayer', 'O gladsome light.')).toMatchObject({
+      officeTitle: 'Evening Prayer',
+      office: 'O gladsome light.',
+    });
+    expect(at('Compline', 'The Lord grant us a quiet night.')).toMatchObject({
+      officeTitle: 'Compline',
+    });
+    expect(at('Office', '#### Evening Prayer\n\nO gladsome light.')).toMatchObject({
+      officeTitle: 'Evening Prayer',
+      office: 'O gladsome light.',
+    });
+    expect(at('Office', '#### Venite · Psalm 95\n\nO come.')).toMatchObject({
+      officeTitle: 'Morning Prayer',
+      office: '#### Venite · Psalm 95\n\nO come.',
+    });
+    expect(at('Office: midday prayer', 'Blessed be God.').officeTitle).toBe('Midday Prayer');
   });
 
   it('splits markdown into blocks and reads a row’s label', () => {

@@ -42,8 +42,10 @@ const registry: Record<DocumentType, TypeDefinition> = {
       '(YYYY-MM-DD, local to Tyler in America/New_York); `sections` is a list of ' +
       '{ heading, body } with the body in markdown. The morning page reads four of them by ' +
       'heading: "The day" (one line: liturgical day and season, sunrise, weather), "Office" ' +
-      '(Morning Prayer inline with the readings, markdown with #### labels such as ' +
-      '"Venite · Psalm 95"), "The brief" (at most three short paragraphs), and "Today" (a ' +
+      '(the office inline with the readings, markdown with #### labels such as ' +
+      '"Venite · Psalm 95"; name the office in the heading, "Office · Evening Prayer", when ' +
+      'a later version of the day carries a later office), "The brief" (at most three short ' +
+      'paragraphs), and "Today" (a ' +
       'list, one line each, "9:00 · Pancakes with the kids"; a day name or "Dinner" may stand ' +
       'where the time goes). Other sections fold into the brief. Title defaults to "Brief for ' +
       '<date>". The version body is an optional lead paragraph. One brief per day: ' +

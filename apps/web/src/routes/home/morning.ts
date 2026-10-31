@@ -16,8 +16,11 @@ export interface ShapeRow {
 export interface MorningParts {
   /** One line: liturgical day and season, sunrise, weather. */
   day: string | null;
-  /** Morning Prayer, readings included, as markdown. */
+  /** The office, readings included, as markdown. */
   office: string | null;
+  /** The eyebrow over it: which office this is. Follows the content, since the brief is
+   * updated through the day; Morning Prayer when nothing says otherwise. */
+  officeTitle: string;
   /** At most three, each a paragraph of markdown. */
   items: string[];
   shape: ShapeRow[];
@@ -27,17 +30,49 @@ export const BRIEF_ITEM_CAP = 3;
 
 const slots: Record<'day' | 'office' | 'brief' | 'shape', string[]> = {
   day: ['day', 'the day'],
-  office: ['office', 'the office', 'morning prayer', 'the daily office', 'daily office'],
+  office: ['office', 'the office', 'the daily office', 'daily office'],
   brief: ['brief', 'the brief'],
   shape: ['today', "the day's shape", "day's shape", 'shape', 'the shape of the day'],
 };
 
-function slotOf(heading: string): keyof typeof slots | null {
+export const DEFAULT_OFFICE = 'Morning Prayer';
+
+/** The offices of the 2019 BCP and their family forms, as a writer would name them. */
+const OFFICE_NAME =
+  /^(?:(?:morning|midday|noonday|evening|night) prayer|compline|family prayer(?: (?:in the morning|at midday|in the early evening|at the close of day))?|(?:morning|midday|early evening|close of day) devotions?)$/i;
+
+function titleCase(name: string): string {
+  return name
+    .replace(/\b[a-z]/g, (c) => c.toUpperCase())
+    .replace(/\bOf\b/g, 'of')
+    .replace(/\bIn\b/g, 'in')
+    .replace(/\bAt\b/g, 'at')
+    .replace(/\bThe\b/g, 'the');
+}
+
+/**
+ * Which slot a section heading names. "Office", "Office · Evening Prayer" and a bare
+ * office name all land in the office slot; the office's name, when given, becomes the
+ * eyebrow.
+ */
+function slotOf(heading: string): { slot: keyof typeof slots; office?: string } | null {
   const key = heading.trim().toLowerCase().replace(/[’']/g, "'");
   for (const [slot, names] of Object.entries(slots) as Array<[keyof typeof slots, string[]]>) {
-    if (names.includes(key)) return slot;
+    if (names.includes(key)) return { slot };
   }
+  const qualified = /^(?:the )?(?:daily )?office\s*[·:–-]\s*(.+)$/i.exec(heading.trim());
+  if (qualified) return { slot: 'office', office: titleCase(qualified[1]!.trim()) };
+  if (OFFICE_NAME.test(key)) return { slot: 'office', office: titleCase(key) };
   return null;
+}
+
+/** An office body that opens with its own name as a heading: lift the name out. */
+function liftOfficeName(body: string): { office: string | null; body: string } {
+  const match = /^\s*#{1,6}\s*([^\n]+?)\s*\n+/.exec(body);
+  if (match && OFFICE_NAME.test(match[1]!.trim())) {
+    return { office: titleCase(match[1]!.trim().toLowerCase()), body: body.slice(match[0].length) };
+  }
+  return { office: null, body };
 }
 
 /** Markdown blocks: paragraphs split on blank lines, list items split one per line. */
@@ -66,16 +101,27 @@ export function parseShapeRow(line: string): ShapeRow {
 }
 
 export function morningParts(brief: BriefFrontmatter | null): MorningParts {
-  const parts: MorningParts = { day: null, office: null, items: [], shape: [] };
+  const parts: MorningParts = {
+    day: null,
+    office: null,
+    officeTitle: DEFAULT_OFFICE,
+    items: [],
+    shape: [],
+  };
   if (!brief) return parts;
   const overflow: string[] = [];
   for (const section of brief.sections) {
-    const slot = slotOf(section.heading);
+    const found = slotOf(section.heading);
+    const slot = found?.slot ?? null;
     const body = section.body.trim();
     if (!body) continue;
     if (slot === 'day') parts.day ??= blocksOf(body)[0] ?? null;
-    else if (slot === 'office') parts.office ??= body;
-    else if (slot === 'shape') parts.shape.push(...blocksOf(body).map(parseShapeRow));
+    else if (slot === 'office') {
+      if (parts.office !== null) continue;
+      const lifted = liftOfficeName(body);
+      parts.office = lifted.body.trim() || body;
+      parts.officeTitle = found?.office ?? lifted.office ?? DEFAULT_OFFICE;
+    } else if (slot === 'shape') parts.shape.push(...blocksOf(body).map(parseShapeRow));
     else if (slot === 'brief') parts.items.push(...blocksOf(body));
     else overflow.push(...blocksOf(body).slice(0, 1));
   }

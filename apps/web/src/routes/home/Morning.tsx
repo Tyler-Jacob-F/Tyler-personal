@@ -38,7 +38,7 @@ export function Morning({ date, brief, version, note }: MorningProps) {
           className="rounded-lg border border-border bg-surface px-5 py-6 sm:px-7 sm:py-7"
         >
           <h2 id="office-heading" className="eyebrow text-accent">
-            Morning Prayer
+            {parts.officeTitle}
           </h2>
           <Markdown variant="reading" className="mt-5">
             {parts.office}
