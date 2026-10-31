@@ -6,7 +6,6 @@
 import {
   type AnyPgColumn,
   bigint,
-  customType,
   index,
   integer,
   jsonb,
@@ -18,13 +17,6 @@ import {
 } from 'drizzle-orm/pg-core';
 
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true, mode: 'string' });
-
-/** Maintained by the `document_search_refresh` trigger (migration 0006); never written here. */
-const tsvector = customType<{ data: string }>({
-  dataType() {
-    return 'tsvector';
-  },
-});
 
 export const member = pgTable('member', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -60,7 +52,10 @@ export const document = pgTable(
     currentVersionId: uuid('current_version_id').references((): AnyPgColumn => version.id),
     tags: jsonb('tags').$type<string[]>().notNull().default([]),
     deletedAt: timestamptz('deleted_at'),
-    search: tsvector('search'),
+    // `search tsvector` (migration 0006) is deliberately not declared. Drizzle selects every
+    // declared column when a query asks for `document`, and the RDS Data API cannot return
+    // a tsvector value: every read of a document failed in production the hour it shipped
+    // (Oct 30). The trigger maintains the column; searchDocuments names it in raw SQL.
   },
   (t) => [uniqueIndex('document_type_slug_key').on(t.type, t.slug)],
 );
