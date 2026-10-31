@@ -20,6 +20,7 @@ export const recipeFacets = {
   ],
   main: [
     'chicken',
+    'turkey',
     'beef',
     'pork',
     'lamb',

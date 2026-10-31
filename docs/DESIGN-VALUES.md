@@ -120,8 +120,9 @@ version; flags are tags too. Fields live in frontmatter and are versioned.
 
 - **Course:** breakfast, main, side, soup & stew, bread, dessert, drink, sauce & condiment,
   snack
-- **Main ingredient:** chicken, beef, pork, lamb, fish & shellfish, eggs, beans & legumes,
-  pasta & grains, vegetables, fruit
+- **Main ingredient:** chicken, turkey, beef, pork, lamb, fish & shellfish, eggs,
+  beans & legumes, pasta & grains, vegetables, fruit (turkey added Oct 31, 2026, after the
+  tagging pass: Tyler cooks it often and the pass had nowhere to put it)
 - **Effort:** weeknight, weekend, project, make-ahead
 - **Technique:** skillet, roast, braise, grill, slow cooker, pressure cooker, bake,
   no-cook, ferment & preserve

@@ -235,6 +235,10 @@ order rather than nine PRs; the commit messages carry what each PR description w
   line whole when it starts with no amount. The render shows History as the page's one
   accented element and no Edit; Edit is an outline button beside the back link, Delete a
   quiet ghost at the foot.
+- **`main:turkey`** was added on Oct 31, after Duet's tagging pass had nowhere to put the
+  turkey recipes, at Tyler's word: the one "ask Tyler" item of this directive, asked and
+  answered. The contract's list changed first. Additive, so nothing already tagged moved;
+  the turkey recipes get a second, smaller `set_tags` pass.
 - **The Data API cannot return a tsvector** (found in production Oct 30, within the hour
   of the Face merge: every read of a document was a 500 while inserts, which return only
   an id, succeeded, so Duet saw its write land and its read fail). Drizzle selects every

@@ -14,14 +14,14 @@ Only Tyler runs this, from Cowork or a Claude Code session on his account, with 
 Facets are controlled vocabularies, one value per facet per recipe, written
 `namespace:value` (`docs/DESIGN-VALUES.md` "Recipe taxonomy"):
 
-| facet       | values                                                                                          |
-| ----------- | ----------------------------------------------------------------------------------------------- |
-| `course`    | breakfast, main, side, soup-stew, bread, dessert, drink, sauce-condiment, snack                 |
-| `main`      | chicken, beef, pork, lamb, fish-shellfish, eggs, beans-legumes, pasta-grains, vegetables, fruit |
-| `effort`    | weeknight, weekend, project, make-ahead                                                         |
-| `technique` | skillet, roast, braise, grill, slow-cooker, pressure-cooker, bake, no-cook, ferment-preserve    |
-| `season`    | spring, summer, fall, winter, any                                                               |
-| `occasion`  | family-table, small-group, holiday, guests, cookoff                                             |
+| facet       | values                                                                                                  |
+| ----------- | ------------------------------------------------------------------------------------------------------- |
+| `course`    | breakfast, main, side, soup-stew, bread, dessert, drink, sauce-condiment, snack                         |
+| `main`      | chicken, turkey, beef, pork, lamb, fish-shellfish, eggs, beans-legumes, pasta-grains, vegetables, fruit |
+| `effort`    | weeknight, weekend, project, make-ahead                                                                 |
+| `technique` | skillet, roast, braise, grill, slow-cooker, pressure-cooker, bake, no-cook, ferment-preserve            |
+| `season`    | spring, summer, fall, winter, any                                                                       |
+| `occasion`  | family-table, small-group, holiday, guests, cookoff                                                     |
 
 Flags are `flag:kid-approved`, `flag:vegetarian`, `flag:gluten-free`. `proven` is not a
 tag: it is frontmatter, true of a version, and this pass leaves it alone. A tag with no
@@ -29,6 +29,8 @@ namespace is a free tag and is kept as it is. The server refuses anything else a
 what it would accept; the `set_tags` tool description carries the same vocabulary.
 
 Adding or renaming a value after this pass has run is a question for Tyler: tags are data.
+(`main:turkey` was added the day after the first pass, at his word; a second, smaller
+session can retag the turkey recipes with the same prompt, telling it which ones.)
 
 ## The session
 
