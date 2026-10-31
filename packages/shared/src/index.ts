@@ -7,5 +7,8 @@ export * from './scopes.js';
 export * from './slug.js';
 export * from './types/base.js';
 export * from './types/brief.js';
+export * from './types/event.js';
+export * from './types/questions.js';
 export * from './types/recipe-taxonomy.js';
 export * from './types/recipe.js';
+export * from './types/signup.js';

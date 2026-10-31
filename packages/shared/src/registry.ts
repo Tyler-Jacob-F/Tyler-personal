@@ -2,8 +2,11 @@ import type { z } from 'zod';
 import { type DocumentType, documentTypeSchema, type Ring, tagsSchema } from './document.js';
 import type { FrontmatterBase } from './types/base.js';
 import { briefFrontmatterSchema } from './types/brief.js';
+import { eventFrontmatterSchema } from './types/event.js';
+import { questionsFrontmatterSchema } from './types/questions.js';
 import { recipeTagsSchema, recipeTaxonomyGuide } from './types/recipe-taxonomy.js';
 import { recipeFrontmatterSchema } from './types/recipe.js';
+import { signupFrontmatterSchema } from './types/signup.js';
 
 export interface TypeDefinition {
   /** Frontmatter schema; the single source of truth for client, server and MCP. */
@@ -51,6 +54,44 @@ const registry: Record<DocumentType, TypeDefinition> = {
       '<date>". The version body is an optional lead paragraph. One brief per day: ' +
       'list_documents with type brief first, and add a version to today’s if it already ' +
       'exists.',
+  },
+  questions: {
+    schema: questionsFrontmatterSchema,
+    tags: tagsSchema,
+    defaultRing: 'group',
+    guide:
+      'questions: the small group’s weekly discussion questions. frontmatter is { weekOf, ' +
+      'title? }: weekOf is the Thursday the questions are for (YYYY-MM-DD); title defaults to ' +
+      '"Questions for <weekOf>". The body is the questions in markdown, a numbered list, with ' +
+      'the passage or theme as a short lead. One document per week: list_documents with type ' +
+      'questions first and add a version to that week’s if it already exists. Documents of ' +
+      'this type start in the group ring, where every member reads them.',
+  },
+  signup: {
+    schema: signupFrontmatterSchema,
+    tags: tagsSchema,
+    defaultRing: 'group',
+    guide:
+      'signup: a sheet of slots for a Thursday ("Dinner", "Dessert", "Drinks"). frontmatter ' +
+      'is { title, date, slots, closesAt? }: date is the Thursday (YYYY-MM-DD); slots is a ' +
+      'list of { label, capacity } with distinct labels and a whole-number capacity of 1 or ' +
+      'more; closesAt is an ISO timestamp after which members can no longer take or release ' +
+      'a slot. Claims are rows keyed by the slot’s label, not versions: renaming a slot ' +
+      'orphans its claims, so add a slot rather than rename one. The body is optional notes ' +
+      'in markdown. Written by the admin and co-leads only; no agent scope writes a signup.',
+  },
+  event: {
+    schema: eventFrontmatterSchema,
+    tags: tagsSchema,
+    defaultRing: 'group',
+    guide:
+      'event: one meeting on the group’s calendar. frontmatter is { title, date, time?, ' +
+      'place?, notes? }: date YYYY-MM-DD; time 24-hour HH:MM in Richmond’s own clock, left ' +
+      'out for an all-day note; place one line ("Tyler’s"); notes one line ("bring a chair"). ' +
+      'The body is optional longer markdown. The calendar is the list of upcoming events, ' +
+      'so one document per meeting; list_documents with type event before creating one so a ' +
+      'moved meeting gets a version, not a twin. Documents of this type start in the group ' +
+      'ring.',
   },
 };
 

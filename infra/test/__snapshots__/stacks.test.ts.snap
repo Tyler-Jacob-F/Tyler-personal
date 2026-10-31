@@ -992,6 +992,152 @@ exports[`ApiStack > matches the snapshot 1`] = `
       },
       "Type": "AWS::IAM::Policy",
     },
+    "ClaimsFunction15684814": {
+      "DependsOn": [
+        "ClaimsFunctionServiceRoleDefaultPolicy8E42E883",
+        "ClaimsFunctionServiceRoleA6EF3C0B",
+      ],
+      "Properties": {
+        "Architectures": [
+          "arm64",
+        ],
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
+          "S3Key": "<asset-hash>.zip",
+        },
+        "Description": "The Keep: /api/documents/{id}/claims, slots taken on a sign-up",
+        "Environment": {
+          "Variables": {
+            "DB_CLUSTER_ARN": {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:",
+                  {
+                    "Ref": "AWS::Partition",
+                  },
+                  ":rds:us-east-1:697941679713:cluster:",
+                  {
+                    "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                  },
+                ],
+              ],
+            },
+            "DB_NAME": "thekeep",
+            "DB_SECRET_ARN": {
+              "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+            },
+            "NODE_OPTIONS": "--enable-source-maps",
+          },
+        },
+        "Handler": "index.handler",
+        "LoggingConfig": {
+          "LogGroup": {
+            "Ref": "ClaimsFunctionLogsA0DA6FE1",
+          },
+        },
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "ClaimsFunctionServiceRoleA6EF3C0B",
+            "Arn",
+          ],
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 30,
+      },
+      "Type": "AWS::Lambda::Function",
+    },
+    "ClaimsFunctionLogsA0DA6FE1": {
+      "DeletionPolicy": "Delete",
+      "Properties": {
+        "RetentionInDays": 30,
+      },
+      "Type": "AWS::Logs::LogGroup",
+      "UpdateReplacePolicy": "Delete",
+    },
+    "ClaimsFunctionServiceRoleA6EF3C0B": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+              ],
+            ],
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "ClaimsFunctionServiceRoleDefaultPolicy8E42E883": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "rds-data:BatchExecuteStatement",
+                "rds-data:BeginTransaction",
+                "rds-data:CommitTransaction",
+                "rds-data:ExecuteStatement",
+                "rds-data:RollbackTransaction",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":rds:us-east-1:697941679713:cluster:",
+                    {
+                      "Fn::ImportValue": "Data:ExportsOutputRefClusterEB0386A796A0E3FE",
+                    },
+                  ],
+                ],
+              },
+            },
+            {
+              "Action": [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret",
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "ClaimsFunctionServiceRoleDefaultPolicy8E42E883",
+        "Roles": [
+          {
+            "Ref": "ClaimsFunctionServiceRoleA6EF3C0B",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
     "Dashboard9E4231ED": {
       "Properties": {
         "DashboardBody": {
@@ -1047,6 +1193,10 @@ exports[`ApiStack > matches the snapshot 1`] = `
                 "Ref": "MembersFunction15E7FAB7",
               },
               "",{"label":"MembersFunction","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
+              {
+                "Ref": "ClaimsFunction15684814",
+              },
+              "",{"label":"ClaimsFunction","stat":"Sum"}],["AWS/Lambda","Errors","FunctionName","",
               {
                 "Fn::ImportValue": "Auth:ExportsOutputRefDefineAuthChallengeE7E3BC7B5357E3C6",
               },
@@ -1107,6 +1257,10 @@ exports[`ApiStack > matches the snapshot 1`] = `
                 "Ref": "MembersFunction15E7FAB7",
               },
               "",{"label":"MembersFunction","stat":"p95"}],["AWS/Lambda","Duration","FunctionName","",
+              {
+                "Ref": "ClaimsFunction15684814",
+              },
+              "",{"label":"ClaimsFunction","stat":"p95"}],["AWS/Lambda","Duration","FunctionName","",
               {
                 "Fn::ImportValue": "Auth:ExportsOutputRefDefineAuthChallengeE7E3BC7B5357E3C6",
               },
@@ -1899,6 +2053,144 @@ exports[`ApiStack > matches the snapshot 1`] = `
         },
       },
       "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiDELETEapidocumentsidclaimsclaimIdClaimsFunctionapidocumentsidclaimsclaimId3CCE4076": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "ClaimsFunction15684814",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiDELETEapidocumentsidclaimsclaimIdClaimsFunctionapidocumentsidclaimsclaimIdPermission998CF98D": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ClaimsFunction15684814",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/documents/{id}/claims/{claimId}",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiDELETEapidocumentsidclaimsclaimIdD7F9F369": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "HttpApiCognitoAuthorizer935FA0F6",
+        },
+        "RouteKey": "DELETE /api/documents/{id}/claims/{claimId}",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiDELETEapidocumentsidclaimsclaimIdClaimsFunctionapidocumentsidclaimsclaimId3CCE4076",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiDELETEapigroupdocumentsidclaimsclaimIdClaimsFunctionapigroupdocumentsidclaimsclaimId5D9CC01B": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "ClaimsFunction15684814",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiDELETEapigroupdocumentsidclaimsclaimIdClaimsFunctionapigroupdocumentsidclaimsclaimIdPermissionF26F322D": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ClaimsFunction15684814",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/group/documents/{id}/claims/{claimId}",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiDELETEapigroupdocumentsidclaimsclaimIdE1768E85": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiGroupAuthorizer89E41CD3",
+        },
+        "RouteKey": "DELETE /api/group/documents/{id}/claims/{claimId}",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiDELETEapigroupdocumentsidclaimsclaimIdClaimsFunctionapigroupdocumentsidclaimsclaimId5D9CC01B",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
     },
     "HttpApiDELETEapimembersiddevices337B327A": {
       "Properties": {
@@ -2746,6 +3038,75 @@ exports[`ApiStack > matches the snapshot 1`] = `
       },
       "Type": "AWS::Lambda::Permission",
     },
+    "HttpApiGETapidocumentsidclaimsA796EB0C": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "HttpApiCognitoAuthorizer935FA0F6",
+        },
+        "RouteKey": "GET /api/documents/{id}/claims",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapidocumentsidclaimsClaimsFunctionapidocumentsidclaims98D94DAB",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapidocumentsidclaimsClaimsFunctionapidocumentsidclaims98D94DAB": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "ClaimsFunction15684814",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapidocumentsidclaimsClaimsFunctionapidocumentsidclaimsPermissionEB66A385": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ClaimsFunction15684814",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/documents/{id}/claims",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
     "HttpApiGETapidocumentsiddiff0CAB2E4A": {
       "Properties": {
         "ApiId": {
@@ -3154,6 +3515,75 @@ exports[`ApiStack > matches the snapshot 1`] = `
                 "Ref": "HttpApiF5A9A8A7",
               },
               "/*/*/api/group/documents/{id}",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiGETapigroupdocumentsidclaimsB1AE7B48": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiGroupAuthorizer89E41CD3",
+        },
+        "RouteKey": "GET /api/group/documents/{id}/claims",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapigroupdocumentsidclaimsClaimsFunctionapigroupdocumentsidclaimsFC6ACC2C",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiGETapigroupdocumentsidclaimsClaimsFunctionapigroupdocumentsidclaimsFC6ACC2C": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "ClaimsFunction15684814",
+            "Arn",
+          ],
+        },
+        "PayloadFormatVersion": "2.0",
+      },
+      "Type": "AWS::ApiGatewayV2::Integration",
+    },
+    "HttpApiGETapigroupdocumentsidclaimsClaimsFunctionapigroupdocumentsidclaimsPermission356BCB8A": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ClaimsFunction15684814",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/group/documents/{id}/claims",
             ],
           ],
         },
@@ -4118,6 +4548,59 @@ exports[`ApiStack > matches the snapshot 1`] = `
       },
       "Type": "AWS::Lambda::Permission",
     },
+    "HttpApiPOSTapidocumentsidclaims322A0AA4": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "HttpApiCognitoAuthorizer935FA0F6",
+        },
+        "RouteKey": "POST /api/documents/{id}/claims",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapidocumentsidclaimsClaimsFunctionapidocumentsidclaims98D94DAB",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiPOSTapidocumentsidclaimsClaimsFunctionapidocumentsidclaimsPermission0577192B": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ClaimsFunction15684814",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/documents/{id}/claims",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
     "HttpApiPOSTapidocumentsidversions8E1AABCC": {
       "Properties": {
         "ApiId": {
@@ -4165,6 +4648,59 @@ exports[`ApiStack > matches the snapshot 1`] = `
                 "Ref": "HttpApiF5A9A8A7",
               },
               "/*/*/api/documents/{id}/versions",
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::Lambda::Permission",
+    },
+    "HttpApiPOSTapigroupdocumentsidclaims3EDE3F9F": {
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApiF5A9A8A7",
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiGroupAuthorizer89E41CD3",
+        },
+        "RouteKey": "POST /api/group/documents/{id}/claims",
+        "Target": {
+          "Fn::Join": [
+            "",
+            [
+              "integrations/",
+              {
+                "Ref": "HttpApiGETapigroupdocumentsidclaimsClaimsFunctionapigroupdocumentsidclaimsFC6ACC2C",
+              },
+            ],
+          ],
+        },
+      },
+      "Type": "AWS::ApiGatewayV2::Route",
+    },
+    "HttpApiPOSTapigroupdocumentsidclaimsClaimsFunctionapigroupdocumentsidclaimsPermission1F061B13": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ClaimsFunction15684814",
+            "Arn",
+          ],
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition",
+              },
+              ":execute-api:us-east-1:697941679713:",
+              {
+                "Ref": "HttpApiF5A9A8A7",
+              },
+              "/*/*/api/group/documents/{id}/claims",
             ],
           ],
         },

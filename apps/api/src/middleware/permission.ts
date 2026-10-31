@@ -7,8 +7,6 @@ import {
 } from '@the-keep/shared';
 
 type MemberCaller = Extract<Caller, { kind: 'member' }>;
-/** The one type with slots to claim; a string until the Types deliverable adds it to the registry. */
-const CLAIMABLE_TYPE: string = 'signup';
 import { forbidden } from '../lib/http.js';
 
 export type Action = 'read' | 'write' | 'delete';
@@ -70,7 +68,7 @@ export function authorize(caller: Caller, action: Action, target: Target): void 
  * on a signup in the `group` ring.
  */
 export function canClaim(caller: Caller, target: Target, memberId: string): boolean {
-  if (target.type !== CLAIMABLE_TYPE || target.ring !== 'group') return false;
+  if (target.type !== 'signup' || target.ring !== 'group') return false;
   if (caller.kind === 'member') return caller.role === 'admin' || caller.role === 'colead';
   if (caller.kind === 'group') return caller.memberId === memberId;
   return false;

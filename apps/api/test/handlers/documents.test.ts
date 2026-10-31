@@ -307,3 +307,57 @@ describe('the group door', () => {
     ).toBe(401);
   });
 });
+
+describe('the group’s own types', () => {
+  it('start in the group ring, where a co-lead writes them and nothing of Tyler’s', async () => {
+    const { createMember, makeColead } = await import('../../src/db/group.js');
+    const kelly = await createMember(t.db, { displayName: 'Kelly' });
+    await makeColead(t.db, kelly.id, 'kelly@example.com');
+    const asKelly = (body: unknown) =>
+      api(fakeEvent({ method: 'POST', route: '/api/documents', body, email: 'kelly@example.com' }));
+
+    const event = await asKelly({
+      type: 'event',
+      frontmatter: { title: 'Small group', date: '2026-11-05', time: '18:30', place: 'Tyler’s' },
+      body: '',
+    });
+    expect(event.statusCode).toBe(201);
+    expect(bodyOf<DocumentWithVersion>(event).document).toMatchObject({
+      type: 'event',
+      ring: 'group',
+    });
+    expect(bodyOf<DocumentWithVersion>(event).document.owner).toBe(kelly.id);
+    expect(bodyOf<DocumentWithVersion>(event).version.author).toMatchObject({ name: 'Kelly' });
+
+    const questions = await asKelly({
+      type: 'questions',
+      frontmatter: { weekOf: '2026-11-05' },
+      body: '1. Why?',
+    });
+    expect(bodyOf<DocumentWithVersion>(questions).version.frontmatter).toEqual({
+      weekOf: '2026-11-05',
+      title: 'Questions for 2026-11-05',
+    });
+
+    expect((await asKelly(create)).statusCode).toBe(403);
+    const mine = await createChili();
+    const del = await api(
+      fakeEvent({
+        method: 'DELETE',
+        route: '/api/documents/{id}',
+        params: { id: mine.document.id },
+        email: 'kelly@example.com',
+      }),
+    );
+    expect(del.statusCode).toBe(403);
+    const theirs = await api(
+      fakeEvent({
+        method: 'DELETE',
+        route: '/api/documents/{id}',
+        params: { id: bodyOf<DocumentWithVersion>(event).document.id },
+        email: 'kelly@example.com',
+      }),
+    );
+    expect(theirs.statusCode).toBe(204);
+  });
+});

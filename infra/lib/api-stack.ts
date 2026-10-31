@@ -47,7 +47,8 @@ export class ApiStack extends cdk.Stack {
     | 'groupAuthorizer'
     | 'groupEnter'
     | 'adminGroupLink'
-    | 'members',
+    | 'members'
+    | 'claims',
     lambda.IFunction
   >;
   /** The agents' door, for the MCP route to share. */
@@ -136,6 +137,12 @@ export class ApiStack extends cdk.Stack {
     });
     // Making a co-lead creates their Cognito user; nothing else in the API touches the pool.
     userPool.grant(members, 'cognito-idp:AdminCreateUser');
+    const claims = apiFunction(this, 'ClaimsFunction', {
+      entry: 'handlers/claims.ts',
+      description: `${config.siteName}: /api/documents/{id}/claims, slots taken on a sign-up`,
+      environment,
+      timeout,
+    });
     this.functions = {
       me,
       documents,
@@ -148,6 +155,7 @@ export class ApiStack extends cdk.Stack {
       groupEnter,
       adminGroupLink,
       members,
+      claims,
     };
     for (const fn of Object.values(this.functions)) cluster.grantDataApiAccess(fn);
 
@@ -202,10 +210,12 @@ export class ApiStack extends cdk.Stack {
       ['/api/members/{id}', [GET, PATCH], members],
       ['/api/members/{id}/devices', [DELETE], members],
       ['/api/members/{id}/colead', [POST], members],
+      ['/api/documents/{id}/claims', [GET, POST], claims],
+      ['/api/documents/{id}/claims/{claimId}', [DELETE], claims],
     ];
-    // The group's door: what a device may reach. Reads of documents, and its own caller;
-    // the members and claims routes join in the next two deliverables. Nothing under
-    // /api/admin and no version write.
+    // The group's door: what a device may reach. Reads of documents, its own caller, the
+    // directory and its own row, a name to claim, and the slots on a sign-up. Nothing
+    // under /api/admin and no document write.
     const groupRoutes: Array<[string, apigwv2.HttpMethod[], lambda.IFunction]> = [
       ['/api/group/me', [GET], me],
       ['/api/group/documents', [GET], documents],
@@ -214,6 +224,8 @@ export class ApiStack extends cdk.Stack {
       ['/api/group/members', [GET], members],
       ['/api/group/members/{id}', [GET, PATCH], members],
       ['/api/group/members/{id}/claim', [POST], members],
+      ['/api/group/documents/{id}/claims', [GET, POST], claims],
+      ['/api/group/documents/{id}/claims/{claimId}', [DELETE], claims],
     ];
     // The agents' door mirrors the document routes, minus delete: no agent deletes.
     const agentRoutes: Array<[string, apigwv2.HttpMethod[], lambda.IFunction]> = [

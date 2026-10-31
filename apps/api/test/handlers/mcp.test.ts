@@ -16,7 +16,7 @@ import { fakeAuthorizerEvent, fakeEvent } from '../helpers/event.js';
 const MCP_URL = 'https://tylerfuqua.com/mcp';
 
 let t: TestDb;
-let secrets: Record<'importer' | 'reader' | 'revoked', string>;
+let secrets: Record<'importer' | 'reader' | 'revoked' | 'claude', string>;
 
 /**
  * The whole door, in process: the Lambda authorizer decides, then the MCP Lambda answers,
@@ -81,7 +81,13 @@ beforeEach(async () => {
     importer: generateAgentSecret(),
     reader: generateAgentSecret(),
     revoked: generateAgentSecret(),
+    claude: generateAgentSecret(),
   };
+  await createAgentToken(t.db, {
+    name: 'claude',
+    scopes: ['read:documents', 'write:events', 'write:questions'],
+    secretHash: hashAgentSecret(secrets.claude),
+  });
   await createAgentToken(t.db, {
     name: 'importer',
     scopes: ['read:documents', 'write:recipes'],
@@ -100,6 +106,91 @@ beforeEach(async () => {
   await revokeAgentToken(t.db, old.id);
 });
 afterEach(() => t.close());
+
+describe('the group’s types through MCP', () => {
+  it('lets the claude token post an event and this week’s questions, in the group ring, and never a signup', async () => {
+    const client = await connect(secrets.claude);
+    const { tools } = await client.listTools();
+    const create = tools.find((tool) => tool.name === 'create_document')!;
+    expect(create.description).toContain('questions:');
+    expect(create.description).toContain('event:');
+    expect(create.description).toContain('group');
+
+    const event = (await client.callTool({
+      name: 'create_document',
+      arguments: {
+        type: 'event',
+        frontmatter: { title: 'Small group', date: '2026-11-05', time: '18:30', place: 'Tyler’s' },
+        body: '',
+        summary: 'next Thursday',
+      },
+    })) as CallToolResult;
+    expect(event.isError).toBeFalsy();
+    expect(event.structuredContent).toMatchObject({
+      type: 'event',
+      ring: 'group',
+      author: 'claude',
+    });
+
+    const questions = (await client.callTool({
+      name: 'create_document',
+      arguments: {
+        type: 'questions',
+        frontmatter: { weekOf: '2026-11-05' },
+        body: '1. Where did you see grace this week?',
+      },
+    })) as CallToolResult;
+    expect(questions.isError).toBeFalsy();
+    expect(questions.structuredContent).toMatchObject({
+      type: 'questions',
+      ring: 'group',
+      title: 'Questions for 2026-11-05',
+    });
+    const { id } = questions.structuredContent as { id: string };
+    const revised = (await client.callTool({
+      name: 'create_version',
+      arguments: {
+        id,
+        frontmatter: { weekOf: '2026-11-05' },
+        body: '1. Where did you see grace?\n2. Where did you miss it?',
+        summary: 'a second question',
+      },
+    })) as CallToolResult;
+    expect(revised.structuredContent).toMatchObject({ version: 2 });
+
+    const signup = (await client.callTool({
+      name: 'create_document',
+      arguments: {
+        type: 'signup',
+        frontmatter: {
+          title: 'Thursday',
+          date: '2026-11-05',
+          slots: [{ label: 'Dinner', capacity: 1 }],
+        },
+        body: '',
+      },
+    })) as CallToolResult;
+    expect(signup.isError).toBe(true);
+    expect(textOf(signup)).toMatch(/forbidden: cannot write a signup in the group ring/);
+
+    const listed = (await client.callTool({
+      name: 'list_documents',
+      arguments: { type: 'event' },
+    })) as CallToolResult;
+    expect(listed.structuredContent).toMatchObject({ count: 1 });
+    expect((await getDocument(t.db, id))?.document.ring).toBe('group');
+
+    // A recipe writer has no business with the group's types.
+    const importer = await connect(secrets.importer);
+    const refused = (await importer.callTool({
+      name: 'create_document',
+      arguments: { type: 'event', frontmatter: { title: 'x', date: '2026-11-05' }, body: '' },
+    })) as CallToolResult;
+    expect(refused.isError).toBe(true);
+    await importer.close();
+    await client.close();
+  });
+});
 
 describe('MCP server', () => {
   it('initializes and lists six tools, each with a description and an input schema', async () => {

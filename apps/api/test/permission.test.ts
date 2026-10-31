@@ -111,9 +111,41 @@ describe('permission: documents, every caller × action × ring', () => {
     expect(can(briefs, 'write', { ring: 'me', type: 'brief' })).toBe(true);
   });
 
-  it('knows which types are the group’s own: none of Tyler’s', () => {
-    for (const type of documentTypes) expect(isGroupType(type)).toBe(false);
+  it('knows which types are the group’s own', () => {
+    const own = documentTypes.filter(isGroupType);
+    expect(own).toEqual(['questions', 'signup', 'event']);
   });
+
+  /**
+   * The rows that differ for the group's own types: a co-lead writes and deletes them in
+   * the `group` ring and nowhere else; an agent needs the type's scope, and a signup has
+   * none; everyone else reads as for a recipe.
+   */
+  const groupTypes = ['questions', 'signup', 'event'] as const;
+  const eventsWriter: Caller = { kind: 'agent', id: ids.token, scopes: ['write:events'] };
+  const questionsWriter: Caller = { kind: 'agent', id: ids.token, scopes: ['write:questions'] };
+
+  for (const type of groupTypes) {
+    it(`holds every caller to the table for a ${type}`, () => {
+      for (const [name, caller] of Object.entries(callers) as Array<[CallerName, Caller]>) {
+        for (const action of actions) {
+          for (const ring of rings) {
+            let expected = recipeTable[name][action][ring];
+            if (name === 'colead' && action !== 'read') expected = ring === 'group';
+            if (name === 'recipeWriter' && action === 'write') expected = false;
+            expect(can(caller, action, { ring, type }), `${name} ${action} ${type} ${ring}`).toBe(
+              expected,
+            );
+          }
+        }
+      }
+      for (const ring of rings) {
+        expect(can(eventsWriter, 'write', { ring, type })).toBe(type === 'event');
+        expect(can(questionsWriter, 'write', { ring, type })).toBe(type === 'questions');
+        expect(can(eventsWriter, 'delete', { ring, type })).toBe(false);
+      }
+    });
+  }
 
   it('authorize throws a 403 HttpError naming the type and ring', () => {
     expect(() => authorize(callers.groupRole, 'write', { ring: 'me', type: 'recipe' })).toThrow(
@@ -130,8 +162,7 @@ describe('permission: documents, every caller × action × ring', () => {
 });
 
 describe('permission: claiming a slot', () => {
-  // `signup` joins the registry in the Types deliverable; the rule is on the type's name.
-  const signup = { ring: 'group', type: 'signup' } as unknown as Parameters<typeof canClaim>[1];
+  const signup = { ring: 'group', type: 'signup' } as const;
 
   const table: Record<CallerName, { own: boolean; other: boolean }> = {
     admin: { own: true, other: true },
@@ -156,7 +187,9 @@ describe('permission: claiming a slot', () => {
   }
 
   it('is only ever true on a signup in the group ring', () => {
-    expect(canClaim(callers.admin, { ring: 'me', type: 'signup' } as never, ids.kelly)).toBe(false);
+    expect(canClaim(callers.admin, { ring: 'me', type: 'signup' }, ids.kelly)).toBe(false);
+    expect(canClaim(callers.admin, { ring: 'public', type: 'signup' }, ids.kelly)).toBe(false);
+    expect(canClaim(callers.admin, { ring: 'group', type: 'event' }, ids.kelly)).toBe(false);
     expect(canClaim(callers.admin, { ring: 'group', type: 'recipe' }, ids.kelly)).toBe(false);
     expect(() => authorizeClaim(callers.guest, signup, ids.kelly)).toThrow(/cannot claim/);
     expect(() => authorizeClaim(callers.member, signup, ids.kelly)).not.toThrow();

@@ -42,6 +42,11 @@ import {
   updateMemberRequestSchema,
   makeColeadRequestSchema,
   memberRoles,
+  questionsFrontmatterSchema,
+  currentQuestions,
+  signupFrontmatterSchema,
+  signupOpen,
+  eventFrontmatterSchema,
 } from '../src/index.js';
 
 const ids = { id: '9b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e4b' };
@@ -408,13 +413,15 @@ describe('slugify', () => {
 });
 
 describe('agent scopes and tokens', () => {
-  it('knows exactly the five scopes the brief lists', () => {
+  it('knows exactly the brief’s five scopes plus the Group phase’s two', () => {
     expect([...agentScopes]).toEqual([
       'read:documents',
       'write:recipes',
       'write:briefs',
       'write:notes',
       'read:reading',
+      'write:events',
+      'write:questions',
     ]);
     expect(agentScopeSchema.safeParse('write:documents').success).toBe(false);
   });
@@ -506,5 +513,78 @@ describe('members, the link and devices', () => {
       true,
     );
     expect(memberRoles).toEqual(['admin', 'colead', 'group']);
+  });
+});
+
+describe('the group’s types', () => {
+  it('questions: weekOf is a date, the title defaults, and "this week" is the newest within six days ahead', () => {
+    const q = questionsFrontmatterSchema.parse({ weekOf: '2026-11-05' });
+    expect(q.title).toBe('Questions for 2026-11-05');
+    expect(questionsFrontmatterSchema.safeParse({ weekOf: 'Thursday' }).success).toBe(false);
+    const weeks = [{ weekOf: '2026-10-29' }, { weekOf: '2026-11-05' }, { weekOf: '2026-11-12' }];
+    expect(currentQuestions(weeks, '2026-10-31')?.weekOf).toBe('2026-11-05');
+    expect(currentQuestions(weeks, '2026-11-05')?.weekOf).toBe('2026-11-05');
+    expect(currentQuestions(weeks, '2026-11-06')?.weekOf).toBe('2026-11-12');
+    expect(currentQuestions(weeks.slice(0, 1), '2026-11-20')?.weekOf).toBe('2026-10-29');
+    expect(currentQuestions(weeks.slice(2), '2026-10-31')).toBeNull();
+    expect(currentQuestions([], '2026-10-31')).toBeNull();
+  });
+
+  it('signup: slots with distinct labels and a capacity, an optional close, and knows when it is open', () => {
+    const sheet = {
+      title: 'Thursday, Nov 5',
+      date: '2026-11-05',
+      slots: [
+        { label: 'Dinner', capacity: 1 },
+        { label: 'Dessert', capacity: 2 },
+      ],
+      closesAt: '2026-11-05T17:00:00.000Z',
+    };
+    expect(signupFrontmatterSchema.parse(sheet)).toEqual(sheet);
+    expect(
+      signupFrontmatterSchema.safeParse({
+        ...sheet,
+        slots: [...sheet.slots, { label: 'dinner', capacity: 1 }],
+      }).success,
+    ).toBe(false);
+    expect(signupFrontmatterSchema.safeParse({ ...sheet, slots: [] }).success).toBe(false);
+    expect(
+      signupFrontmatterSchema.safeParse({ ...sheet, slots: [{ label: 'Dinner', capacity: 0 }] })
+        .success,
+    ).toBe(false);
+    expect(signupOpen(sheet, new Date('2026-11-05T16:59:00Z'))).toBe(true);
+    expect(signupOpen(sheet, new Date('2026-11-05T17:00:00Z'))).toBe(false);
+    expect(signupOpen({ ...sheet, closesAt: undefined }, new Date('2030-01-01T00:00:00Z'))).toBe(
+      true,
+    );
+  });
+
+  it('event: a date, an HH:MM time, a place and a line of notes', () => {
+    const meeting = { title: 'Small group', date: '2026-11-05', time: '18:30', place: 'Tyler’s' };
+    expect(eventFrontmatterSchema.parse(meeting)).toEqual(meeting);
+    expect(eventFrontmatterSchema.safeParse({ ...meeting, time: '6:30 pm' }).success).toBe(false);
+    expect(eventFrontmatterSchema.safeParse({ ...meeting, time: '24:00' }).success).toBe(false);
+    expect(
+      eventFrontmatterSchema.parse({ title: 'Retreat', date: '2026-11-07' }).time,
+    ).toBeUndefined();
+  });
+
+  it('registers the three in the group ring with guides, and scopes events and questions but never signups', () => {
+    expect(documentTypes).toEqual(['recipe', 'brief', 'questions', 'signup', 'event']);
+    for (const type of ['questions', 'signup', 'event'] as const) {
+      expect(schemaFor(type).defaultRing).toBe('group');
+      expect(schemaFor(type).guide).toMatch(new RegExp(`^${type}:`));
+    }
+    expect(typeGuides()).toContain('renaming a slot');
+    expect(agentScopes).toContain('write:events');
+    expect(agentScopes).toContain('write:questions');
+    expect(agentScopes).not.toContain('write:signups');
+    expect(writeScopeFor('event')).toBe('write:events');
+    expect(writeScopeFor('questions')).toBe('write:questions');
+    expect(writeScopeFor('signup')).toBeNull();
+    expect(parseFrontmatter('event', { title: 'x', date: '2026-11-05' })).toEqual({
+      title: 'x',
+      date: '2026-11-05',
+    });
   });
 });
