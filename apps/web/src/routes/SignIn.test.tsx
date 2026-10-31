@@ -12,7 +12,7 @@ describe('SignIn', () => {
     await user.type(screen.getByLabelText('Email'), 'tyler.fuqua@icloud.com');
     await user.click(screen.getByRole('button', { name: 'Send code' }));
 
-    expect(requestCode).toHaveBeenCalledWith('tyler.fuqua@icloud.com');
+    expect(requestCode).toHaveBeenCalledWith('tyler.fuqua@icloud.com', 'web');
     expect(await screen.findByLabelText('Code')).toBeInTheDocument();
     expect(screen.getByText(/Sent to tyler.fuqua@icloud.com/)).toBeInTheDocument();
 
@@ -35,7 +35,7 @@ describe('SignIn', () => {
     });
     expect(screen.getByLabelText('Email')).toHaveValue('tyler.fuqua@icloud.com');
     await user.click(screen.getByRole('button', { name: 'Send code' }));
-    expect(requestCode).toHaveBeenCalledWith('tyler.fuqua@icloud.com');
+    expect(requestCode).toHaveBeenCalledWith('tyler.fuqua@icloud.com', 'web');
   });
 
   it('waits quietly while a remembered session is restored', () => {

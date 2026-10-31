@@ -7,4 +7,6 @@ export const scopeDescriptions: Record<AgentScope, string> = {
   'write:briefs': 'Post the morning brief',
   'write:notes': 'Create notes and note versions',
   'read:reading': 'Read the reading feed',
+  'write:events': 'Keep the group’s calendar: create events and move them',
+  'write:questions': 'Post the group’s weekly questions',
 };

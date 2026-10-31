@@ -146,10 +146,12 @@ Each is one PR, in this order.
 - [x] **Types.** `questions`, `signup`, `event` schemas and guides; the claim API
       (`POST`/`DELETE /api/group/documents/{id}/claims`); scopes; MCP tests that the
       `claude` token can post an event and this week's questions. Tests.
-- [ ] **Group home render.** Tyler, in a Design session: `group-home-<mode>-<width>.png`
+- [x] **Group home render.** Tyler, in a Design session: `group-home-<mode>-<width>.png`
       in `docs/design/`, plus the sign-up and the claim screen if the session has room.
-      Not a PR; the next two wait on it.
-- [ ] **Group shell and screens.** `/g/:token`, `/group` (the home), `/group/questions`,
+      Not a PR; the next two wait on it. **Delivered Oct 31** as `group.pdf`: the home in
+      both modes and widths, the guest state, the claim screen with its confirmation, and
+      both link landings; `docs/design/README.md` names the PNGs.
+- [x] **Group shell and screens.** `/g/:token`, `/group` (the home), `/group/questions`,
       `/group/signups/:id`, `/group/calendar`, `/group/members`, "Who are you?"; the nav's
       Group place for Tyler and co-leads; the admin controls. MSW tests for each caller.
 - [ ] **Runbooks.** `docs/runbooks/bring-the-group-in.md` and
@@ -240,7 +242,55 @@ role: member | guest }`. `groupIdentity` re-reads the member row on each request
   members, claims joined), 49 routes, a second REQUEST authorizer, the members function
   alone granted `cognito-idp:AdminCreateUser`. `cdk synth` bundles.
 
-## What the group-home render needs to show (for the Design session)
+## The shell, decided during implementation (Oct 31, 2026)
+
+Built against the render the same day. Each is reversible.
+
+- **Chrome by viewer.** `/group/*` sits behind `GroupGate`: a signed-in admin sees the
+  slice inside The Keep's own shell, from the Group place, with the group's five places
+  as a second row (as Admin has one); a signed-in co-lead sees the group's shell of the
+  render (wordmark, Home, Questions, Sign-up, Calendar, Members, a sign-out) and nothing of
+  The Keep's, and any other route sends a co-lead to `/group`; a device sees the group's
+  shell as the member it claimed or as a guest. No session and no device: "You need the
+  group link", with "Co-lead? Sign in" under it.
+- **Two doors in one client.** The group's hooks take their prefix from the viewer:
+  `/api/...` with the Cognito token for the admin and co-leads, `/api/group/...` with the
+  device token for everyone else. The device token lives in `localStorage` under
+  `keep.device`; a bodiless 401 or 403 from the group door forgets it and shows "This
+  phone is no longer in the group".
+- **The landing** (`/g/<token>`) lets a phone that already holds a live device token
+  straight through, so re-opening the thread's link does not make a second device and
+  lose a claim; an unknown or rotated link gets the dead-link screen. The token is checked
+  for shape before any request.
+- **Co-lead sign-in** is the same screen at `/group/sign-in` through the `group` app
+  client; the gateway, the remembered session (`keep.client`) and the refresh all carry
+  which client issued the token. The deploy workflow passes `GroupClientId` to the web
+  build.
+- **The home** is the render: this week's questions; the coming Thursday's sheet (the
+  earliest dated today or later), each slot with its names in claim order, the viewer's
+  own in strong, "Full" by count, a hairline and the one action; the next meeting as
+  When / Where / Notes with "Add to calendar" (an iCalendar file built in the page); the
+  directory in the render's field order. The accent is on the viewer's "Release" alone;
+  for a guest, on "Tap your name first". Dates read as the render words them
+  ("Thursday, 5 November", "closes Thursday 5:00", "6:30").
+- **Controls** for the admin and co-leads are quiet links beside each eyebrow ("Edit",
+  "New sign-up", "Add a member") leading to forms; a co-lead puts a name on a slot from a
+  small select ("Add a name…") and takes any name off with an ×; every save is a new
+  version. The link panel (mint, rotate, "drop every device too") sits at the top of
+  Members for the admin alone, with a "Phones" list under the directory for clearing a
+  lost phone; making a co-lead is on a member's edit page, admin only. No separate Admin
+  menu entry.
+- **Other pages** built from the home's idiom, having no render: Questions (this week's,
+  or one by id, with other weeks listed), Sign-up (the coming sheet or one by id, with
+  the others), Calendar (coming up, past folded under), Members, the claim screen, the
+  four forms. "Who are you?" shows unclaimed names first and the claimed ones under
+  "Already on another device" with a phone count; a device that already holds a name may
+  take another (a shared phone).
+- **Tests.** MSW tests per caller for the home, the members and claims, the link panel,
+  the landing, the claim screen and the co-lead sign-in; the morning page's accent test
+  repeated for the group home. The web suite is 116.
+
+## What the group-home render needed to show (written before the Design session)
 
 The shell waits on `group-home-<mode>-<width>.png`. From the API as built, the home has
 these to draw from, in the idiom of `docs/DESIGN-VALUES.md`:
@@ -271,18 +321,13 @@ co-leads see the same slice from the Group place with the controls added.
 
 What a fresh session should know that the files alone do not say.
 
-- **State of the world.** The first four deliverables are built and tested on the branch
-  `claude/youthful-bohr-idvmy2`; nothing is deployed until it merges. The suite is
-  shared 44, infra 28, web 101, api 183; `cdk synth` bundles. The web app is untouched
-  except that it typechecks against the wider caller and the five types: the nav's Group
-  place still leads to the "not yet" page.
-- **The shell and screens wait on the render.** When it lands, the shell deliverable
-  builds `/g/:token`, `/group`, `/group/questions`, `/group/signups/:id`,
-  `/group/calendar`, `/group/members` and "Who are you?" against the API above, plus the
-  Admin side (the link, members, claims) and the co-lead sign-in using the `group`
-  Cognito client. The deploy workflow then needs to pass `GroupClientId` to the web
-  build. The Stack page's copy (six tools, twenty-six routes, seven Lambdas) is stale
-  and should be updated in the same commit.
+- **State of the world.** Six deliverables are built and tested on the branch
+  `claude/youthful-bohr-idvmy2` (the render came the same day); nothing is deployed until
+  it merges. The suite is shared 44, infra 28, web 116, api 183; `cdk synth` bundles.
+  The runbooks and the gate remain.
+- **Only the home has a render.** Questions, Sign-up, Calendar, Members, the forms, the
+  link panel and the co-lead sign-in were built from the home's idiom; a render added to
+  `docs/design/` later wins on layout.
 - **Only Tyler does,** once it is live: mint the link from Admin (and rotate it, ever); enter the seventeen
   names (the sheet's slots too) through the admin screens or the runbook; make Kelly,
   Cam and Meg co-leads (which creates their Cognito users) and verify their addresses in

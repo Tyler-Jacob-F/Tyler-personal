@@ -61,6 +61,7 @@ jobs:
           echo "db_name=$(jq -r '.TheKeepData.DatabaseName' infra/outputs.json)" >> "$GITHUB_OUTPUT"
           echo "user_pool_id=$(jq -r '.TheKeepAuth.UserPoolId' infra/outputs.json)" >> "$GITHUB_OUTPUT"
           echo "user_pool_client_id=$(jq -r '.TheKeepAuth.UserPoolClientId' infra/outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "group_client_id=$(jq -r '.TheKeepAuth.GroupClientId' infra/outputs.json)" >> "$GITHUB_OUTPUT"
 
       # Pending SQL files in apps/api/migrations, through the Data API, recorded in
       # schema_migration. Wakes the cluster if it is paused.
@@ -77,6 +78,7 @@ jobs:
           VITE_AWS_REGION: ${{ env.AWS_REGION }}
           VITE_COGNITO_USER_POOL_ID: ${{ steps.outputs.outputs.user_pool_id }}
           VITE_COGNITO_CLIENT_ID: ${{ steps.outputs.outputs.user_pool_client_id }}
+          VITE_COGNITO_GROUP_CLIENT_ID: ${{ steps.outputs.outputs.group_client_id }}
         run: pnpm -C apps/web build
 
       # Double sync: hashed assets are immutable for a

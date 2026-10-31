@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Navigate, useLocation } from 'react-router';
 import { z } from 'zod';
-import { AuthError, type Challenge } from '@/auth/gateway';
+import { type AuthClient, AuthError, type Challenge } from '@/auth/gateway';
 import { useAuth } from '@/auth/useAuth';
 import { Alert } from '@/components/Alert';
 import { Button } from '@/components/ui/button';
@@ -25,8 +25,12 @@ function message(error: unknown): string {
   return error instanceof AuthError ? error.message : 'Something went wrong. Try again.';
 }
 
-/** Two steps: email, then the six-digit code that email delivers. */
-export function SignIn() {
+/**
+ * Two steps: email, then the six-digit code that email delivers. The co-leads' sign-in at
+ * `/group/sign-in` is the same screen through the `group` app client, whose session lasts
+ * a year, and lands on the group.
+ */
+export function SignIn({ client = 'web' }: { client?: AuthClient }) {
   const { state, rememberedEmail, requestCode, submitCode } = useAuth();
   const location = useLocation();
   const [challenge, setChallenge] = useState<Challenge | null>(null);
@@ -42,14 +46,15 @@ export function SignIn() {
     return <p className="p-6 text-sm text-muted">Signing you back in…</p>;
   }
   if (state.status === 'signedIn') {
-    const from = (location.state as { from?: string } | null)?.from ?? '/';
+    const from =
+      (location.state as { from?: string } | null)?.from ?? (client === 'group' ? '/group' : '/');
     return <Navigate to={from} replace />;
   }
 
   const onEmail = emailForm.handleSubmit(async ({ email }) => {
     setError(null);
     try {
-      setChallenge(await requestCode(email));
+      setChallenge(await requestCode(email, client));
     } catch (e) {
       setError(message(e));
     }
@@ -73,7 +78,12 @@ export function SignIn() {
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4 py-16">
       <p className="eyebrow">The Keep</p>
-      <h1 className="mt-2 page-title">Sign in</h1>
+      <h1 className="mt-2 page-title">{client === 'group' ? 'Co-lead sign in' : 'Sign in'}</h1>
+      {client === 'group' && (
+        <p className="mt-2 text-sm text-muted">
+          For Kelly, Cam and Meg. Everyone else opens the group link from the text thread.
+        </p>
+      )}
 
       {error && (
         <Alert tone="danger" className="mt-6">

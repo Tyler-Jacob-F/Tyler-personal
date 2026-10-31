@@ -142,7 +142,7 @@ export const NODES: Record<string, NodeInfo> = {
   apigw: {
     kicker: 'TheKeepApi',
     title: 'API Gateway HTTP API',
-    what: 'The front door for data. Twenty-six routes: sixteen under /api behind the JWT authorizer, nine under /api/agent behind the agent token authorizer (search and set-tags among them since Phase 3), and ANY /mcp for the MCP server, each mapped to one of the route Lambdas. It is reachable directly at its execute-api hostname, but browsers and agents only ever reach it through CloudFront.',
+    what: 'The front door for data. Forty-nine routes: twenty-seven under /api behind the JWT authorizer (members, claims and the group link joined in Phase 4), nine under /api/agent behind the agent token authorizer, twelve under /api/group behind the device authorizer (one of them, POST /api/group/enter, open to anyone holding the group link), and ANY /mcp for the MCP server, each mapped to one of the route Lambdas. It is reachable directly at its execute-api hostname, but browsers, phones and agents only ever reach it through CloudFront.',
     why: 'HTTP APIs are the cheap, simple flavor of API Gateway with a built-in JWT authorizer, which is why no Lambda has to validate a token itself.',
     cost: 'Free tier, then about a dollar per million requests.',
     where: 'API Gateway → APIs → TheKeepApi\ninfra/lib/api-stack.ts',
@@ -150,7 +150,7 @@ export const NODES: Record<string, NodeInfo> = {
   authorizer: {
     kicker: 'TheKeepApi',
     title: 'JWT authorizer',
-    what: "Runs before any Lambda. It fetches the user pool's public keys, verifies the token's signature, issuer, audience (the app client id) and expiry, and rejects with a 401 if any fail. The verified claims, your email among them, reach the Lambda as part of the event.",
+    what: "Runs before any Lambda. It fetches the user pool's public keys, verifies the token's signature, issuer, audience (either app client id: yours, with thirty days between sign-ins, or the co-leads', with a year) and expiry, and rejects with a 401 if any fail. The verified claims, your email among them, reach the Lambda as part of the event.",
     why: 'Authentication is outsourced to Cognito and enforced at the gateway. Handlers can trust the email claim without ever seeing a token.',
     cost: 'Free.',
     where: 'API Gateway → TheKeepApi → Authorize → CognitoAuthorizer',
@@ -158,11 +158,11 @@ export const NODES: Record<string, NodeInfo> = {
   lambdas: {
     kicker: 'TheKeepApi',
     title: 'The API Lambdas',
-    what: "Five route functions, one per resource: me, documents (list, search, create, read, tags, delete), versions, admin-tokens, admin-activity. Each is bundled by esbuild with the SDK included, runs Node 22 on arm64 with 512 MB and a 30-second timeout (long enough to wait for a paused cluster), and has its own IAM role granting exactly the Data API and secret permissions. Inside, two middlewares run first: identity looks the verified email up in the member table, or reads the agent the authorizer identified; permission checks the document's ring and type against the caller's role or scopes.",
+    what: "Eight route functions, one per resource: me, documents (list, search, create, read, tags, delete), versions, admin-tokens, admin-activity, admin-group-link, members (the directory, claiming a name, co-leads) and claims (slots on a sign-up). Each is bundled by esbuild with the SDK included, runs Node 22 on arm64 with 512 MB and a 30-second timeout (long enough to wait for a paused cluster), and has its own IAM role granting exactly the Data API and secret permissions. Inside, two middlewares run first: identity looks the verified email up in the member table, or reads the agent the authorizer identified; permission checks the document's ring and type against the caller's role or scopes.",
     why: "One Lambda per resource keeps cold starts few and deploys small. Identity and permission are separate on purpose, which is why Phase 2's agent door needed no second set of handlers: the same code answers /api/documents and /api/agent/documents.",
     cost: 'A million requests and 400,000 GB-seconds a month are free.',
     where:
-      'Lambda → MeFunction, DocumentsFunction, VersionsFunction, AdminTokensFunction, AdminActivityFunction\napps/api/src/handlers · apps/api/src/middleware · apps/api/src/services',
+      'Lambda → MeFunction, DocumentsFunction, VersionsFunction, AdminTokensFunction, AdminActivityFunction, AdminGroupLinkFunction, MembersFunction, ClaimsFunction\napps/api/src/handlers · apps/api/src/middleware · apps/api/src/services',
   },
   agents: {
     kicker: 'Outside AWS',
@@ -176,7 +176,7 @@ export const NODES: Record<string, NodeInfo> = {
     kicker: 'TheKeepApi',
     title: 'Agent token authorizer',
     what: "A Lambda API Gateway runs before any agent route. It takes the bearer, checks its shape, hashes it with SHA-256, looks the hash up in agent_token through the Data API, refuses a revoked or unknown token, records last_used_at, and returns the token's id, name and scopes as context for the handler. Nothing is cached: the token may arrive in Authorization or in X-Keep-Token, and a cache keyed on one header would serve the other's answer.",
-    why: 'Agent authentication is a hash lookup, not Cognito, so it is our code; but it runs at the gateway like the JWT authorizer does, so no handler ever sees a secret. With no cache, a revoke or a scope change takes effect on the very next request.',
+    why: 'Agent authentication is a hash lookup, not Cognito, so it is our code; but it runs at the gateway like the JWT authorizer does, so no handler ever sees a secret. With no cache, a revoke or a scope change takes effect on the very next request. The group door at /api/group/* has a twin of this function for device tokens (keepd_ then 43 characters, minted when a phone opens the group link and good for a year); it refuses a cleared or year-old device the same way.',
     cost: 'Free; one short invocation per agent request.',
     where: 'Lambda → AgentAuthorizerFunction\napps/api/src/auth/agent-authorizer.ts',
   },
