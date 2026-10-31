@@ -65,7 +65,9 @@ You write Tyler's morning brief for The Keep. Today is the date in America/New_Y
    - "The day": one line, "All Hallows' Eve · Season after Pentecost · Sunrise 7:36 ·
      52° and clear" (liturgical day and season from the lectionary you carry, sunrise and
      weather for Richmond).
-   - "Office": Morning Prayer inline with the day's readings, in markdown: the opening
+   - "Office": the office inline with the day's readings, in markdown. A run later in
+     the day names the office in the heading, "Office · Evening Prayer", and the page's
+     eyebrow follows; a bare "Office" reads as Morning Prayer. The opening
      sentence in italics with its reference, the versicle and response, then each part
      under a "#### Label" line ("#### Venite · Psalm 95", "#### First Lesson ·
      Ecclesiasticus 44:1–15", "#### The Collect"), the collect last. The page shows it

@@ -160,9 +160,12 @@ Each is one PR, in this order. Later ones depend on earlier ones.
       tests.
 - [x] **Stack, Tokens, Activity, sign-in.** Restyled with the primitives; the Stack page's
       agents lane copy updated for whatever this phase changed. Tests already exist.
-- [ ] **Gate check.** On a phone, in the morning. Record the date here. Before it: merge,
-      run `docs/runbooks/tag-recipes.md` so the import carries its facets, let Duet post a
-      brief with the four headings, then the Lighthouse run.
+- [x] **Gate check.** On a phone, in the morning. Record the date here. **Gate true:
+      Oct 31, 2026.** Called by Tyler from his phone that evening: the morning page from
+      the day's brief, which Duet posted under the four headings and which read well in
+      bed, and every recipe tagged by Duet's pass, turkey included. The hex-literal and
+      contrast tests guard the palette in CI. Lighthouse on the home page, run by Tyler
+      the same evening: accessibility 98, performance 99, best practices 100, SEO 90.
 
 ## Ask versus decide
 

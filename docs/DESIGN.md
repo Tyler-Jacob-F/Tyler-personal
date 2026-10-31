@@ -171,12 +171,12 @@ token (agents). Authorization answers "what may they see or do" and is entirely 
 a document's `ring` plus the caller's role. Keep the two apart in the codebase; one
 middleware resolves identity, a second resolves permission.
 
-| Ring     | Who                       | How they authenticate                                                                        | What they can do                                                                                      |
-| -------- | ------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `public` | Anyone                    | Nothing                                                                                      | Read documents whose ring is `public`; submit to surveys or sign-ups via a share token                |
-| `group`  | Members with role `group` | Cognito + Google; email must be on the `member` allowlist                                    | Read `group` and `public` documents; respond to surveys, claim sign-up slots, view the group calendar |
-| `me`     | Tyler, role `admin`       | Cognito + Google; exactly one allowlisted admin email                                        | Everything: create and version any document, promote or demote rings, manage members and agent tokens |
-| `agents` | Named agent tokens        | `Authorization: Bearer <token>`, hashed at rest, presented to the MCP server or API directly | Only the scopes on the token; never promotion to `public`, never member or token management           |
+| Ring     | Who                       | How they authenticate                                                                           | What they can do                                                                                      |
+| -------- | ------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `public` | Anyone                    | Nothing                                                                                         | Read documents whose ring is `public`; submit to surveys or sign-ups via a share token                |
+| `group`  | Members with role `group` | A group link opened on the device, then a claimed name (decided Oct 31, 2026); co-leads sign in | Read `group` and `public` documents; respond to surveys, claim sign-up slots, view the group calendar |
+| `me`     | Tyler, role `admin`       | Cognito + Google; exactly one allowlisted admin email                                           | Everything: create and version any document, promote or demote rings, manage members and agent tokens |
+| `agents` | Named agent tokens        | `Authorization: Bearer <token>`, hashed at rest, presented to the MCP server or API directly    | Only the scopes on the token; never promotion to `public`, never member or token management           |
 
 **Agent scopes** are verbs on types: `read:documents`, `write:recipes`, `write:briefs`,
 `write:notes`, `read:reading`. A token for Duet might carry `write:briefs read:documents`.
@@ -211,7 +211,7 @@ _Six phases, each live at the domain before the next begins._
 | Phase 1 · Spine       | Postgres, documents + versions, recipe type, diffs, admin login (Cognito, one allowlisted email)  | Save and diff two chili versions in production    |
 | Phase 2 · Agents      | Agent tokens with scopes, MCP server on Lambda, brief type, agent activity in the admin UI        | Claude saves a recipe through MCP                 |
 | Phase 3 · Face        | The design values as tokens, dark and light, type, nav, recipe taxonomy, search, the morning page | The morning page, in the dark palette, on a phone |
-| Phase 4 · Group       | Group ring, member allowlist, surveys, sign-ups, share tokens, group calendar                     | The small group answers a real survey             |
+| Phase 4 · Group       | Group ring, members as entities, the group link, sign-ups, questions, calendar                    | The small group signs up for a real Thursday      |
 | Phase 5 · Public face | Public read API, resume page, essays and notes feeds                                              | Resume and an essay are public                    |
 | Phase 6 · Feeds       | Hardcover ingest, Ishar status, calendar sync, whatever earns its place                           | The reading feed updates without you              |
 
@@ -221,7 +221,10 @@ Each phase is its own Claude Code directive and its own set of PRs; a phase is d
 its gate is true in production, not when the code merges. (Oct 30, 2026: a Face phase was
 inserted before the group ring, since the logged-in app is the thing Tyler uses daily and
 everyone else visits; the design values it applies are in `docs/DESIGN-VALUES.md`. Group
-and Public face each moved one later.)
+and Public face each moved one later. Oct 31, 2026: the Group gate became a real sign-up
+with names on it, since there is no survey to ask yet, and members enter by a group link
+and claim a name rather than by Cognito; co-leads still sign in. `docs/phases/04-group.md`
+records the conversation.)
 
 **Phase 0** is deliberately small and teaches the most AWS per hour. It includes the CDK
 bootstrap, a `cdk diff` check on PRs, the GitHub OIDC role, the billing alarm, and the
