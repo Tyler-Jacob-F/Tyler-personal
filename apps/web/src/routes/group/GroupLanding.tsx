@@ -9,13 +9,20 @@ import { device } from '@/group/device';
 import { Landing } from '@/group/GroupGate';
 
 type State =
-  { kind: 'entering' } | { kind: 'in' } | { kind: 'dead' } | { kind: 'failed'; message: string };
+  | { kind: 'entering' }
+  /** In, and whether this phone still has to tap a name. */
+  | { kind: 'in'; guest: boolean }
+  | { kind: 'dead' }
+  | { kind: 'failed'; message: string };
 
 /**
  * `/g/<token>` (docs/design/link-dark-phone.png): the link becomes a device token, kept on
  * the phone for a year. A phone that already holds a live device token is simply let
  * through, so re-opening the thread's link does not make a second device. A rotated or
- * unknown link gets the dead-link screen.
+ * unknown link gets the dead-link screen. Continue takes a phone that has no name yet to
+ * "Who are you?" (Tyler, Oct 31, after opening the link himself: someone who opens it from
+ * the thread is there to sign up, so the name comes first), and a phone that has one to
+ * the home.
  */
 export function GroupLanding() {
   const { token = '' } = useParams();
@@ -30,8 +37,11 @@ export function GroupLanding() {
       const held = device.load();
       if (held) {
         try {
-          await fetchGroupMe(createApiClient(async () => held));
-          return settle({ kind: 'in' });
+          const me = await fetchGroupMe(createApiClient(async () => held));
+          return settle({
+            kind: 'in',
+            guest: me.caller.kind !== 'group' || me.caller.role === 'guest',
+          });
         } catch {
           device.forget();
         }
@@ -45,7 +55,7 @@ export function GroupLanding() {
           schema: enterGroupResponseSchema,
         });
         device.save(entered.deviceToken);
-        settle({ kind: 'in' });
+        settle({ kind: 'in', guest: true });
       } catch (error) {
         if (error instanceof ApiRequestError && error.status === 404) settle({ kind: 'dead' });
         else settle({ kind: 'failed', message: (error as Error).message });
@@ -63,7 +73,7 @@ export function GroupLanding() {
         <>
           <p className="reading mt-3 text-text">You’re in the group.</p>
           <Button asChild variant="accent" className="mt-10 w-full max-w-72">
-            <Link to="/group">Continue</Link>
+            <Link to={state.guest ? '/group/claim' : '/group'}>Continue</Link>
           </Button>
         </>
       )}

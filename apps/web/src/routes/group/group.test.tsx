@@ -282,6 +282,10 @@ describe('the group for a phone that has not claimed a name', () => {
     await user.click(first);
     const claim = await screen.findByRole('article', { name: 'Who are you?' });
     expect(within(claim).getByText('One tap. This phone will remember.')).toBeInTheDocument();
+    expect(within(claim).getByRole('link', { name: 'Just look for now' })).toHaveAttribute(
+      'href',
+      '/group',
+    );
     const free = within(claim).getByRole('list', { name: 'Names' });
     expect(
       within(free)
@@ -360,8 +364,9 @@ describe('the link landing', () => {
     expect(await screen.findByText('You’re in the group.')).toBeInTheDocument();
     expect(entered).toEqual([{ token }]);
     expect(device.load()).toBe(`keepd_${'C'.repeat(43)}`);
+    // A phone with no name yet continues to "Who are you?"; the home is a tap away from there.
     const go = screen.getByRole('link', { name: 'Continue' });
-    expect(go).toHaveAttribute('href', '/group');
+    expect(go).toHaveAttribute('href', '/group/claim');
     expect(go).toHaveClass('bg-accent');
   });
 
@@ -377,8 +382,8 @@ describe('the link landing', () => {
     expect(screen.queryByRole('link', { name: 'Continue' })).toBeNull();
   });
 
-  it('lets a phone that already holds a live token straight through without a second device', async () => {
-    mockDevice('guest');
+  it('lets a phone that already holds a live token straight through without a second device, to the home once it has a name', async () => {
+    mockDevice('member');
     let entered = 0;
     server.use(
       http.post('/api/group/enter', () => {
@@ -389,6 +394,7 @@ describe('the link landing', () => {
     render(<App />, { route: `/g/${token}`, auth: { signedIn: false } });
     expect(await screen.findByText('You’re in the group.')).toBeInTheDocument();
     expect(entered).toBe(0);
+    expect(screen.getByRole('link', { name: 'Continue' })).toHaveAttribute('href', '/group');
   });
 
   it('asks for the link when a phone has none, with the way in for a co-lead', async () => {

@@ -292,6 +292,11 @@ Built against the render the same day. Each is reversible.
   four forms. "Who are you?" shows unclaimed names first and the claimed ones under
   "Already on another device" with a phone count; a device that already holds a name may
   take another (a shared phone).
+- **The landing continues to "Who are you?"** for a phone with no name, with "Just look
+  for now" under the names; a phone that has a name continues to the home. Tyler, Oct 31,
+  after opening the link himself in a private window and landing on the home as a guest:
+  someone who opens the link from the thread is there to sign up, so the name comes
+  first. Reading still needs only the link.
 - **Tests.** MSW tests per caller for the home, the members and claims, the link panel,
   the landing, the claim screen and the co-lead sign-in; the morning page's accent test
   repeated for the group home. The web suite is 116.
