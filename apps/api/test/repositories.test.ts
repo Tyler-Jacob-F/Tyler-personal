@@ -10,6 +10,7 @@ import {
   setDocumentTags,
   softDeleteDocument,
 } from '../src/db/repositories.js';
+import { getTableColumns } from 'drizzle-orm';
 import * as schema from '../src/db/schema.js';
 import { toIso } from '../src/db/time.js';
 import { adminId, testDb, type TestDb } from './helpers/db.js';
@@ -193,5 +194,27 @@ describe('toIso', () => {
     expect(toIso('2026-10-26 12:00:00')).toBe('2026-10-26T12:00:00.000Z');
     expect(toIso('2026-10-26 07:00:00-05')).toBe('2026-10-26T12:00:00.000Z');
     expect(toIso(new Date('2026-10-26T12:00:00.000Z'))).toBe('2026-10-26T12:00:00.000Z');
+  });
+});
+
+describe('the Drizzle schema against the Data API', () => {
+  it('declares no column the Data API cannot return, so a select of a whole table is safe', async () => {
+    // The Data API refuses to return tsvector (and other non-scalar types) values. The
+    // search vector exists in the database but must never be a declared column.
+    const columns = await t.pg.query<{ table_name: string; column_name: string; udt_name: string }>(
+      "select table_name, column_name, udt_name from information_schema.columns where table_schema = 'public'",
+    );
+    const vectors = columns.rows.filter((c) => c.udt_name === 'tsvector');
+    expect(vectors).toEqual([
+      { table_name: 'document', column_name: 'search', udt_name: 'tsvector' },
+    ]);
+    expect(Object.keys(schema.document)).not.toContain('search');
+    for (const table of [schema.document, schema.version, schema.tagChange, schema.agentToken]) {
+      for (const column of Object.values(getTableColumns(table))) {
+        expect(['uuid', 'text', 'jsonb', 'timestampstring', 'integer', 'bigint53']).toContain(
+          column.columnType.replace(/^Pg/, '').toLowerCase(),
+        );
+      }
+    }
   });
 });

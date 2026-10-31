@@ -411,11 +411,11 @@ export async function searchDocuments(
         isNull(document.deletedAt),
         type ? eq(document.type, type) : undefined,
         tags.length > 0 ? sql`${document.tags} @> ${JSON.stringify(tags)}::jsonb` : undefined,
-        query ? sql`${document.search} @@ ${query}` : undefined,
+        query ? sql`${document}.search @@ ${query}` : undefined,
       ),
     )
     .orderBy(
-      ...(query ? [sql`ts_rank_cd(${document.search}, ${query}) desc`] : []),
+      ...(query ? [sql`ts_rank_cd(${document}.search, ${query}) desc`] : []),
       desc(document.createdAt),
       desc(document.id),
     )

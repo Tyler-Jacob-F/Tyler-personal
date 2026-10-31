@@ -235,6 +235,13 @@ order rather than nine PRs; the commit messages carry what each PR description w
   line whole when it starts with no amount. The render shows History as the page's one
   accented element and no Edit; Edit is an outline button beside the back link, Delete a
   quiet ghost at the foot.
+- **The Data API cannot return a tsvector** (found in production Oct 30, within the hour
+  of the Face merge: every read of a document was a 500 while inserts, which return only
+  an id, succeeded, so Duet saw its write land and its read fail). Drizzle selects every
+  declared column when a query asks for `document`, so the `search` column is not
+  declared in `schema.ts` at all; the trigger maintains it and `searchDocuments` names it
+  in raw SQL. A test holds every declared column to the scalar types the Data API returns.
+  PGlite returns tsvector happily, which is why the suite was green.
 - **Copy and fonts.** Literata ships as the `standard` fontsource build (wght + opsz,
   roman and italic); Source Code Pro as wght. Fontsource's unicode-range subsets mean only
   the latin files load. Icons are hand-drawn 24-unit paths in `components/icons.tsx`.
