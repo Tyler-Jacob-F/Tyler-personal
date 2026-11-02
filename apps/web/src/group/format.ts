@@ -12,6 +12,7 @@ import {
   signupFrontmatterSchema,
   type SignupSlot,
 } from '@the-keep/shared';
+import { addDays, nextWeekday } from '@/lib/dates';
 import { frontmatterOf } from '@/lib/frontmatter';
 
 /** A group document with its frontmatter parsed; `null` when a stored version no longer fits. */
@@ -73,6 +74,54 @@ const weekWords = [
 export function eyebrowOf(guide: Pick<GuideFrontmatter, 'series' | 'week'>): string {
   const week = guide.week ? `Week ${weekWords[guide.week - 1] ?? guide.week}` : null;
   return [guide.series, week].filter(Boolean).join(' · ');
+}
+
+/** The group meets on Thursdays; the calendar holds only the nights that differ. */
+export const MEETING_DAY = 4;
+/** How far the home looks past the coming Thursday for a night worth naming. */
+export const LOOKAHEAD_DAYS = 30;
+
+/**
+ * The coming Thursday as the home anchors on it (Tyler, Nov 2: the next event is not the
+ * next meeting). The sheet's date when there is a sheet; else the next Thursday on or
+ * after today. Beside it, the event on that date if the calendar has one, and the first
+ * event past it within a month, so a Friendsgiving two weeks out is named (and signed up
+ * for) without becoming the meeting.
+ */
+export function comingThursday(
+  today: string,
+  sheet: Typed<SignupFrontmatter> | null,
+  events: Typed<EventFrontmatter>[],
+): {
+  date: string;
+  event: Typed<EventFrontmatter> | null;
+  later: Typed<EventFrontmatter> | null;
+} {
+  const date = sheet?.frontmatter.date ?? nextWeekday(today, MEETING_DAY);
+  const upcoming = upcomingEvents(events, today);
+  return {
+    date,
+    event: upcoming.find((e) => e.frontmatter.date === date) ?? null,
+    later:
+      upcoming.find(
+        (e) => e.frontmatter.date > date && e.frontmatter.date <= addDays(today, LOOKAHEAD_DAYS),
+      ) ?? null,
+  };
+}
+
+/** The evening as the page states it: the event's own when and where, else the standing meeting's. */
+export function meetingOf(
+  date: string,
+  event: Typed<EventFrontmatter> | null,
+  liturgy: LiturgyFrontmatter | null,
+): EventFrontmatter {
+  return {
+    title: event?.frontmatter.title ?? 'Small group',
+    date,
+    time: event?.frontmatter.time ?? liturgy?.meetsAt,
+    place: event?.frontmatter.place ?? liturgy?.place,
+    notes: event?.frontmatter.notes,
+  };
 }
 
 /** From 5:00 on meeting day until midnight, Richmond time, the page is the evening's. */

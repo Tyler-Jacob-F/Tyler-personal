@@ -26,8 +26,11 @@ export const translationNames: Record<Translation, string> = {
  * entered without re-typing it, and the translation the readings are served in. The page
  * assembles the evening from the week's guide and this: Opening (guide), Table, Before the
  * reading, Scripture (guide), Reflection (guide), Closing (the guide's lines, then the
- * songbook line, the Lord's Prayer as People, the final collect). One document; a change
- * is a new version. Written by the admin and co-leads; no agent scope writes it.
+ * songbook line, the Lord's Prayer as People, the final collect). It also names the
+ * standing meeting, time and place, since the group meets every Thursday and the calendar
+ * holds only the nights that differ (Nov 2: the home had reached past two ordinary
+ * Thursdays to Friendsgiving). One document; a change is a new version. Written by the
+ * admin and co-leads; no agent scope writes it.
  */
 export const liturgyFrontmatterSchema = frontmatterBaseSchema
   .partial({ title: true })
@@ -43,6 +46,13 @@ export const liturgyFrontmatterSchema = frontmatterBaseSchema
     lordsPrayer: z.string().trim().min(1).max(2000),
     /** The final collect, said by the leader. */
     closing: z.string().trim().min(1).max(2000),
+    /** The standing meeting: Thursdays at this time, `HH:MM` on Richmond's clock. */
+    meetsAt: z
+      .string()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'HH:MM')
+      .optional(),
+    /** Where the group meets unless an event says otherwise: Tyler and Kelly always host. */
+    place: z.string().trim().min(1).max(200).optional(),
   })
   .transform((l) => ({ ...l, title: l.title ?? 'The fixed liturgy' }));
 export type LiturgyFrontmatter = z.infer<typeof liturgyFrontmatterSchema>;
@@ -70,4 +80,6 @@ export const DEFAULT_LITURGY: LiturgyFrontmatter = {
   ].join('\n'),
   closing:
     'Lord Jesus Christ, you stretched out your arms of love on the hard wood of the Cross that everyone might come within the reach of your saving embrace: So clothe us in your Spirit that we, reaching forth our hands in love, may bring those who do not know you to the knowledge and love of you; for the honor of your Name. Amen.',
+  meetsAt: '18:30',
+  place: 'Tyler and Kelly’s',
 };

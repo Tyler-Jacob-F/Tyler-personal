@@ -6,6 +6,7 @@ import { anyError, anyPending } from '@/lib/queries';
 import { canEdit, useGroup } from '@/group/context';
 import {
   broughtLine,
+  comingThursday,
   currentLiturgy,
   currentSignup,
   eventsOf,
@@ -13,12 +14,12 @@ import {
   guidesOf,
   isTonight,
   liturgyOf,
+  meetingOf,
   signupsOf,
   thisWeek,
-  upcomingEvents,
 } from '@/group/format';
 import { quietLink } from '@/group/styles';
-import { clock, dateLine, dayHeading, inRichmond } from '@/lib/dates';
+import { clock, dateLine, dayHeading, dayLine, inRichmond } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import { GuideBlock, SheetLink } from '@/routes/group/guide';
 import {
@@ -33,8 +34,9 @@ import {
 /**
  * The group home (docs/design/group-home-*.png; docs/phases/04-group.md "The refresh"):
  * one column, read top to bottom, in an order that turns at 5:00 on meeting day, Richmond
- * time. Until then, and on every other day: Thursday (the meeting, then the sheet with the
- * viewer's one action), the guide, the members. From then until midnight: Tonight in one
+ * time. Until then, and on every other day: Thursday (the coming one, at the standing time
+ * and place unless the calendar says otherwise, then the sheet with the viewer's one
+ * action), the guide, the members. From then until midnight: Tonight in one
  * line, the guide with its eyebrow as the page's one accent and who brought what at the
  * Table, the members. The admin and co-leads get a quiet control per section.
  */
@@ -52,14 +54,20 @@ export function GroupHome() {
   const fixed = liturgy.data ? currentLiturgy(liturgyOf(liturgy.data.items)) : null;
   const sheet = signups.data ? currentSignup(signupsOf(signups.data.items), today) : null;
   const claims = useClaims(sheet?.item.document.id ?? null);
-  const next = events.data ? upcomingEvents(eventsOf(events.data.items), today)[0] : undefined;
+  const thursday = comingThursday(today, sheet, events.data ? eventsOf(events.data.items) : []);
+  const laterSheet = thursday.later
+    ? (signupsOf(signups.data?.items ?? []).find(
+        (s) => s.frontmatter.date === thursday.later!.frontmatter.date,
+      ) ?? null)
+    : null;
   const editor = canEdit(viewer);
 
   const queries = [guides, liturgy, signups, events, members, ...(sheet ? [claims] : [])];
   if (anyError(queries)) return <QueryError queries={queries} />;
   if (anyPending(queries)) return <Loading />;
 
-  const tonight = next !== undefined && isTonight(next.frontmatter.date, at);
+  const meeting = meetingOf(thursday.date, thursday.event, fixed?.frontmatter ?? null);
+  const tonight = isTonight(thursday.date, at);
   const brought = sheet ? broughtLine(sheet.frontmatter.slots, claims.data?.items ?? []) : null;
 
   const guideSection = (
@@ -105,23 +113,20 @@ export function GroupHome() {
     </section>
   );
 
+  const meetingControl = editor && (
+    <EditOrNew item={thursday.event?.item} base="/group/calendar" newLabel="Add a meeting" />
+  );
+
   if (tonight) {
-    const { frontmatter, item } = next;
     return (
       <article className="mx-auto grid max-w-[42rem] gap-12" aria-label="Group">
         <section aria-labelledby="tonight-heading">
-          <SectionHead
-            id="tonight-heading"
-            action={
-              editor && <Control to={`/group/calendar/${item.document.id}/edit`}>Edit</Control>
-            }
-          >
+          <SectionHead id="tonight-heading" action={meetingControl}>
             Tonight
           </SectionHead>
           <p className="mt-3 text-[17px] text-text">
-            {[frontmatter.time && clock(frontmatter.time), frontmatter.place]
-              .filter(Boolean)
-              .join(' at ')}
+            {[meeting.time && clock(meeting.time), meeting.place].filter(Boolean).join(' at ')}
+            {thursday.event && ` · ${meeting.title}`}
             {' · '}
             <Link to="/group/members" className={cn(quietLink, 'min-h-0')}>
               members
@@ -137,36 +142,26 @@ export function GroupHome() {
   return (
     <article className="mx-auto grid max-w-[42rem] gap-12" aria-label="Group">
       <section aria-labelledby="meeting-heading">
-        <SectionHead
-          id="meeting-heading"
-          action={
-            editor && (
-              <EditOrNew item={next?.item} base="/group/calendar" newLabel="Add a meeting" />
-            )
-          }
-        >
-          {next ? dayHeading(next.frontmatter.date).weekday : 'Thursday'}
+        <SectionHead id="meeting-heading" action={meetingControl}>
+          {dayHeading(thursday.date).weekday}
         </SectionHead>
-        {next ? (
-          <>
-            <h3 className="mt-1 font-serif text-[26px] leading-tight font-medium text-text-strong tabular-nums">
-              {dateLine(next.frontmatter.date)}
-              {next.frontmatter.time && `, ${clock(next.frontmatter.time)}`}
-            </h3>
-            <div className="mt-3">
-              <MeetingRows event={next} when={false} />
-            </div>
-          </>
-        ) : (
-          <p className="reading mt-3 text-muted italic">Nothing on the calendar yet.</p>
+        <h3 className="mt-1 font-serif text-[26px] leading-tight font-medium text-text-strong tabular-nums">
+          {dateLine(thursday.date)}
+          {meeting.time && `, ${clock(meeting.time)}`}
+        </h3>
+        {thursday.event && (
+          <p className="mt-1 font-serif text-[20px] text-text-strong">{meeting.title}</p>
         )}
+        <div className="mt-3">
+          <MeetingRows meeting={meeting} item={thursday.event?.item} when={false} />
+        </div>
         <div id="table" className="mt-8">
           {sheet ? (
             <SignupSheet
               signup={sheet}
               claims={claims.data?.items ?? []}
               members={members.data?.items}
-              dated={!next || next.frontmatter.date !== sheet.frontmatter.date}
+              dated={false}
               action={
                 editor && (
                   <Control to={`/group/signups/${sheet.item.document.id}/edit`}>
@@ -189,6 +184,29 @@ export function GroupHome() {
             </p>
           )}
         </div>
+        {thursday.later && (
+          <div className="mt-10" role="group" aria-labelledby="later-heading">
+            <h4 id="later-heading" className="eyebrow">
+              Coming up
+            </h4>
+            <p className="mt-2 font-serif text-[20px] text-text-strong">
+              {thursday.later.frontmatter.title}
+            </p>
+            <p className="mt-1 text-[15px] text-muted">
+              {dayLine(thursday.later.frontmatter.date)}
+              {thursday.later.frontmatter.time && `, ${clock(thursday.later.frontmatter.time)}`}
+              {' · '}
+              <Link
+                to={
+                  laterSheet ? `/group/signups/${laterSheet.item.document.id}` : '/group/calendar'
+                }
+                className={cn(quietLink, 'min-h-0')}
+              >
+                {laterSheet ? 'Sign up' : 'On the calendar'}
+              </Link>
+            </p>
+          </div>
+        )}
       </section>
       {guideSection}
       {membersSection}

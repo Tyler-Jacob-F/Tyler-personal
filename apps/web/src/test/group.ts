@@ -21,6 +21,7 @@ export const gids = {
   signup: '7b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e42',
   event: '7b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e43',
   liturgy: '7b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e44',
+  friendsgiving: '7b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e45',
   device: '8b2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e41',
 };
 
@@ -200,12 +201,26 @@ export const signupDoc = doc(gids.signup, 'signup', 'dinner-at-tyler-and-kellys'
   closesAt: '2026-11-05T22:00:00.000Z',
 });
 
-export const eventDoc = doc(gids.event, 'event', 'small-group', {
-  title: 'Small group',
-  date: today,
+/**
+ * The calendar holds only the nights that differ from the standing meeting (which the
+ * liturgy names): Friendsgiving, two Thursdays out, with its own sheet.
+ */
+export const eventDoc = doc(gids.event, 'event', 'friendsgiving', {
+  title: 'Friendsgiving',
+  date: '2026-11-19',
   time: '18:30',
   place: 'Tyler and Kelly’s · 12 Hanover Ave',
-  notes: 'Kids welcome; the back room is set up. Park on Hanover, not the alley.',
+  notes: 'Entrées provided by the Fuquas; sides, drinks and desserts on the sign-up.',
+});
+
+export const friendsgivingSheet = doc(gids.friendsgiving, 'signup', 'friendsgiving', {
+  title: 'Friendsgiving',
+  date: '2026-11-19',
+  slots: [
+    { label: 'Sides', capacity: 4 },
+    { label: 'Drinks', capacity: 2 },
+    { label: 'Dessert', capacity: 3 },
+  ],
 });
 
 function claim(id: string, slot: string, memberId: string, memberName: string): SignupClaim {
@@ -247,7 +262,7 @@ export interface GroupMocks {
 
 /** The group's reads on one door: `/api` for a signed-in viewer, `/api/group` for a device. */
 export function mockGroup(prefix: '/api' | '/api/group', mocks: GroupMocks = {}) {
-  const docs = mocks.docs ?? [guideDoc, liturgyDoc, signupDoc, eventDoc];
+  const docs = mocks.docs ?? [guideDoc, liturgyDoc, signupDoc, eventDoc, friendsgivingSheet];
   server.use(
     http.get(`${prefix}/documents`, ({ request }) => {
       const type = new URL(request.url).searchParams.get('type');

@@ -109,6 +109,21 @@ export const dayLine = (date: string) => longDay(date).replace(',', '');
 /** "5 November": the date without its weekday, for a heading whose eyebrow already says Thursday. */
 export const dateLine = (date: string) => dayLine(date).replace(/^\S+ /, '');
 
+/** A calendar date some days on. */
+export function addDays(date: string, days: number): string {
+  const at = day(date);
+  at.setUTCDate(at.getUTCDate() + days);
+  return at.toISOString().slice(0, 10);
+}
+
+/** The next date on or after `from` that falls on a weekday (0 Sunday … 6 Saturday). */
+export function nextWeekday(from: string, weekday: number): string {
+  const at = day(from);
+  const ahead = (weekday - at.getUTCDay() + 7) % 7;
+  at.setUTCDate(at.getUTCDate() + ahead);
+  return at.toISOString().slice(0, 10);
+}
+
 const richmond = new Intl.DateTimeFormat('en-US', {
   timeZone: 'America/New_York',
   hourCycle: 'h23',

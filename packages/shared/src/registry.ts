@@ -83,9 +83,11 @@ const registry: Record<DocumentType, TypeDefinition> = {
     defaultRing: 'group',
     guide:
       'liturgy: the group’s one settings document, the fixed liturgy that repeats every ' +
-      'week and the translation the readings are served in. frontmatter is { title?, ' +
-      'translation, table, beforeReading, songbook, lordsPrayer, closing }. One document, ' +
-      'kept by the admin and co-leads in the group UI; no agent scope writes it.',
+      'week, the translation the readings are served in, and the standing meeting (meetsAt ' +
+      'HH:MM, place). frontmatter is { title?, translation, table, beforeReading, songbook, ' +
+      'lordsPrayer, closing, meetsAt?, place? }. One document, kept by the admin and co-leads ' +
+      'in the group UI; no agent scope writes it. The calendar’s events are the nights that ' +
+      'differ from it.',
   },
   signup: {
     schema: signupFrontmatterSchema,
