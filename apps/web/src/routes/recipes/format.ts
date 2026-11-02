@@ -1,5 +1,6 @@
-import { recipeFrontmatterSchema } from '@the-keep/shared';
-import { frontmatterOf } from '@/lib/frontmatter';
+import { type RecipeFrontmatter, recipeFrontmatterSchema, type Version } from '@the-keep/shared';
+import { frontmatterOf, titleOf } from '@/lib/frontmatter';
+import { plainText } from '@/lib/share';
 
 export const recipeOf = frontmatterOf(recipeFrontmatterSchema);
 
@@ -9,6 +10,15 @@ export function minutes(total: number): string {
   const m = total % 60;
   if (h === 0) return `${m} min`;
   return m === 0 ? `${h} h` : `${h} h ${m} min`;
+}
+
+/** The facts line under the title: Active, Total and Serves, in that order, only the ones the version has. */
+export function recipeFacts(r: RecipeFrontmatter | null): Array<[string, string]> {
+  const facts: Array<[string, string]> = [];
+  if (r?.activeMinutes !== undefined) facts.push(['Active', minutes(r.activeMinutes)]);
+  if (r?.totalMinutes !== undefined) facts.push(['Total', minutes(r.totalMinutes)]);
+  if (r?.serves !== undefined) facts.push(['Serves', String(r.serves)]);
+  return facts;
 }
 
 const UNITS =
@@ -44,4 +54,39 @@ export function splitHeadnote(body: string): { headnote: string; method: string 
 /** A body that opens with its own "Method" heading would say it twice under the METHOD eyebrow. */
 export function withoutMethodHeading(method: string): string {
   return method.replace(/^\s*#{1,6}\s*method\s*\n+/i, '');
+}
+
+/** A body whose method opens by repeating the recipe's title would say it twice in a message. */
+function withoutTitleHeading(method: string, title: string): string {
+  const lines = method.split('\n');
+  const first = lines.findIndex((line) => line.trim() !== '');
+  if (first < 0) return method;
+  const heading = /^#{1,6}\s+(.*?)\s*#*\s*$/.exec(lines[first]!);
+  if (!heading || heading[1]!.trim().toLowerCase() !== title.trim().toLowerCase()) return method;
+  return lines.slice(first + 1).join('\n');
+}
+
+/**
+ * The recipe as plain text, the way it reads in a text message or a mail body: title,
+ * headnote, provenance, the facts line, ingredient groups as dashed lists, the method with
+ * its markdown marks removed. Facets stay behind; they are the site's, not the recipe's.
+ */
+export function recipeText(version: Version): string {
+  const title = titleOf(version.frontmatter);
+  const r = recipeOf(version.frontmatter);
+  const { headnote, method } = splitHeadnote(version.body);
+  const parts: string[] = [title];
+  if (headnote) parts.push(plainText(headnote));
+  if (r?.provenance) parts.push(`Provenance · ${r.provenance}`);
+  const facts = recipeFacts(r);
+  if (facts.length > 0) parts.push(facts.map(([label, value]) => `${label} ${value}`).join(' · '));
+  if (r) {
+    const groups = r.ingredients.map((group) =>
+      [group.heading, ...group.items.map((line) => `- ${line}`)].filter(Boolean).join('\n'),
+    );
+    parts.push(['INGREDIENTS', ...groups].join('\n\n'));
+  }
+  const steps = plainText(withoutTitleHeading(withoutMethodHeading(method), title));
+  if (steps) parts.push(`METHOD\n\n${steps}`);
+  return `${parts.join('\n\n')}\n`;
 }

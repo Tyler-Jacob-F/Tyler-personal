@@ -73,8 +73,8 @@ export function AppShell() {
   if (isColead && !location.pathname.startsWith('/group')) return <Navigate to="/group" replace />;
 
   return (
-    <div className="flex h-dvh flex-col">
-      <header className="shrink-0 border-b border-border bg-bg">
+    <div className="flex h-dvh flex-col print:h-auto">
+      <header className="shrink-0 border-b border-border bg-bg print:hidden">
         <div className="mx-auto flex h-14 max-w-screen-2xl items-center gap-2 px-3 md:px-5">
           <Link
             to="/"
@@ -153,7 +153,7 @@ export function AppShell() {
         />
       )}
 
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto print:overflow-visible">
         <div className="mx-auto max-w-4xl px-4 py-8 md:px-6 md:py-10">
           <Outlet />
         </div>
