@@ -89,7 +89,7 @@ describe('the top bar', () => {
       within(screen.getByRole('navigation', { name: 'Group' }))
         .getAllByRole('link')
         .map((a) => a.textContent),
-    ).toEqual(['Home', 'Questions', 'Sign-up', 'Calendar', 'Members']);
+    ).toEqual(['Home', 'Guide', 'Sign-up', 'Calendar', 'Members']);
   });
 
   it('opens search with ⌘K and with the search button: the Recipes field takes focus', async () => {

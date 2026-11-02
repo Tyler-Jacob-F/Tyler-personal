@@ -1,12 +1,16 @@
 import {
-  currentQuestions,
+  currentWeek,
   type DocumentWithVersion,
   type EventFrontmatter,
   eventFrontmatterSchema,
-  type QuestionsFrontmatter,
-  questionsFrontmatterSchema,
+  type GuideFrontmatter,
+  guideFrontmatterSchema,
+  type LiturgyFrontmatter,
+  liturgyFrontmatterSchema,
+  type SignupClaim,
   type SignupFrontmatter,
   signupFrontmatterSchema,
+  type SignupSlot,
 } from '@the-keep/shared';
 import { frontmatterOf } from '@/lib/frontmatter';
 
@@ -23,20 +27,67 @@ function typed<T>(items: DocumentWithVersion[], parse: (fm: unknown) => T | null
   });
 }
 
-export const questionsOf = (items: DocumentWithVersion[]) =>
-  typed<QuestionsFrontmatter>(items, frontmatterOf(questionsFrontmatterSchema));
+export const guidesOf = (items: DocumentWithVersion[]) =>
+  typed<GuideFrontmatter>(items, frontmatterOf(guideFrontmatterSchema));
+export const liturgyOf = (items: DocumentWithVersion[]) =>
+  typed<LiturgyFrontmatter>(items, frontmatterOf(liturgyFrontmatterSchema));
 export const signupsOf = (items: DocumentWithVersion[]) =>
   typed<SignupFrontmatter>(items, frontmatterOf(signupFrontmatterSchema));
 export const eventsOf = (items: DocumentWithVersion[]) =>
   typed<EventFrontmatter>(items, frontmatterOf(eventFrontmatterSchema));
 
-/** "This week's": the newest within six days ahead (`currentQuestions` in shared). */
-export function thisWeek(questions: Typed<QuestionsFrontmatter>[], today: string) {
-  const picked = currentQuestions(
-    questions.map((q) => ({ weekOf: q.frontmatter.weekOf, q })),
+/** "This week's" guide: the newest within six days ahead (`currentWeek` in shared). */
+export function thisWeek(guides: Typed<GuideFrontmatter>[], today: string) {
+  const picked = currentWeek(
+    guides.map((g) => ({ weekOf: g.frontmatter.weekOf, g })),
     today,
   );
-  return picked?.q ?? null;
+  return picked?.g ?? null;
+}
+
+/** The group's one liturgy document: the newest, should a second ever be made. */
+export function currentLiturgy(items: Typed<LiturgyFrontmatter>[]) {
+  return (
+    [...items].sort((a, b) =>
+      b.item.document.createdAt.localeCompare(a.item.document.createdAt),
+    )[0] ?? null
+  );
+}
+
+const weekWords = [
+  'one',
+  'two',
+  'three',
+  'four',
+  'five',
+  'six',
+  'seven',
+  'eight',
+  'nine',
+  'ten',
+  'eleven',
+  'twelve',
+];
+
+/** "Sanctuary · Week four": the guide's eyebrow, from whichever of series and week it has. */
+export function eyebrowOf(guide: Pick<GuideFrontmatter, 'series' | 'week'>): string {
+  const week = guide.week ? `Week ${weekWords[guide.week - 1] ?? guide.week}` : null;
+  return [guide.series, week].filter(Boolean).join(' · ');
+}
+
+/** From 5:00 on meeting day until midnight, Richmond time, the page is the evening's. */
+export function isTonight(eventDate: string, clock: { date: string; hour: number }): boolean {
+  return eventDate === clock.date && clock.hour >= 17;
+}
+
+/** "Main John · Salad — · Dessert Kelly, Taylor": who brought what, for the evening's Table. */
+export function broughtLine(slots: SignupSlot[], claims: SignupClaim[]): string {
+  return slots
+    .map((slot) => {
+      const names = claims.filter((c) => c.slot === slot.label).map((c) => c.memberName);
+      return `${slot.label} ${names.length ? names.join(', ') : '—'}`;
+    })
+    .join(' · ');
 }
 
 /** By date, soonest first; ties by newest document. */

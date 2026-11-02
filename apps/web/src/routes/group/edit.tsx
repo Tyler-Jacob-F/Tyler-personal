@@ -1,9 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  DEFAULT_LITURGY,
   eventFrontmatterSchema,
+  guideFrontmatterSchema,
+  liturgyFrontmatterSchema,
   memberFieldsSchema,
-  questionsFrontmatterSchema,
   signupFrontmatterSchema,
+  translationNames,
+  translations,
 } from '@the-keep/shared';
 import { useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -13,6 +17,7 @@ import { useDocumentEditor } from '@/api/editor';
 import {
   useAddMember,
   useClearDevices,
+  useGroupDocuments,
   useMakeColead,
   useMembers,
   useUpdateMember,
@@ -24,17 +29,26 @@ import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
 import { FormRow, SaveBar, SummaryField } from '@/components/ui/form-row';
 import { Input } from '@/components/ui/input';
+import { focusRing } from '@/components/ui/styles';
 import { Textarea } from '@/components/ui/textarea';
 import { canEdit, memberIdOf, useGroup } from '@/group/context';
-import { eventsOf, phonesLine, questionsOf, signupsOf } from '@/group/format';
+import {
+  currentLiturgy,
+  eventsOf,
+  guidesOf,
+  liturgyOf,
+  phonesLine,
+  signupsOf,
+} from '@/group/format';
+import { formatLines, formatVoices, parseLines, parseVoices } from '@/group/guide-text';
 import { quietLink } from '@/group/styles';
 import { fromDateTimeInput, localDateTimeInput } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 
 /**
- * The forms behind the controls (docs/phases/04-group.md "Members and claims", "Types"):
- * questions, a sign-up, a meeting, for the admin and co-leads; a member's own details for
- * everyone who holds a name. Each saves a new version, never an edit in place, the way
+ * The forms behind the controls (docs/phases/04-group.md "Members and claims", "Types",
+ * "The refresh"): the week's guide, the fixed liturgy, a sign-up, a meeting, for the admin
+ * and co-leads; a member's own details for everyone who holds a name. Each saves a new version, never an edit in place, the way
  * every document in The Keep does.
  */
 
@@ -74,67 +88,305 @@ function DeleteDocument({
   );
 }
 
-// ---------- questions ----------
+// ---------- the week's guide ----------
 
-const questionsForm = z.object({
+const guideForm = z.object({
+  series: z.string().trim().max(80),
+  week: z.string().trim().max(2),
   weekOf: z.iso.date('A date, YYYY-MM-DD.'),
-  body: z.string().trim().min(1, 'Write the questions.'),
+  title: z.string().trim().min(1, 'The week’s title.').max(200),
+  opening: z.string(),
+  readings: z.string(),
+  reflection: z.string().trim().max(500),
+  questions: z.string(),
+  closing: z.string(),
+  source: z.string().trim().max(200),
   summary: z.string().trim().max(500),
 });
 
-export function QuestionsEdit() {
+const voicesHint =
+  'A paragraph per voice, each starting "Leader:" or "People:". A collect is one Leader paragraph.';
+
+/**
+ * The seven fields a new week needs (docs/phases/04-group.md "The refresh"), copied from
+ * the printed guide: what repeats every week lives on the liturgy and is not asked for.
+ */
+export function GuideEdit() {
   const { viewer, api } = useGroup();
   const { id } = useParams();
   const navigate = useNavigate();
-  const editor = useDocumentEditor('questions', id, api);
-  const current = editor.existing.data ? questionsOf([editor.existing.data])[0] : undefined;
+  const editor = useDocumentEditor('guide', id, api);
+  const current = editor.existing.data ? guidesOf([editor.existing.data])[0] : undefined;
   const form = useForm({
-    resolver: zodResolver(questionsForm),
+    resolver: zodResolver(guideForm),
     values: current
-      ? { weekOf: current.frontmatter.weekOf, body: current.item.version.body, summary: '' }
-      : { weekOf: '', body: '', summary: '' },
+      ? {
+          series: current.frontmatter.series ?? '',
+          week: current.frontmatter.week?.toString() ?? '',
+          weekOf: current.frontmatter.weekOf,
+          title: current.frontmatter.title,
+          opening: formatVoices(current.frontmatter.opening),
+          readings: formatLines(current.frontmatter.readings),
+          reflection: current.frontmatter.reflection ?? '',
+          questions: formatLines(current.frontmatter.questions),
+          closing: formatVoices(current.frontmatter.closing),
+          source: current.frontmatter.source ?? '',
+          summary: '',
+        }
+      : {
+          series: 'Sanctuary',
+          week: '',
+          weekOf: '',
+          title: '',
+          opening: '',
+          readings: '',
+          reflection: '',
+          questions: '',
+          closing: '',
+          source: '',
+          summary: '',
+        },
   });
   if (!canEdit(viewer)) return <NotYours />;
   if (editor.existing.isError) return <QueryError queries={[editor.existing]} />;
   if (id && editor.existing.isPending) return <Loading />;
 
-  const onSubmit = form.handleSubmit(async ({ weekOf, body, summary }) => {
-    await editor.save({ frontmatter: questionsFrontmatterSchema.parse({ weekOf }), body, summary });
-    navigate('/group/questions');
+  const onSubmit = form.handleSubmit(async (values) => {
+    const opening = parseVoices(values.opening);
+    if ('error' in opening) return form.setError('opening', { message: opening.error });
+    const closing = parseVoices(values.closing);
+    if ('error' in closing) return form.setError('closing', { message: closing.error });
+    const week = values.week ? Number(values.week) : undefined;
+    if (week !== undefined && !(Number.isInteger(week) && week >= 1))
+      return form.setError('week', { message: 'A whole number, or nothing.' });
+    const frontmatter = guideFrontmatterSchema.parse({
+      title: values.title,
+      weekOf: values.weekOf,
+      series: values.series || undefined,
+      week,
+      opening: opening.lines,
+      readings: parseLines(values.readings),
+      reflection: values.reflection || undefined,
+      questions: parseLines(values.questions),
+      closing: closing.lines,
+      source: values.source || undefined,
+    });
+    const saved = await editor.save({ frontmatter, body: '', summary: values.summary });
+    navigate(`/group/guide/${saved}`);
   });
 
   return (
-    <article className="mx-auto grid max-w-[42rem] gap-8" aria-label="Questions form">
-      <Head title={id ? 'Edit the questions' : 'This week’s questions'} back="/group/questions" />
+    <article className="mx-auto grid max-w-[42rem] gap-8" aria-label="Guide form">
+      <Head
+        title={id ? 'Edit the guide' : 'This week’s guide'}
+        back={id ? `/group/guide/${id}` : '/group/guide'}
+      />
+      <p className="text-[15px] text-muted">
+        What changes this week, from the printed guide. The collect before the reading, the songbook
+        line, the Lord’s Prayer and the final collect come from{' '}
+        <Link to="/group/liturgy/edit" className={quietLink}>
+          the fixed liturgy
+        </Link>{' '}
+        and are not entered here.
+      </p>
       {editor.error && <Alert tone="danger">{editor.error.message}</Alert>}
       <Form {...form}>
         <form onSubmit={onSubmit} className="grid gap-5" noValidate>
-          <FormRow
-            control={form.control}
-            name="weekOf"
-            label="Thursday"
-            hint="The Thursday these questions are for."
-          >
-            {(field) => <Input type="date" {...field} />}
+          <div className="grid gap-5 sm:grid-cols-3">
+            <FormRow control={form.control} name="series" label="Series" className="sm:col-span-2">
+              {(field) => <Input {...field} />}
+            </FormRow>
+            <FormRow
+              control={form.control}
+              name="week"
+              label="Week"
+              hint="Its number in the series."
+            >
+              {(field) => <Input inputMode="numeric" {...field} />}
+            </FormRow>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <FormRow
+              control={form.control}
+              name="weekOf"
+              label="Thursday"
+              hint="The Thursday this guide is for."
+            >
+              {(field) => <Input type="date" {...field} />}
+            </FormRow>
+          </div>
+          <FormRow control={form.control} name="title" label="Title">
+            {(field) => <Input className="font-serif text-[17px]" {...field} />}
+          </FormRow>
+          <FormRow control={form.control} name="opening" label="Opening prayer" hint={voicesHint}>
+            {(field) => <Textarea rows={6} className="font-serif text-[17px]" {...field} />}
           </FormRow>
           <FormRow
             control={form.control}
-            name="body"
-            label="Questions"
-            hint="Markdown: a short lead, then a numbered list."
+            name="readings"
+            label="Readings"
+            hint="One reference per line, as the guide prints it: Ephesians 1:15–23."
           >
-            {(field) => <Textarea rows={12} className="font-serif text-[17px]" {...field} />}
+            {(field) => <Textarea rows={3} {...field} />}
+          </FormRow>
+          <FormRow
+            control={form.control}
+            name="reflection"
+            label="Reflection"
+            hint="The one sentence over the questions."
+          >
+            {(field) => <Input className="font-serif text-[17px]" {...field} />}
+          </FormRow>
+          <FormRow
+            control={form.control}
+            name="questions"
+            label="Questions"
+            hint="One per line; numbers are dropped."
+          >
+            {(field) => <Textarea rows={8} className="font-serif text-[17px]" {...field} />}
+          </FormRow>
+          <FormRow control={form.control} name="closing" label="Closing prayer" hint={voicesHint}>
+            {(field) => <Textarea rows={8} className="font-serif text-[17px]" {...field} />}
+          </FormRow>
+          <FormRow
+            control={form.control}
+            name="source"
+            label="Source"
+            hint="The credit line: Redeemer’s Sanctuary guide, week four · Fall 2026."
+          >
+            {(field) => <Input {...field} />}
           </FormRow>
           {id && <SummaryField control={form.control} name="summary" />}
           <SaveBar pending={form.formState.isSubmitting}>
             {id && (
               <DeleteDocument
-                what="these questions"
+                what="this week’s guide"
                 pending={editor.pending}
-                onDelete={() => void editor.remove().then(() => navigate('/group/questions'))}
+                onDelete={() => void editor.remove().then(() => navigate('/group/guide'))}
               />
             )}
           </SaveBar>
+        </form>
+      </Form>
+    </article>
+  );
+}
+
+// ---------- the fixed liturgy ----------
+
+const liturgyForm = z.object({
+  translation: z.enum(translations),
+  table: z.string().trim().min(1, 'The line under Table.').max(500),
+  beforeReading: z.string().trim().min(1, 'The collect.').max(2000),
+  songbook: z.string().trim().min(1, 'The line.').max(500),
+  lordsPrayer: z.string().trim().min(1, 'The prayer.').max(2000),
+  closing: z.string().trim().min(1, 'The final collect.').max(2000),
+  summary: z.string().trim().max(500),
+});
+
+/** One document for the group: found if it exists, started from Redeemer's words if not. */
+export function LiturgyEdit() {
+  const { viewer } = useGroup();
+  const existing = useGroupDocuments('liturgy');
+  if (!canEdit(viewer)) return <NotYours />;
+  if (existing.isError) return <QueryError queries={[existing]} />;
+  if (existing.isPending) return <Loading />;
+  const current = currentLiturgy(liturgyOf(existing.data.items));
+  return <LiturgyForm id={current?.item.document.id} />;
+}
+
+function LiturgyForm({ id }: { id: string | undefined }) {
+  const { api } = useGroup();
+  const navigate = useNavigate();
+  const editor = useDocumentEditor('liturgy', id, api);
+  const current = editor.existing.data ? liturgyOf([editor.existing.data])[0] : undefined;
+  const base = current?.frontmatter ?? DEFAULT_LITURGY;
+  const form = useForm({
+    resolver: zodResolver(liturgyForm),
+    values: {
+      translation: base.translation,
+      table: base.table,
+      beforeReading: base.beforeReading,
+      songbook: base.songbook,
+      lordsPrayer: base.lordsPrayer,
+      closing: base.closing,
+      summary: '',
+    },
+  });
+  if (editor.existing.isError) return <QueryError queries={[editor.existing]} />;
+  if (id && editor.existing.isPending) return <Loading />;
+
+  const onSubmit = form.handleSubmit(async ({ summary, ...values }) => {
+    const frontmatter = liturgyFrontmatterSchema.parse(values);
+    await editor.save({ frontmatter, body: '', summary });
+    navigate('/group/guide');
+  });
+
+  return (
+    <article className="mx-auto grid max-w-[42rem] gap-8" aria-label="Liturgy form">
+      <Head title="The fixed liturgy" back="/group/guide" />
+      <p className="text-[15px] text-muted">
+        What every week’s guide says the same way. Saved once; a change is a new version, like
+        everything in The Keep.
+        {!id &&
+          ' These are Redeemer’s words as the group has used them; save them as they are or change them first.'}
+      </p>
+      {editor.error && <Alert tone="danger">{editor.error.message}</Alert>}
+      <Form {...form}>
+        <form onSubmit={onSubmit} className="grid gap-5" noValidate>
+          <FormRow
+            control={form.control}
+            name="translation"
+            label="Translation"
+            hint="The readings are served in this; only public-domain texts are on offer."
+          >
+            {(field) => (
+              <select
+                name={field.name}
+                ref={field.ref}
+                value={field.value}
+                onBlur={field.onBlur}
+                onChange={(event) => field.onChange(event.target.value)}
+                className={cn(
+                  'h-11 w-full rounded-md border border-border bg-surface px-3 text-[15px] text-text',
+                  focusRing,
+                )}
+              >
+                {translations.map((code) => (
+                  <option key={code} value={code}>
+                    {translationNames[code]}
+                  </option>
+                ))}
+              </select>
+            )}
+          </FormRow>
+          <FormRow control={form.control} name="table" label="Table">
+            {(field) => <Input className="font-serif text-[17px]" {...field} />}
+          </FormRow>
+          <FormRow control={form.control} name="beforeReading" label="Before the reading">
+            {(field) => <Textarea rows={6} className="font-serif text-[17px]" {...field} />}
+          </FormRow>
+          <FormRow
+            control={form.control}
+            name="songbook"
+            label="After the closing collect"
+            hint="The italic line: singing, and prayers for each other."
+          >
+            {(field) => <Input className="font-serif text-[17px]" {...field} />}
+          </FormRow>
+          <FormRow
+            control={form.control}
+            name="lordsPrayer"
+            label="The Lord’s Prayer"
+            hint="Said by everyone; its line breaks are kept."
+          >
+            {(field) => <Textarea rows={8} className="font-serif text-[17px]" {...field} />}
+          </FormRow>
+          <FormRow control={form.control} name="closing" label="The final collect">
+            {(field) => <Textarea rows={6} className="font-serif text-[17px]" {...field} />}
+          </FormRow>
+          {id && <SummaryField control={form.control} name="summary" />}
+          <SaveBar pending={form.formState.isSubmitting} />
         </form>
       </Form>
     </article>

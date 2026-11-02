@@ -4,14 +4,14 @@ import { Loading, QueryError } from '@/components/QueryState';
 import { anyError, anyPending } from '@/lib/queries';
 import { canEdit, useGroup } from '@/group/context';
 import { currentSignup, signupsOf, sortedByDate } from '@/group/format';
-import { dayLine, todayIso } from '@/lib/dates';
+import { dayLine, inRichmond } from '@/lib/dates';
 import { EditOrNew, OtherList, SectionHead, SignupSheet } from '@/routes/group/parts';
 
 /** The coming Thursday's sheet, or one by id, with the other sign-ups listed under it. */
 export function SignupsPage() {
   const { viewer } = useGroup();
   const { id } = useParams();
-  const today = todayIso();
+  const today = inRichmond().date;
   const signups = useGroupDocuments('signup');
   const members = useMembers();
   const all = signups.data ? sortedByDate(signupsOf(signups.data.items)) : [];

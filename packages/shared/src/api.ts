@@ -8,6 +8,7 @@ import {
 } from './document.js';
 import { memberRoleSchema } from './member.js';
 import { agentScopeSchema } from './scopes.js';
+import { translationSchema } from './types/liturgy.js';
 
 /**
  * The brief's normalized caller, in the four kinds docs/phases/04-group.md decided: a
@@ -186,3 +187,27 @@ export const apiErrorSchema = z.object({
   issues: z.array(z.object({ path: z.string(), message: z.string() })).optional(),
 });
 export type ApiError = z.infer<typeof apiErrorSchema>;
+
+// ---------- passages ----------
+
+/** `GET /api/passages?ref=Ephesians 1:15-23&translation=kjv` (docs/phases/04-group.md "The refresh"). */
+export const passageQuerySchema = z.object({
+  ref: z.string().trim().min(1).max(80),
+  translation: translationSchema.default('kjv'),
+});
+export type PassageQuery = z.infer<typeof passageQuerySchema>;
+
+export const verseSchema = z.object({
+  chapter: z.number().int().positive(),
+  verse: z.number().int().positive(),
+  text: z.string(),
+});
+export type Verse = z.infer<typeof verseSchema>;
+
+/** A reading resolved to text: the reference as the source names it, and its verses in order. */
+export const passageSchema = z.object({
+  reference: z.string(),
+  translation: translationSchema,
+  verses: z.array(verseSchema).min(1),
+});
+export type Passage = z.infer<typeof passageSchema>;

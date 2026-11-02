@@ -228,13 +228,13 @@ describe('ApiStack', () => {
       JwtConfiguration: { Audience: [Match.anyValue(), Match.anyValue()] },
     });
     const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
-    expect(routes).toHaveLength(52);
+    expect(routes).toHaveLength(54);
     const members = routes.filter(
       (r) =>
         /\/api\//.test(String(r.Properties.RouteKey)) &&
         !/\/api\/(agent|group)\//.test(String(r.Properties.RouteKey)),
     );
-    expect(members).toHaveLength(27);
+    expect(members).toHaveLength(28);
     for (const route of members) {
       expect(route.Properties.AuthorizationType).toBe('JWT');
       expect(route.Properties.RouteKey).toMatch(/^(GET|POST|PUT|PATCH|DELETE) \/api\//);
@@ -299,6 +299,7 @@ describe('ApiStack', () => {
       'GET /api/group/me',
       'GET /api/group/members',
       'GET /api/group/members/{id}',
+      'GET /api/group/passages',
       'PATCH /api/group/members/{id}',
       'POST /api/group/documents/{id}/claims',
       'POST /api/group/enter',
@@ -323,7 +324,7 @@ describe('ApiStack', () => {
   });
 
   it('runs one Lambda per resource, outside the VPC, with Data API access', () => {
-    template.resourceCountIs('AWS::Lambda::Function', 12);
+    template.resourceCountIs('AWS::Lambda::Function', 13);
     const fns = Object.values(template.findResources('AWS::Lambda::Function'));
     for (const fn of fns) {
       expect(fn.Properties.VpcConfig).toBeUndefined();
@@ -332,7 +333,7 @@ describe('ApiStack', () => {
     }
     const policies = JSON.stringify(template.findResources('AWS::IAM::Policy'));
     expect(policies).toContain('rds-data:ExecuteStatement');
-    template.resourceCountIs('AWS::Logs::LogGroup', 12);
+    template.resourceCountIs('AWS::Logs::LogGroup', 13);
     template.allResourcesProperties('AWS::Logs::LogGroup', { RetentionInDays: 30 });
     const link = fns.find((f) => String(f.Properties.Description).includes('group-link'))!;
     expect(link.Properties.Environment.Variables.SITE_ORIGIN).toBe(`https://${config.domainName}`);

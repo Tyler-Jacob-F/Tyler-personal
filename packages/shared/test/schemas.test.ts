@@ -42,8 +42,11 @@ import {
   updateMemberRequestSchema,
   makeColeadRequestSchema,
   memberRoles,
-  questionsFrontmatterSchema,
-  currentQuestions,
+  guideFrontmatterSchema,
+  liturgyFrontmatterSchema,
+  DEFAULT_LITURGY,
+  currentWeek,
+  passageSchema,
   signupFrontmatterSchema,
   signupOpen,
   eventFrontmatterSchema,
@@ -413,7 +416,7 @@ describe('slugify', () => {
 });
 
 describe('agent scopes and tokens', () => {
-  it('knows exactly the brief’s five scopes plus the Group phase’s two', () => {
+  it('knows exactly the brief’s five scopes plus the Group phase’s four', () => {
     expect([...agentScopes]).toEqual([
       'read:documents',
       'write:recipes',
@@ -421,7 +424,7 @@ describe('agent scopes and tokens', () => {
       'write:notes',
       'read:reading',
       'write:events',
-      'write:questions',
+      'write:guides',
       'write:signups',
       'read:members',
     ]);
@@ -519,17 +522,73 @@ describe('members, the link and devices', () => {
 });
 
 describe('the group’s types', () => {
-  it('questions: weekOf is a date, the title defaults, and "this week" is the newest within six days ahead', () => {
-    const q = questionsFrontmatterSchema.parse({ weekOf: '2026-11-05' });
-    expect(q.title).toBe('Questions for 2026-11-05');
-    expect(questionsFrontmatterSchema.safeParse({ weekOf: 'Thursday' }).success).toBe(false);
+  it('guide: weekOf is a date, the lists default empty, and "this week" is the newest within six days ahead', () => {
+    const g = guideFrontmatterSchema.parse({
+      title: 'A school for the formation of the saints',
+      weekOf: '2026-11-05',
+      series: 'Sanctuary',
+      week: 4,
+      opening: [
+        { voice: 'leader', text: 'O God and Father of all, whom the whole heavens adore:' },
+        { voice: 'people', text: 'Let the whole earth also worship you.' },
+      ],
+      readings: ['Ephesians 1:15–23', 'Matthew 5:1–12'],
+      reflection: 'The Church molds and shapes humans into the image of Christ.',
+      questions: ['Look at the traits described in the Matthew passage.'],
+      closing: [{ voice: 'leader', text: 'Glory to God whose power, working in us. Amen.' }],
+      source: 'Redeemer’s Sanctuary guide, week four · Fall 2026',
+    });
+    expect(g.readings).toHaveLength(2);
+    const bare = guideFrontmatterSchema.parse({ title: 'Week', weekOf: '2026-11-05' });
+    expect(bare).toEqual({
+      title: 'Week',
+      weekOf: '2026-11-05',
+      opening: [],
+      readings: [],
+      questions: [],
+      closing: [],
+    });
+    expect(guideFrontmatterSchema.safeParse({ title: 'x', weekOf: 'Thursday' }).success).toBe(
+      false,
+    );
+    expect(
+      guideFrontmatterSchema.safeParse({
+        title: 'x',
+        weekOf: '2026-11-05',
+        opening: [{ voice: 'choir', text: 'la' }],
+      }).success,
+    ).toBe(false);
+    expect(guideFrontmatterSchema.safeParse({ weekOf: '2026-11-05' }).success).toBe(false);
     const weeks = [{ weekOf: '2026-10-29' }, { weekOf: '2026-11-05' }, { weekOf: '2026-11-12' }];
-    expect(currentQuestions(weeks, '2026-10-31')?.weekOf).toBe('2026-11-05');
-    expect(currentQuestions(weeks, '2026-11-05')?.weekOf).toBe('2026-11-05');
-    expect(currentQuestions(weeks, '2026-11-06')?.weekOf).toBe('2026-11-12');
-    expect(currentQuestions(weeks.slice(0, 1), '2026-11-20')?.weekOf).toBe('2026-10-29');
-    expect(currentQuestions(weeks.slice(2), '2026-10-31')).toBeNull();
-    expect(currentQuestions([], '2026-10-31')).toBeNull();
+    expect(currentWeek(weeks, '2026-10-31')?.weekOf).toBe('2026-11-05');
+    expect(currentWeek(weeks, '2026-11-05')?.weekOf).toBe('2026-11-05');
+    expect(currentWeek(weeks, '2026-11-06')?.weekOf).toBe('2026-11-12');
+    expect(currentWeek(weeks.slice(0, 1), '2026-11-20')?.weekOf).toBe('2026-10-29');
+    expect(currentWeek(weeks.slice(2), '2026-10-31')).toBeNull();
+    expect(currentWeek([], '2026-10-31')).toBeNull();
+  });
+
+  it('liturgy: the fixed texts and a translation, titled by default, and the default fits its own schema', () => {
+    expect(liturgyFrontmatterSchema.parse(DEFAULT_LITURGY)).toEqual(DEFAULT_LITURGY);
+    const rest = Object.fromEntries(
+      Object.entries(DEFAULT_LITURGY).filter(([key]) => key !== 'title' && key !== 'translation'),
+    );
+    const parsed = liturgyFrontmatterSchema.parse(rest);
+    expect(parsed.title).toBe('The fixed liturgy');
+    expect(parsed.translation).toBe('kjv');
+    expect(parsed.lordsPrayer.split('\n')).toHaveLength(6);
+    expect(liturgyFrontmatterSchema.safeParse({ ...rest, translation: 'esv' }).success).toBe(false);
+    expect(liturgyFrontmatterSchema.safeParse({ ...rest, table: '' }).success).toBe(false);
+  });
+
+  it('passage: a reference resolved to verses in a known translation', () => {
+    const passage = {
+      reference: 'Ephesians 1:15-23',
+      translation: 'kjv',
+      verses: [{ chapter: 1, verse: 15, text: 'Wherefore I also…' }],
+    };
+    expect(passageSchema.parse(passage)).toEqual(passage);
+    expect(passageSchema.safeParse({ ...passage, verses: [] }).success).toBe(false);
   });
 
   it('signup: slots with distinct labels and a capacity, an optional close, and knows when it is open', () => {
@@ -571,17 +630,18 @@ describe('the group’s types', () => {
     ).toBeUndefined();
   });
 
-  it('registers the three in the group ring with guides, and scopes each for the claude token', () => {
-    expect(documentTypes).toEqual(['recipe', 'brief', 'questions', 'signup', 'event']);
-    for (const type of ['questions', 'signup', 'event'] as const) {
+  it('registers the four in the group ring with guides, and scopes each for the claude token', () => {
+    expect(documentTypes).toEqual(['recipe', 'brief', 'guide', 'liturgy', 'signup', 'event']);
+    for (const type of ['guide', 'liturgy', 'signup', 'event'] as const) {
       expect(schemaFor(type).defaultRing).toBe('group');
       expect(schemaFor(type).guide).toMatch(new RegExp(`^${type}:`));
     }
     expect(typeGuides()).toContain('renaming a slot');
     expect(agentScopes).toContain('write:events');
-    expect(agentScopes).toContain('write:questions');
+    expect(agentScopes).toContain('write:guides');
     expect(writeScopeFor('event')).toBe('write:events');
-    expect(writeScopeFor('questions')).toBe('write:questions');
+    expect(writeScopeFor('guide')).toBe('write:guides');
+    expect(writeScopeFor('liturgy')).toBeNull();
     expect(writeScopeFor('signup')).toBe('write:signups');
     expect(parseFrontmatter('event', { title: 'x', date: '2026-11-05' })).toEqual({
       title: 'x',

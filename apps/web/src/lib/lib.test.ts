@@ -38,10 +38,11 @@ describe('dates', () => {
     expect(clock12(0, 5)).toBe('12:05');
     expect(clock12(12, 0)).toBe('12:00');
     expect(clock('07:05')).toBe('7:05');
-    const close = new Date(2026, 10, 5, 17, 0);
-    expect(closesLine(close.toISOString(), '2026-11-05')).toBe('closes Thursday 5:00');
-    const farOff = new Date(2026, 11, 24, 9, 30);
-    expect(closesLine(farOff.toISOString(), '2026-11-05')).toBe('closes Thursday 24 December 9:30');
+    // The close is on the group's clock, Richmond's, wherever the phone is.
+    expect(closesLine('2026-11-05T22:00:00.000Z', '2026-11-05')).toBe('closes Thursday 5:00');
+    expect(closesLine('2026-12-24T14:30:00.000Z', '2026-11-05')).toBe(
+      'closes Thursday 24 December 9:30',
+    );
   });
 
   it('turns local instants into calendar dates and datetime-local values, and back', () => {
@@ -71,7 +72,8 @@ describe('document types', () => {
   it('knows where every type lives, so Activity never links an event to a recipe', () => {
     expect(pathFor('recipe', 'r1')).toBe('/recipes/r1');
     expect(pathFor('brief', 'b1')).toBe('/briefs/b1');
-    expect(pathFor('questions', 'q1')).toBe('/group/questions/q1');
+    expect(pathFor('guide', 'g1')).toBe('/group/guide/g1');
+    expect(pathFor('liturgy', 'l1')).toBe('/group/guide');
     expect(pathFor('signup', 's1')).toBe('/group/signups/s1');
     expect(pathFor('event', 'e1')).toBe('/group/calendar');
     expect(pathFor('essay', 'x')).toBe('/');
@@ -80,7 +82,8 @@ describe('document types', () => {
     expect(Object.keys(documentTypeInfo).sort()).toEqual([
       'brief',
       'event',
-      'questions',
+      'guide',
+      'liturgy',
       'recipe',
       'signup',
     ]);

@@ -120,17 +120,17 @@ describe('permission: documents, every caller × action × ring', () => {
 
   it('knows which types are the group’s own', () => {
     const own = documentTypes.filter(isGroupType);
-    expect(own).toEqual(['questions', 'signup', 'event']);
+    expect(own).toEqual(['guide', 'liturgy', 'signup', 'event']);
   });
 
   /**
    * The rows that differ for the group's own types: a co-lead writes and deletes them in
-   * the `group` ring and nowhere else; an agent needs the type's scope, and a signup has
+   * the `group` ring and nowhere else; an agent needs the type's scope, and the liturgy has
    * none; everyone else reads as for a recipe.
    */
-  const groupTypes = ['questions', 'signup', 'event'] as const;
+  const groupTypes = ['guide', 'liturgy', 'signup', 'event'] as const;
   const eventsWriter: Caller = { kind: 'agent', id: ids.token, scopes: ['write:events'] };
-  const questionsWriter: Caller = { kind: 'agent', id: ids.token, scopes: ['write:questions'] };
+  const guidesWriter: Caller = { kind: 'agent', id: ids.token, scopes: ['write:guides'] };
 
   for (const type of groupTypes) {
     it(`holds every caller to the table for a ${type}`, () => {
@@ -149,7 +149,7 @@ describe('permission: documents, every caller × action × ring', () => {
       }
       for (const ring of rings) {
         expect(can(eventsWriter, 'write', { ring, type })).toBe(type === 'event');
-        expect(can(questionsWriter, 'write', { ring, type })).toBe(type === 'questions');
+        expect(can(guidesWriter, 'write', { ring, type })).toBe(type === 'guide');
         expect(can(eventsWriter, 'delete', { ring, type })).toBe(false);
       }
     });

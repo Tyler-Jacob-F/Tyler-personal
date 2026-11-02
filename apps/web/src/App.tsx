@@ -7,11 +7,11 @@ import { BriefDetail } from '@/routes/briefs/BriefDetail';
 import { GroupFrame, GroupGate } from '@/group/GroupGate';
 import { CalendarPage } from '@/routes/group/CalendarPage';
 import { ClaimPage } from '@/routes/group/ClaimPage';
-import { EventEdit, MemberEdit, QuestionsEdit, SignupEdit } from '@/routes/group/edit';
+import { EventEdit, GuideEdit, LiturgyEdit, MemberEdit, SignupEdit } from '@/routes/group/edit';
 import { GroupHome } from '@/routes/group/GroupHome';
 import { GroupLanding } from '@/routes/group/GroupLanding';
+import { GuidePage } from '@/routes/group/GuidePage';
 import { MembersPage } from '@/routes/group/MembersPage';
-import { QuestionsPage } from '@/routes/group/QuestionsPage';
 import { SignupsPage } from '@/routes/group/SignupsPage';
 import { Home } from '@/routes/home/Home';
 import { NotYet } from '@/routes/NotYet';
@@ -37,10 +37,11 @@ export function App() {
       <Route element={<GroupGate />}>
         <Route element={<GroupFrame />}>
           <Route path="/group" element={<GroupHome />} />
-          <Route path="/group/questions" element={<QuestionsPage />} />
-          <Route path="/group/questions/new" element={<QuestionsEdit />} />
-          <Route path="/group/questions/:id" element={<QuestionsPage />} />
-          <Route path="/group/questions/:id/edit" element={<QuestionsEdit />} />
+          <Route path="/group/guide" element={<GuidePage />} />
+          <Route path="/group/guide/new" element={<GuideEdit />} />
+          <Route path="/group/guide/:id" element={<GuidePage />} />
+          <Route path="/group/guide/:id/edit" element={<GuideEdit />} />
+          <Route path="/group/liturgy/edit" element={<LiturgyEdit />} />
           <Route path="/group/signups" element={<SignupsPage />} />
           <Route path="/group/signups/new" element={<SignupEdit />} />
           <Route path="/group/signups/:id" element={<SignupsPage />} />
