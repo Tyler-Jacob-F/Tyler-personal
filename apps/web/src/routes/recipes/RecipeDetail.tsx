@@ -5,6 +5,7 @@ import { ConfirmButton } from '@/components/ConfirmDialog';
 import { CheckIcon } from '@/components/icons';
 import { Loading, QueryError } from '@/components/QueryState';
 import { Markdown } from '@/components/Markdown';
+import { ShareMenu } from '@/components/ShareMenu';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { focusRing } from '@/components/ui/styles';
@@ -12,8 +13,9 @@ import { shortDay, versionLine } from '@/lib/dates';
 import { titleOf } from '@/lib/frontmatter';
 import { cn } from '@/lib/utils';
 import {
-  minutes,
+  recipeFacts,
   recipeOf,
+  recipeText,
   splitHeadnote,
   splitIngredient,
   withoutMethodHeading,
@@ -23,7 +25,8 @@ import {
  * The recipe screen of docs/DESIGN-VALUES.md and docs/design/recipe-*.png: title, headnote
  * in italic, provenance, facets as quiet chips, the times in tabular figures with Proven
  * or Untested beside them, ingredient groups beside the method by flex-wrap, "Changed in
- * vN", and the version line with History as the page's one accented element.
+ * vN", and the version line with History as the page's one accented element. Share sits
+ * beside Edit; in print the controls, the aside and the nav go, leaving the recipe on paper.
  */
 export function RecipeDetail() {
   const { id = '' } = useParams();
@@ -46,15 +49,13 @@ export function RecipeDetail() {
     ),
     ...flags.map((flag) => ({ tag: `flag:${flag}`, label: valueLabel(flag) })),
   ];
-  const facts: Array<[string, string]> = [];
-  if (r?.activeMinutes !== undefined) facts.push(['Active', minutes(r.activeMinutes)]);
-  if (r?.totalMinutes !== undefined) facts.push(['Total', minutes(r.totalMinutes)]);
-  if (r?.serves !== undefined) facts.push(['Serves', String(r.serves)]);
+  const facts = recipeFacts(r);
+  const title = titleOf(version.frontmatter);
 
   return (
     <article className="grid gap-8">
       <header className="grid gap-4">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-4 print:hidden">
           <Link
             to="/recipes"
             className={cn(
@@ -64,12 +65,15 @@ export function RecipeDetail() {
           >
             <span aria-hidden="true">‹</span> Recipes
           </Link>
-          <Button asChild size="sm">
-            <Link to={`/recipes/${document.id}/edit`}>Edit</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <ShareMenu title={title} text={recipeText(version)} />
+            <Button asChild size="sm">
+              <Link to={`/recipes/${document.id}/edit`}>Edit</Link>
+            </Button>
+          </div>
         </div>
         <div className="reading max-w-[42rem]">
-          <h1 className="page-title">{titleOf(version.frontmatter)}</h1>
+          <h1 className="page-title">{title}</h1>
           {headnote && (
             <Markdown variant="reading" className="mt-4 italic">
               {headnote}
@@ -132,7 +136,7 @@ export function RecipeDetail() {
             </h2>
             <div className="mt-4 grid gap-5">
               {r.ingredients.map((group, g) => (
-                <div key={g}>
+                <div key={g} className="print:break-inside-avoid">
                   {group.heading && (
                     <h3 className="mb-2 font-serif text-[17px] font-semibold text-text-strong">
                       {group.heading}
@@ -164,25 +168,28 @@ export function RecipeDetail() {
           </Markdown>
 
           {version.summary && (
-            <aside className="mt-8 rounded-lg border border-border bg-surface px-5 py-4">
+            <aside className="mt-8 rounded-lg border border-border bg-surface px-5 py-4 print:hidden">
               <p className="text-sm text-muted">Changed in v{version.number}</p>
               <p className="mt-1 text-[15px] leading-relaxed">{version.summary}</p>
             </aside>
           )}
 
           <p className="mt-6 text-sm text-muted">
-            {versionLine(version)} ·{' '}
-            <Link
-              to={`/recipes/${document.id}/history`}
-              className={cn('rounded-sm text-accent hover:underline', focusRing)}
-            >
-              History
-            </Link>
+            {versionLine(version)}
+            <span className="print:hidden">
+              {' · '}
+              <Link
+                to={`/recipes/${document.id}/history`}
+                className={cn('rounded-sm text-accent hover:underline', focusRing)}
+              >
+                History
+              </Link>
+            </span>
           </p>
         </section>
       </div>
 
-      <div className="border-t border-border pt-4">
+      <div className="border-t border-border pt-4 print:hidden">
         <ConfirmButton
           label="Delete"
           className="text-wrong"

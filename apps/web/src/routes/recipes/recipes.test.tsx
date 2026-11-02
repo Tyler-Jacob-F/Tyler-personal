@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw/http';
 import { App } from '@/App';
 import { chili, chiliTags, diff12, ids, recipeDoc, version1, version2 } from '@/test/fixtures';
+import { recipeText } from '@/routes/recipes/format';
 import { render, screen, userEvent, waitFor, within } from '@/test/render';
 import { server } from '@/test/server';
 
@@ -258,6 +259,69 @@ describe('RecipeDetail', () => {
     expect(screen.queryByText(/Provenance/)).toBeNull();
     expect(screen.queryByText(/Changed in/)).toBeNull();
     expect(screen.queryByRole('list', { name: 'Facets' })).toBeNull();
+  });
+
+  it('shares the recipe as text: copy, email, print or save as PDF, and the phone’s share sheet when the browser has one', async () => {
+    const user = userEvent.setup();
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true, writable: true });
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    server.use(
+      http.get(`/api/documents/${ids.doc}`, () =>
+        HttpResponse.json(recipeDoc(version2, chiliTags)),
+      ),
+    );
+    try {
+      render(<App />, { route: `/recipes/${ids.doc}` });
+      await screen.findByRole('heading', { name: 'Chili', level: 1 });
+      const text = recipeText(version2);
+      expect(text).toContain('INGREDIENTS');
+      expect(screen.queryByRole('menu', { name: 'Share' })).toBeNull();
+
+      const open = () => user.click(screen.getByRole('button', { name: 'Share', expanded: false }));
+      const menu = () => screen.getByRole('menu', { name: 'Share' });
+
+      await open();
+      expect(within(menu()).getByRole('menuitem', { name: /^Email/ })).toHaveAttribute(
+        'href',
+        `mailto:?subject=Chili&body=${encodeURIComponent(text.replace(/\n/g, '\r\n'))}`,
+      );
+      await user.click(within(menu()).getByRole('menuitem', { name: 'Copy as text' }));
+      expect(screen.queryByRole('menu', { name: 'Share' })).toBeNull();
+      expect(await screen.findByRole('status')).toHaveTextContent('Copied');
+      expect(await navigator.clipboard.readText()).toBe(text);
+
+      await open();
+      await user.click(within(menu()).getByRole('menuitem', { name: /^Send…/ }));
+      expect(share).toHaveBeenCalledWith({ title: 'Chili', text });
+
+      await open();
+      await user.click(within(menu()).getByRole('menuitem', { name: 'Print or save as PDF' }));
+      expect(print).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole('menu', { name: 'Share' })).toBeNull();
+
+      // Escape closes the menu too.
+      await open();
+      await user.keyboard('{Escape}');
+      expect(screen.queryByRole('menu', { name: 'Share' })).toBeNull();
+    } finally {
+      print.mockRestore();
+      Reflect.deleteProperty(navigator, 'share');
+    }
+  });
+
+  it('offers no Send… where the browser has no share sheet', async () => {
+    const user = userEvent.setup();
+    server.use(http.get(`/api/documents/${ids.doc}`, () => HttpResponse.json(recipeDoc(version1))));
+    render(<App />, { route: `/recipes/${ids.doc}` });
+    await screen.findByRole('heading', { name: 'Chili', level: 1 });
+    await user.click(screen.getByRole('button', { name: 'Share' }));
+    const items = within(screen.getByRole('menu', { name: 'Share' })).getAllByRole('menuitem');
+    expect(items.map((item) => item.textContent)).toEqual([
+      'Copy as text',
+      'Emailopens your mail app',
+      'Print or save as PDF',
+    ]);
   });
 
   it('shows the API error for a missing recipe', async () => {

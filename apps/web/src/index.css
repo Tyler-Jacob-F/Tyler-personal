@@ -70,6 +70,35 @@
   }
 }
 
+/*
+ * Paper is the only palette a printer has, so print reads the light values whatever the
+ * theme says; the chrome that should not reach paper is marked `print:hidden` where it
+ * lives. A browser's print dialog is also how a page becomes a PDF.
+ */
+@media print {
+  :root,
+  [data-theme='dark'] {
+    color-scheme: light;
+    --bg: #f7f2e9;
+    --surface: #fffdf8;
+    --surface-raised: #ffffff;
+    --text: #221d18;
+    --text-strong: #171310;
+    --muted: #6b6156;
+    --border: #e2d9cc;
+    --border-strong: #c9beae;
+    --accent: #8a5e18;
+    --accent-hover: #a5711f;
+    --accent-active: #704c12;
+    --on-accent: #fffdf8;
+    --wrong: #7a2e28;
+    --success: #3f6b2e;
+  }
+  @page {
+    margin: 1.6cm;
+  }
+}
+
 @theme inline {
   --font-sans: 'Source Sans 3 Variable', ui-sans-serif, system-ui, sans-serif;
   --font-serif: 'Literata Variable', Georgia, 'Times New Roman', serif;

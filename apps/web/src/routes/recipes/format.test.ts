@@ -1,10 +1,13 @@
 import { shortDay, versionLine } from '@/lib/dates';
 import {
   minutes,
+  recipeFacts,
+  recipeText,
   splitHeadnote,
   splitIngredient,
   withoutMethodHeading,
 } from '@/routes/recipes/format';
+import { chili, version1, version2 } from '@/test/fixtures';
 describe('format', () => {
   it('splits amounts from ingredient lines as the render shows them, leaving odd lines whole', () => {
     expect(splitIngredient('1½ lb boneless, skinless chicken thighs')).toEqual({
@@ -81,5 +84,54 @@ describe('format', () => {
     expect(minutes(25)).toBe('25 min');
     expect(minutes(240)).toBe('4 h');
     expect(minutes(150)).toBe('2 h 30 min');
+  });
+
+  it('lists the facts the version has, in the order of the screen', () => {
+    expect(recipeFacts(chili)).toEqual([
+      ['Active', '20 min'],
+      ['Total', '3 h'],
+      ['Serves', '8'],
+    ]);
+    expect(recipeFacts({ ...chili, activeMinutes: undefined, serves: undefined })).toEqual([
+      ['Total', '3 h'],
+    ]);
+    expect(recipeFacts(null)).toEqual([]);
+  });
+
+  it('renders the recipe as the text a message carries: title, headnote, provenance, facts, grouped ingredients, method', () => {
+    expect(
+      recipeText({
+        ...version2,
+        body: 'A pot for a *cold* Saturday.\n\n# Chili\n\n1. Brown the beef.\n2. Stir in **smoked paprika**.\n',
+      }),
+    ).toBe(
+      [
+        'Chili',
+        '',
+        'A pot for a cold Saturday.',
+        '',
+        'Provenance · Steve’s card, 2014',
+        '',
+        'Active 20 min · Total 3 h · Serves 8',
+        '',
+        'INGREDIENTS',
+        '',
+        'Meats',
+        '- 2 lb ground chuck',
+        '',
+        '- 1 onion, diced',
+        '- 1 tsp smoked paprika',
+        '',
+        'METHOD',
+        '',
+        '1. Brown the beef.',
+        '2. Stir in smoked paprika.',
+        '',
+      ].join('\n'),
+    );
+    // No headnote, no provenance, a "Method" heading: nothing is said twice and nothing is blank.
+    expect(recipeText({ ...version1, body: '## Method\n\nBrown the beef.\n' })).toBe(
+      'Chili\n\nActive 20 min · Total 3 h · Serves 8\n\nINGREDIENTS\n\nMeats\n- 2 lb ground chuck\n\n- 1 onion, diced\n\nMETHOD\n\nBrown the beef.\n',
+    );
   });
 });

@@ -19,6 +19,7 @@ import {
 import { documentTypeInfo, pathFor, typeLabel } from '@/lib/document-types';
 import { frontmatterOf, titleOf } from '@/lib/frontmatter';
 import { anyError, anyPending } from '@/lib/queries';
+import { mailto, plainText } from '@/lib/share';
 import { z } from 'zod';
 
 describe('dates', () => {
@@ -128,5 +129,23 @@ describe('places', () => {
     expect(isActive(root, '/')).toBe(true);
     expect(isActive(root, '/briefs/x')).toBe(true);
     expect(isActive(root, '/recipes')).toBe(false);
+  });
+});
+
+describe('share', () => {
+  it('turns markdown into text a message can carry', () => {
+    expect(
+      plainText(
+        '## Method ##\n\nBrown the **beef** in a _hot_ pan; see [Kenji](https://x.y).\n\n> Taste `often`.\n\n---\n\n\n1. Serve.',
+      ),
+    ).toBe('Method\n\nBrown the beef in a hot pan; see Kenji.\n\nTaste often.\n\n1. Serve.');
+    // Marks inside words and lone asterisks are left alone.
+    expect(plainText('snake_case and 2 * 3')).toBe('snake_case and 2 * 3');
+  });
+
+  it('builds a mail link with the subject and a CRLF body and no recipient', () => {
+    const href = mailto('Chili', 'Line one\nLine two');
+    expect(href).toBe('mailto:?subject=Chili&body=Line%20one%0D%0ALine%20two');
+    expect(new URL(href).protocol).toBe('mailto:');
   });
 });
