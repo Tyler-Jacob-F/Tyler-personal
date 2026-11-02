@@ -49,7 +49,8 @@ export class ApiStack extends cdk.Stack {
     | 'groupEnter'
     | 'adminGroupLink'
     | 'members'
-    | 'claims',
+    | 'claims'
+    | 'passages',
     lambda.IFunction
   >;
   /** The agents' door, for the MCP route to share. */
@@ -146,6 +147,12 @@ export class ApiStack extends cdk.Stack {
         resources: [`arn:aws:ses:${this.region}:${this.account}:identity/*`],
       }),
     );
+    const passages = apiFunction(this, 'PassagesFunction', {
+      entry: 'handlers/passages.ts',
+      description: `${config.siteName}: a reading as text, from bible-api.com`,
+      environment,
+      timeout,
+    });
     const claims = apiFunction(this, 'ClaimsFunction', {
       entry: 'handlers/claims.ts',
       description: `${config.siteName}: /api/documents/{id}/claims, slots taken on a sign-up`,
@@ -165,6 +172,7 @@ export class ApiStack extends cdk.Stack {
       adminGroupLink,
       members,
       claims,
+      passages,
     };
     for (const fn of Object.values(this.functions)) cluster.grantDataApiAccess(fn);
 
@@ -221,6 +229,7 @@ export class ApiStack extends cdk.Stack {
       ['/api/members/{id}/colead', [POST], members],
       ['/api/documents/{id}/claims', [GET, POST], claims],
       ['/api/documents/{id}/claims/{claimId}', [DELETE], claims],
+      ['/api/passages', [GET], passages],
     ];
     // The group's door: what a device may reach. Reads of documents, its own caller, the
     // directory and its own row, a name to claim, and the slots on a sign-up. Nothing
@@ -235,6 +244,7 @@ export class ApiStack extends cdk.Stack {
       ['/api/group/members/{id}/claim', [POST], members],
       ['/api/group/documents/{id}/claims', [GET, POST], claims],
       ['/api/group/documents/{id}/claims/{claimId}', [DELETE], claims],
+      ['/api/group/passages', [GET], passages],
     ];
     // The agents' door mirrors the document routes, minus delete: no agent deletes.
     const agentRoutes: Array<[string, apigwv2.HttpMethod[], lambda.IFunction]> = [

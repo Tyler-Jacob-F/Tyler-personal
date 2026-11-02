@@ -329,14 +329,34 @@ describe('the group’s own types', () => {
     expect(bodyOf<DocumentWithVersion>(event).document.owner).toBe(kelly.id);
     expect(bodyOf<DocumentWithVersion>(event).version.author).toMatchObject({ name: 'Kelly' });
 
-    const questions = await asKelly({
-      type: 'questions',
-      frontmatter: { weekOf: '2026-11-05' },
-      body: '1. Why?',
+    const guide = await asKelly({
+      type: 'guide',
+      frontmatter: { title: 'Week four', weekOf: '2026-11-05', questions: ['Why?'] },
+      body: '',
     });
-    expect(bodyOf<DocumentWithVersion>(questions).version.frontmatter).toEqual({
+    expect(bodyOf<DocumentWithVersion>(guide).version.frontmatter).toEqual({
+      title: 'Week four',
       weekOf: '2026-11-05',
-      title: 'Questions for 2026-11-05',
+      opening: [],
+      readings: [],
+      questions: ['Why?'],
+      closing: [],
+    });
+    const liturgy = await asKelly({
+      type: 'liturgy',
+      frontmatter: {
+        table: 'Eat.',
+        beforeReading: 'Blessed Lord. Amen.',
+        songbook: 'Sing.',
+        lordsPrayer: 'Our Father.',
+        closing: 'Lord Jesus Christ. Amen.',
+      },
+      body: '',
+    });
+    expect(liturgy.statusCode).toBe(201);
+    expect(bodyOf<DocumentWithVersion>(liturgy).version.frontmatter).toMatchObject({
+      title: 'The fixed liturgy',
+      translation: 'kjv',
     });
 
     expect((await asKelly(create)).statusCode).toBe(403);

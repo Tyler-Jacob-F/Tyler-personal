@@ -50,7 +50,7 @@ list_members and claim_slot tool descriptions first; they are the rules.
 
 1. **Tokens → `claude` → Edit scopes**: remove `write:signups` and `read:members`. The
    token keeps `read:documents`, `write:recipes`, `write:briefs`, `write:events`,
-   `write:questions`.
+   `write:guides`.
 2. Open https://tylerfuqua.com/group/signups: the coming Thursday's sheet on top, the
    ported weeks under "Other sign-ups". Admin → Activity shows each sheet Duet made as a
    version row; the claims themselves carry no author and show on the sheets.

@@ -91,7 +91,7 @@ beforeEach(async () => {
   });
   await createAgentToken(t.db, {
     name: 'claude',
-    scopes: ['read:documents', 'write:events', 'write:questions'],
+    scopes: ['read:documents', 'write:events', 'write:guides'],
     secretHash: hashAgentSecret(secrets.claude),
   });
   await createAgentToken(t.db, {
@@ -172,7 +172,7 @@ describe('the seed from the Google Sheet through MCP', () => {
     expect(textOf(unknownSlot)).toMatch(/one of Dessert/);
     await client.close();
 
-    // The everyday token, with events and questions, has neither tool's scope.
+    // The everyday token, with events and guides, has neither tool's scope.
     const claude = await connect(secrets.claude);
     const noMembers = (await claude.callTool({
       name: 'list_members',
@@ -190,11 +190,12 @@ describe('the seed from the Google Sheet through MCP', () => {
 });
 
 describe('the group’s types through MCP', () => {
-  it('lets the claude token post an event and this week’s questions, in the group ring, and never a signup', async () => {
+  it('lets the claude token post an event and this week’s guide, in the group ring, and never a signup', async () => {
     const client = await connect(secrets.claude);
     const { tools } = await client.listTools();
     const create = tools.find((tool) => tool.name === 'create_document')!;
-    expect(create.description).toContain('questions:');
+    expect(create.description).toContain('guide:');
+    expect(create.description).toContain('liturgy:');
     expect(create.description).toContain('event:');
     expect(create.description).toContain('group');
 
@@ -214,31 +215,61 @@ describe('the group’s types through MCP', () => {
       author: 'claude',
     });
 
-    const questions = (await client.callTool({
+    const guide = (await client.callTool({
       name: 'create_document',
       arguments: {
-        type: 'questions',
-        frontmatter: { weekOf: '2026-11-05' },
-        body: '1. Where did you see grace this week?',
+        type: 'guide',
+        frontmatter: {
+          title: 'A school for the formation of the saints',
+          weekOf: '2026-11-05',
+          series: 'Sanctuary',
+          week: 4,
+          readings: ['Ephesians 1:15–23'],
+          questions: ['Where did you see grace this week?'],
+        },
+        body: '',
       },
     })) as CallToolResult;
-    expect(questions.isError).toBeFalsy();
-    expect(questions.structuredContent).toMatchObject({
-      type: 'questions',
+    expect(guide.isError).toBeFalsy();
+    expect(guide.structuredContent).toMatchObject({
+      type: 'guide',
       ring: 'group',
-      title: 'Questions for 2026-11-05',
+      title: 'A school for the formation of the saints',
+      frontmatter: { opening: [], closing: [], readings: ['Ephesians 1:15–23'] },
     });
-    const { id } = questions.structuredContent as { id: string };
+    const { id } = guide.structuredContent as { id: string };
     const revised = (await client.callTool({
       name: 'create_version',
       arguments: {
         id,
-        frontmatter: { weekOf: '2026-11-05' },
-        body: '1. Where did you see grace?\n2. Where did you miss it?',
+        frontmatter: {
+          title: 'A school for the formation of the saints',
+          weekOf: '2026-11-05',
+          questions: ['Where did you see grace?', 'Where did you miss it?'],
+        },
+        body: '',
         summary: 'a second question',
       },
     })) as CallToolResult;
     expect(revised.structuredContent).toMatchObject({ version: 2 });
+
+    // The liturgy is nobody's to write through a token.
+    const liturgy = (await client.callTool({
+      name: 'create_document',
+      arguments: {
+        type: 'liturgy',
+        frontmatter: {
+          table: 'Eat.',
+          beforeReading: 'Blessed Lord. Amen.',
+          songbook: 'Sing.',
+          lordsPrayer: 'Our Father.',
+          closing: 'Lord Jesus Christ. Amen.',
+        },
+        body: '',
+      },
+    })) as CallToolResult;
+    expect(liturgy.isError).toBe(true);
+    expect(textOf(liturgy)).toMatch(/forbidden/);
 
     const signup = (await client.callTool({
       name: 'create_document',

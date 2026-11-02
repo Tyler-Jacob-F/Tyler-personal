@@ -9,6 +9,8 @@ import {
   type MakeColeadRequest,
   memberSchema,
   meResponseSchema,
+  passageSchema,
+  type Translation,
   type RotateGroupLinkRequest,
   rotateGroupLinkResponseSchema,
   signupClaimSchema,
@@ -36,6 +38,8 @@ export const groupKeys = {
   claims: (prefix: string, id: string) => [...groupKeys.all, prefix, 'claims', id] as const,
   members: (prefix: string) => [...groupKeys.all, prefix, 'members'] as const,
   link: () => [...groupKeys.all, 'link'] as const,
+  passage: (prefix: string, translation: string, ref: string) =>
+    [...groupKeys.all, prefix, 'passage', translation, ref] as const,
 };
 
 /** `GET /api/group/me` with a device token: which member the device holds, if any. */
@@ -43,7 +47,9 @@ export function fetchGroupMe(api: ApiFetch) {
   return api('/api/group/me', { schema: meResponseSchema });
 }
 
-export function useGroupDocuments(type: 'questions' | 'signup' | 'event') {
+export type GroupType = 'guide' | 'liturgy' | 'signup' | 'event';
+
+export function useGroupDocuments(type: GroupType) {
   const { api, prefix } = useGroup();
   return useQuery({
     queryKey: groupKeys.documents(prefix, type),
@@ -69,6 +75,18 @@ export function useClaims(id: string | null) {
     queryKey: groupKeys.claims(prefix, id ?? ''),
     queryFn: () => api(`${prefix}/documents/${id}/claims`, { schema: listClaimsResponseSchema }),
     enabled: id !== null,
+  });
+}
+
+/** A reading as text, in the liturgy's translation; a passage never changes, so it is kept for the session. */
+export function usePassage(ref: string, translation: Translation) {
+  const { api, prefix } = useGroup();
+  return useQuery({
+    queryKey: groupKeys.passage(prefix, translation, ref),
+    queryFn: () =>
+      api(`${prefix}/passages`, { schema: passageSchema, query: { ref, translation } }),
+    staleTime: Infinity,
+    retry: false,
   });
 }
 

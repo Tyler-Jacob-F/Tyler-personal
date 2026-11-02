@@ -31,7 +31,7 @@ import {
 import { listMembersFor } from '../services/members.js';
 
 export const SERVER_NAME = 'the-keep';
-export const SERVER_VERSION = '0.5.0';
+export const SERVER_VERSION = '0.6.0';
 
 const idField = z
   .uuid()
@@ -46,8 +46,10 @@ const instructions = [
   'list_documents before create_document so an existing recipe gets a version instead of a',
   'duplicate. When importing an older file, pass authoredAt as the date the content was written.',
   'Facets and flags are tags on the document, not frontmatter: set_tags replaces the whole set',
-  'without writing a version. The small group’s types (questions, signup, event) start in the',
-  'group ring, where every member reads them. With write:signups a token may also make a',
+  'without writing a version. The small group’s types (guide, liturgy, signup, event) start',
+  'in the group ring, where every member reads them; the week’s guide is what changes in',
+  'the printed guide, and the liturgy document holds what repeats. With write:signups a',
+  'token may also make a',
   'sheet and put names on its slots (claim_slot), and with read:members look the names up',
   '(list_members): the one-time seed from the old Google Sheet. Nothing touches a member row.',
 ].join(' ');

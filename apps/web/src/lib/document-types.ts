@@ -14,11 +14,8 @@ export interface TypeInfo {
 export const documentTypeInfo: Record<DocumentType, TypeInfo> = {
   recipe: { label: 'Recipe', path: (id) => `/recipes/${id}`, newPath: '/recipes/new' },
   brief: { label: 'Brief', path: (id) => `/briefs/${id}`, newPath: null },
-  questions: {
-    label: 'Questions',
-    path: (id) => `/group/questions/${id}`,
-    newPath: '/group/questions/new',
-  },
+  guide: { label: 'Guide', path: (id) => `/group/guide/${id}`, newPath: '/group/guide/new' },
+  liturgy: { label: 'Liturgy', path: () => '/group/guide', newPath: '/group/liturgy/edit' },
   signup: { label: 'Sign-up', path: (id) => `/group/signups/${id}`, newPath: '/group/signups/new' },
   event: { label: 'Event', path: () => '/group/calendar', newPath: '/group/calendar/new' },
 };

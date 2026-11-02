@@ -15,23 +15,29 @@ import { Button } from '@/components/ui/button';
 import { focusRing } from '@/components/ui/styles';
 import { canEdit, type GroupViewer, memberIdOf, useGroup } from '@/group/context';
 import { capacityLine, icsUrl, telHref, type Typed } from '@/group/format';
-import { closesLine, dayLine, longDay, whenLine } from '@/lib/dates';
+import { closesLine, dayLine, whenLine } from '@/lib/dates';
 import { quietLink } from '@/group/styles';
 import { cn } from '@/lib/utils';
 
-/** An eyebrow with, for the admin and co-leads, the one control the section has. */
+/**
+ * An eyebrow with, for the admin and co-leads, the one control the section has, in the
+ * 44px slot the render leaves at its right. `accent` makes it the page's one accent: the
+ * guide's eyebrow on meeting night.
+ */
 export function SectionHead({
   id,
   children,
   action,
+  accent = false,
 }: {
   id: string;
   children: ReactNode;
   action?: ReactNode;
+  accent?: boolean;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-4">
-      <h2 id={id} className="eyebrow">
+    <div className="flex min-h-11 items-center justify-between gap-4">
+      <h2 id={id} className={cn('eyebrow', accent && 'text-accent')}>
         {children}
       </h2>
       {action}
@@ -107,39 +113,17 @@ export function OtherList({
   );
 }
 
-// ---------- this week's questions ----------
-
-export function QuestionsBlock({
-  weekOf,
-  body,
-  heading = 'h1',
-}: {
-  weekOf: string;
-  body: string;
-  heading?: 'h1' | 'h2';
-}) {
-  const Heading = heading;
-  return (
-    <>
-      <Heading className="page-title mt-1">{longDay(weekOf)}</Heading>
-      {body.trim() ? (
-        <Markdown variant="reading" className="mt-4">
-          {body}
-        </Markdown>
-      ) : (
-        <p className="reading mt-4 text-muted italic">Nothing written yet.</p>
-      )}
-    </>
-  );
-}
-
 // ---------- the sign-up ----------
 
 export interface SheetProps {
   signup: Typed<SignupFrontmatter>;
   claims: SignupClaim[];
   members?: Member[];
-  heading?: 'h1' | 'h2';
+  heading?: 'h1' | 'h2' | 'h3';
+  /** Say the date under the title; off when the meeting above already says it. */
+  dated?: boolean;
+  /** A control beside the title, for the admin and co-leads. */
+  action?: ReactNode;
 }
 
 /**
@@ -149,7 +133,14 @@ export interface SheetProps {
  * appears on "Release" alone, the viewer's standing action; a guest reads the sheet and is
  * pointed at the claim screen.
  */
-export function SignupSheet({ signup, claims, members = [], heading = 'h2' }: SheetProps) {
+export function SignupSheet({
+  signup,
+  claims,
+  members = [],
+  heading = 'h2',
+  dated = true,
+  action,
+}: SheetProps) {
   const { viewer } = useGroup();
   const { frontmatter, item } = signup;
   const take = useTakeSlot(item.document.id);
@@ -163,15 +154,20 @@ export function SignupSheet({ signup, claims, members = [], heading = 'h2' }: Sh
   const closed = !signupOpen(frontmatter, now);
   const others = members.filter((m) => m.id !== mine);
 
+  const closes = frontmatter.closesAt && closesLine(frontmatter.closesAt, frontmatter.date);
+  const subline = dated
+    ? [dayLine(frontmatter.date), closes].filter(Boolean).join(' · ')
+    : closes && closes[0]!.toUpperCase() + closes.slice(1);
+
   return (
     <div>
-      <Heading className="mt-1 font-serif text-[26px] leading-tight font-medium text-text-strong">
-        {frontmatter.title}
-      </Heading>
-      <p className="mt-1 text-[15px] text-muted">
-        {dayLine(frontmatter.date)}
-        {frontmatter.closesAt && ` · ${closesLine(frontmatter.closesAt, frontmatter.date)}`}
-      </p>
+      <div className="flex items-baseline justify-between gap-4">
+        <Heading className="mt-1 font-serif text-[26px] leading-tight font-medium text-text-strong">
+          {frontmatter.title}
+        </Heading>
+        {action}
+      </div>
+      {subline && <p className="mt-1 text-[15px] text-muted">{subline}</p>}
       {guest && (
         <p className="mt-5 text-[15px] text-muted">
           <Link to="/group/claim" className={cn('font-semibold text-accent', focusRing)}>
@@ -330,10 +326,19 @@ function AddName({
 
 // ---------- the next meeting ----------
 
-export function MeetingRows({ event }: { event: Typed<EventFrontmatter> }) {
+export function MeetingRows({
+  event,
+  when = true,
+}: {
+  event: Typed<EventFrontmatter>;
+  /** Off when the heading above already says when. */
+  when?: boolean;
+}) {
   const { frontmatter, item } = event;
   const rows: Array<[string, ReactNode]> = [
-    ['When', whenLine(frontmatter.date, frontmatter.time)],
+    ...(when
+      ? ([['When', whenLine(frontmatter.date, frontmatter.time)]] as Array<[string, ReactNode]>)
+      : []),
     ...(frontmatter.place ? ([['Where', frontmatter.place]] as Array<[string, ReactNode]>) : []),
     ...(frontmatter.notes ? ([['Notes', frontmatter.notes]] as Array<[string, ReactNode]>) : []),
   ];

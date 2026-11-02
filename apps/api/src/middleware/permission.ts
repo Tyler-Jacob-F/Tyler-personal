@@ -31,7 +31,7 @@ const readsGroupAndPublic = (ring: Ring) => ring === 'group' || ring === 'public
  *
  * - admin: everything.
  * - colead: read `group` and `public`; write and delete the group's own types in the
- *   `group` ring (sign-ups, events, questions), nothing of Tyler's.
+ *   `group` ring (sign-ups, events, the week's guide, the liturgy), nothing of Tyler's.
  * - group role (a signed-in member who is not a co-lead; none exist today): read `group`
  *   and `public`.
  * - a device, member or guest: read `group` and `public`. Devices never write a document;

@@ -2,13 +2,13 @@ import { useGroupDocuments } from '@/api/group';
 import { Loading, QueryError } from '@/components/QueryState';
 import { canEdit, useGroup } from '@/group/context';
 import { eventsOf, pastEvents, upcomingEvents } from '@/group/format';
-import { todayIso, whenLine } from '@/lib/dates';
+import { inRichmond, whenLine } from '@/lib/dates';
 import { Control, EditOrNew, MeetingRows, SectionHead } from '@/routes/group/parts';
 
 /** The calendar is the list of upcoming events (docs/phases/04-group.md), the past folded under. */
 export function CalendarPage() {
   const { viewer } = useGroup();
-  const today = todayIso();
+  const today = inRichmond().date;
   const events = useGroupDocuments('event');
   if (events.isError) return <QueryError queries={[events]} />;
   if (events.isPending) return <Loading />;

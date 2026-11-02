@@ -20,6 +20,7 @@ describe('migration runner', () => {
       '0005_tag_change.sql',
       '0006_search.sql',
       '0007_group.sql',
+      '0008_guide.sql',
     ];
     expect(files.map((f) => f.name)).toEqual(names);
 

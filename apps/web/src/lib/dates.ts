@@ -106,22 +106,52 @@ export function longDay(date: string): string {
 /** "Thursday 5 November": the group's date line under a sign-up or a meeting. */
 export const dayLine = (date: string) => longDay(date).replace(',', '');
 
+/** "5 November": the date without its weekday, for a heading whose eyebrow already says Thursday. */
+export const dateLine = (date: string) => dayLine(date).replace(/^\S+ /, '');
+
+const richmond = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/New_York',
+  hourCycle: 'h23',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+/**
+ * The group's clock (docs/phases/04-group.md "The refresh"): the calendar date and hour
+ * in Richmond, wherever the phone happens to be. Meeting day turns at 5:00 there.
+ */
+export function inRichmond(now = new Date()): { date: string; hour: number; minute: number } {
+  const parts = richmond.formatToParts(now);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
+  return {
+    date: `${get('year')}-${get('month')}-${get('day')}`,
+    hour: Number(get('hour')),
+    minute: Number(get('minute')),
+  };
+}
+
 /** "Thursday 5 November, 6:30". */
 export const whenLine = (date: string, time?: string) =>
   time ? `${dayLine(date)}, ${clock(time)}` : dayLine(date);
 
-/** The weekday of an instant, in the viewer's zone. */
-const weekdayLocal = new Intl.DateTimeFormat('en-GB', { weekday: 'long' });
+const weekdayRichmond = new Intl.DateTimeFormat('en-GB', {
+  weekday: 'long',
+  timeZone: 'America/New_York',
+});
 
 /**
- * "closes Thursday 5:00": a close in the viewer's own zone, named by its weekday when it
- * is within a week of the sheet's date, else by its date.
+ * "closes Thursday 5:00": a close on the group's clock (Richmond), named by its weekday
+ * when it is within a week of the sheet's date, else by its date.
  */
 export function closesLine(closesAt: string, date: string): string {
   const at = new Date(closesAt);
-  const time = clock12(at.getHours(), at.getMinutes());
+  const local = inRichmond(at);
+  const time = clock12(local.hour, local.minute);
   const sameWeek = Math.abs(at.getTime() - new Date(`${date}T12:00:00`).getTime()) < 7 * 86_400_000;
-  return `closes ${sameWeek ? weekdayLocal.format(at) : dayLine(localIsoDate(at))} ${time}`;
+  return `closes ${sameWeek ? weekdayRichmond.format(at) : dayLine(local.date)} ${time}`;
 }
 
 /** "written Nov 6, 2023 · entered Oct 26, 2026" when they differ, else the entry time alone. */

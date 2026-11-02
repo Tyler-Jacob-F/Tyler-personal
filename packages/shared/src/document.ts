@@ -5,8 +5,12 @@ export const rings = ['me', 'group', 'public'] as const;
 export const ringSchema = z.enum(rings);
 export type Ring = z.infer<typeof ringSchema>;
 
-/** Document types the registry knows, in the order they arrived. Later types append here. */
-export const documentTypes = ['recipe', 'brief', 'questions', 'signup', 'event'] as const;
+/**
+ * Document types the registry knows, in the order they arrived. Later types append here.
+ * `questions` (Oct 2026) became `guide` in the Phase 4 refresh (Nov 2, 2026); migration
+ * 0008 retired its rows.
+ */
+export const documentTypes = ['recipe', 'brief', 'guide', 'liturgy', 'signup', 'event'] as const;
 export const documentTypeSchema = z.enum(documentTypes);
 export type DocumentType = z.infer<typeof documentTypeSchema>;
 

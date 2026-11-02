@@ -8,7 +8,7 @@ export const scopeDescriptions: Record<AgentScope, string> = {
   'write:notes': 'Create notes and note versions',
   'read:reading': 'Read the reading feed',
   'write:events': 'Keep the group’s calendar: create events and move them',
-  'write:questions': 'Post the group’s weekly questions',
+  'write:guides': 'Post the group’s guide for the week',
   'write:signups': 'Make a sign-up sheet and put names on its slots (the seed from the old sheet)',
   'read:members': 'Read the group directory, to match names to members (the seed only)',
 };

@@ -3,7 +3,8 @@ import { type DocumentType, documentTypeSchema, type Ring, tagsSchema } from './
 import type { FrontmatterBase } from './types/base.js';
 import { briefFrontmatterSchema } from './types/brief.js';
 import { eventFrontmatterSchema } from './types/event.js';
-import { questionsFrontmatterSchema } from './types/questions.js';
+import { guideFrontmatterSchema } from './types/guide.js';
+import { liturgyFrontmatterSchema } from './types/liturgy.js';
 import { recipeTagsSchema, recipeTaxonomyGuide } from './types/recipe-taxonomy.js';
 import { recipeFrontmatterSchema } from './types/recipe.js';
 import { signupFrontmatterSchema } from './types/signup.js';
@@ -55,17 +56,36 @@ const registry: Record<DocumentType, TypeDefinition> = {
       'list_documents with type brief first, and add a version to today’s if it already ' +
       'exists.',
   },
-  questions: {
-    schema: questionsFrontmatterSchema,
+  guide: {
+    schema: guideFrontmatterSchema,
     tags: tagsSchema,
     defaultRing: 'group',
     guide:
-      'questions: the small group’s weekly discussion questions. frontmatter is { weekOf, ' +
-      'title? }: weekOf is the Thursday the questions are for (YYYY-MM-DD); title defaults to ' +
-      '"Questions for <weekOf>". The body is the questions in markdown, a numbered list, with ' +
-      'the passage or theme as a short lead. One document per week: list_documents with type ' +
-      'questions first and add a version to that week’s if it already exists. Documents of ' +
-      'this type start in the group ring, where every member reads them.',
+      'guide: the small group’s guide for one week, what changes in Redeemer’s printed guide ' +
+      'and nothing that repeats. frontmatter is { title, weekOf, series?, week?, opening, ' +
+      'readings, reflection?, questions, closing, source? }: weekOf is the Thursday it is for ' +
+      '(YYYY-MM-DD); series the printed series ("Sanctuary") and week its number in it (4); ' +
+      'title the week’s title ("A school for the formation of the saints"); opening and ' +
+      'closing are lists of { voice, text } with voice "leader" or "people", in the order ' +
+      'said, a collect being one leader line ending "Amen."; readings a list of references ' +
+      'as the guide prints them ("Ephesians 1:15–23", "Psalm 122"), which the page resolves ' +
+      'to text; reflection the one sentence over the questions; questions a list of plain ' +
+      'strings, one per question, without numbers; source the credit line ("Redeemer’s ' +
+      'Sanctuary guide, week four · Fall 2026"). Leave out the collect before the reading, ' +
+      'the songbook line, the Lord’s Prayer and the final collect: the liturgy document ' +
+      'carries those every week. The body is unused. One document per week: ' +
+      'list_documents with type guide first and add a version to that week’s if it already ' +
+      'exists. Documents of this type start in the group ring, where every member reads them.',
+  },
+  liturgy: {
+    schema: liturgyFrontmatterSchema,
+    tags: tagsSchema,
+    defaultRing: 'group',
+    guide:
+      'liturgy: the group’s one settings document, the fixed liturgy that repeats every ' +
+      'week and the translation the readings are served in. frontmatter is { title?, ' +
+      'translation, table, beforeReading, songbook, lordsPrayer, closing }. One document, ' +
+      'kept by the admin and co-leads in the group UI; no agent scope writes it.',
   },
   signup: {
     schema: signupFrontmatterSchema,

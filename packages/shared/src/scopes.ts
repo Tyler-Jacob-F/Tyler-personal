@@ -4,7 +4,8 @@ import type { DocumentType } from './document.js';
 /**
  * Agent scopes are verbs on types (docs/DESIGN.md "Auth and access rings"). The list is
  * the brief's plus the four the Group phase added (docs/phases/04-group.md): `write:events`
- * and `write:questions` for the `claude` token to keep the calendar and post the questions;
+ * and `write:guides` for the `claude` token to keep the calendar and post the week's guide
+ * (`write:questions` until the Nov 2, 2026 refresh; migration 0008 renamed it on tokens);
  * `write:signups` (a sheet and the names on its slots) and `read:members` (the directory,
  * so a name can be matched to a row) for the one-time seed from the Google Sheet, removed
  * from the token once it is done. A token carries a subset and nothing here grants
@@ -17,7 +18,7 @@ export const agentScopes = [
   'write:notes',
   'read:reading',
   'write:events',
-  'write:questions',
+  'write:guides',
   'write:signups',
   'read:members',
 ] as const;
@@ -31,7 +32,8 @@ export type AgentScope = z.infer<typeof agentScopeSchema>;
 export const writeScopeByType: Record<DocumentType, AgentScope | null> = {
   recipe: 'write:recipes',
   brief: 'write:briefs',
-  questions: 'write:questions',
+  guide: 'write:guides',
+  liturgy: null,
   signup: 'write:signups',
   event: 'write:events',
 };
