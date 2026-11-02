@@ -395,6 +395,18 @@ weeks and, for the admin and co-leads, the way to the fixed liturgy.
 - The reading's fold is a button styled as the quiet link, so it works without a
   navigation and the leader reads on without leaving the page.
 
+**The coming Thursday, not the next event (Nov 2, an hour after the deploy).** Tyler
+opened the home on the 1st and found "Thursday · 19 November": the page took the meeting
+from the calendar, and the calendar holds only the nights that differ (Friendsgiving),
+so it reached past two ordinary Thursdays. Now the home anchors on the coming Thursday:
+the sheet's date when there is a sheet, else the next Thursday; at the standing time and
+place, which the liturgy document names (`meetsAt`, `place`, both optional, defaulting to
+6:30 at Tyler and Kelly's), unless an event falls on that date and says otherwise. The
+first event past it within a month stands under "Coming up" with its date and a "Sign
+up" link to its own sheet when one exists (Tyler: "I do want folks signing up for
+Friendsgiving"), or to the calendar. "Add to calendar" works for an ordinary Thursday
+too. The evening's "Tonight" line names the event when there is one.
+
 **Not done.** The Leading row (Tyler). A maps link on the address (the render underlines
 it; nothing in the spec says where it goes). An ESV or NIV: no public-domain source
 carries them, and the brief has no API key to spend on one.

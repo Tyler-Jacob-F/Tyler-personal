@@ -326,47 +326,57 @@ function AddName({
 
 // ---------- the next meeting ----------
 
+/**
+ * A meeting's rows: when (unless the heading says), where, notes, the event's own body,
+ * and "Add to calendar". Takes a plain meeting, since the coming Thursday usually has no
+ * event document behind it (the standing time and place come from the liturgy).
+ */
 export function MeetingRows({
-  event,
+  meeting,
+  item,
   when = true,
 }: {
-  event: Typed<EventFrontmatter>;
+  meeting: EventFrontmatter;
+  /** The event document, when there is one: its body and the slug for the .ics file. */
+  item?: Typed<EventFrontmatter>['item'];
   /** Off when the heading above already says when. */
   when?: boolean;
 }) {
-  const { frontmatter, item } = event;
   const rows: Array<[string, ReactNode]> = [
     ...(when
-      ? ([['When', whenLine(frontmatter.date, frontmatter.time)]] as Array<[string, ReactNode]>)
+      ? ([['When', whenLine(meeting.date, meeting.time)]] as Array<[string, ReactNode]>)
       : []),
-    ...(frontmatter.place ? ([['Where', frontmatter.place]] as Array<[string, ReactNode]>) : []),
-    ...(frontmatter.notes ? ([['Notes', frontmatter.notes]] as Array<[string, ReactNode]>) : []),
+    ...(meeting.place ? ([['Where', meeting.place]] as Array<[string, ReactNode]>) : []),
+    ...(meeting.notes ? ([['Notes', meeting.notes]] as Array<[string, ReactNode]>) : []),
   ];
+  const body = item?.version.body.trim();
   return (
     <div>
-      <table className="w-full border-collapse text-[17px]">
-        <tbody>
-          {rows.map(([label, text]) => (
-            <tr key={label}>
-              <th
-                scope="row"
-                className="w-28 py-2 pr-4 text-left align-baseline font-normal text-muted"
-              >
-                {label}
-              </th>
-              <td className="py-2 align-baseline leading-relaxed text-text">{text}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {item.version.body.trim() && (
+      {rows.length > 0 && (
+        <table className="w-full border-collapse text-[17px]">
+          <tbody>
+            {rows.map(([label, text]) => (
+              <tr key={label}>
+                <th
+                  scope="row"
+                  className="w-28 py-2 pr-4 text-left align-baseline font-normal text-muted"
+                >
+                  {label}
+                </th>
+                <td className="py-2 align-baseline leading-relaxed text-text">{text}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {body && (
         <Markdown variant="ui" className="mt-3 text-muted">
-          {item.version.body}
+          {body}
         </Markdown>
       )}
       <a
-        href={icsUrl(frontmatter, item.document.id)}
-        download={`${item.document.slug}.ics`}
+        href={icsUrl(meeting, item?.document.id ?? `small-group-${meeting.date}`)}
+        download={`${item?.document.slug ?? `small-group-${meeting.date}`}.ics`}
         className={cn(quietLink, 'mt-3 text-[17px]')}
       >
         Add to calendar

@@ -281,6 +281,8 @@ const liturgyForm = z.object({
   songbook: z.string().trim().min(1, 'The line.').max(500),
   lordsPrayer: z.string().trim().min(1, 'The prayer.').max(2000),
   closing: z.string().trim().min(1, 'The final collect.').max(2000),
+  meetsAt: z.string(),
+  place: z.string().trim().max(200),
   summary: z.string().trim().max(500),
 });
 
@@ -310,14 +312,20 @@ function LiturgyForm({ id }: { id: string | undefined }) {
       songbook: base.songbook,
       lordsPrayer: base.lordsPrayer,
       closing: base.closing,
+      meetsAt: base.meetsAt ?? '',
+      place: base.place ?? '',
       summary: '',
     },
   });
   if (editor.existing.isError) return <QueryError queries={[editor.existing]} />;
   if (id && editor.existing.isPending) return <Loading />;
 
-  const onSubmit = form.handleSubmit(async ({ summary, ...values }) => {
-    const frontmatter = liturgyFrontmatterSchema.parse(values);
+  const onSubmit = form.handleSubmit(async ({ summary, meetsAt, place, ...values }) => {
+    const frontmatter = liturgyFrontmatterSchema.parse({
+      ...values,
+      meetsAt: meetsAt || undefined,
+      place: place || undefined,
+    });
     await editor.save({ frontmatter, body: '', summary });
     navigate('/group/guide');
   });
@@ -385,6 +393,25 @@ function LiturgyForm({ id }: { id: string | undefined }) {
           <FormRow control={form.control} name="closing" label="The final collect">
             {(field) => <Textarea rows={6} className="font-serif text-[17px]" {...field} />}
           </FormRow>
+          <div className="grid gap-5 sm:grid-cols-3">
+            <FormRow
+              control={form.control}
+              name="meetsAt"
+              label="Meets at"
+              hint="Every Thursday, unless the calendar says otherwise."
+            >
+              {(field) => <Input type="time" {...field} />}
+            </FormRow>
+            <FormRow
+              control={form.control}
+              name="place"
+              label="Place"
+              hint="Whose house, unless an event says otherwise."
+              className="sm:col-span-2"
+            >
+              {(field) => <Input {...field} />}
+            </FormRow>
+          </div>
           {id && <SummaryField control={form.control} name="summary" />}
           <SaveBar pending={form.formState.isSubmitting} />
         </form>

@@ -47,13 +47,18 @@ with the new label and move the names, rather than renaming.
 
 ## 4. Add the next meeting, the fixed liturgy, and this week's guide
 
-**Group → Calendar → Add a meeting**: the Thursday, 6:30, the place, one line of notes.
-The home turns at 5:00 on that date: before it the sheet is first, after it the guide.
+The group meets every Thursday, so the home always shows the coming one, at the time and
+place the fixed liturgy names (next step). **Group → Calendar → Add a meeting** is for
+the nights that differ: Friendsgiving, a moved week, someone else's house. An event
+within a month shows under "Coming up" with a link to its sheet, if you made one with
+its date. The home turns at 5:00 on the Thursday: before it the sheet is first, after it
+the guide.
 
 **Group → Guide → The fixed liturgy → Set it up** (once, ever): the form comes filled
 with Redeemer's words as the group has used them (the collect before the reading, the
-songbook line, the Lord's Prayer, the final collect) and the King James for the readings.
-Save it as it is, or change a line first. Nothing shows under "Before the reading" or
+songbook line, the Lord's Prayer, the final collect), the King James for the readings,
+and the standing meeting (6:30, Tyler and Kelly's). Save it as it is, or change a line
+first. Nothing shows under "Before the reading" or
 after the closing prayer until this is saved.
 
 **Group → Guide → Write this week's**: the seven fields from the printed guide. Series

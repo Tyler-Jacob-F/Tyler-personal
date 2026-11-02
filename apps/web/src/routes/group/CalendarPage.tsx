@@ -41,7 +41,7 @@ export function CalendarPage() {
                   )}
                 </div>
                 <div className="mt-2">
-                  <MeetingRows event={event} />
+                  <MeetingRows meeting={event.frontmatter} item={event.item} />
                 </div>
               </li>
             ))}

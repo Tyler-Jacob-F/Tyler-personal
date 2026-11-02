@@ -48,22 +48,29 @@ describe('the group home for the admin', () => {
       'members-heading',
     ]);
 
+    // The coming Thursday at the standing time and place (from the liturgy), not the next
+    // event: Friendsgiving is two weeks out and is named under "Coming up" with its sheet.
     const thursday = within(page).getByRole('region', { name: 'Thursday' });
     expect(
       within(thursday).getByRole('heading', { level: 3, name: '5 November, 6:30' }),
     ).toBeInTheDocument();
     const rows = within(thursday).getAllByRole('row');
-    expect(rows.map((r) => within(r).getByRole('rowheader').textContent)).toEqual([
-      'Where',
-      'Notes',
-    ]);
+    expect(rows.map((r) => within(r).getByRole('rowheader').textContent)).toEqual(['Where']);
+    expect(rows[0]).toHaveTextContent('Tyler and Kelly’s');
     expect(within(thursday).getByRole('link', { name: 'Add to calendar' })).toHaveAttribute(
       'download',
-      'small-group.ics',
+      'small-group-2026-11-05.ics',
     );
-    expect(within(thursday).getByRole('link', { name: 'Edit' })).toHaveAttribute(
+    expect(within(thursday).getByRole('link', { name: 'Add a meeting' })).toHaveAttribute(
       'href',
-      `/group/calendar/${gids.event}/edit`,
+      '/group/calendar/new',
+    );
+    const later = within(thursday).getByRole('group', { name: 'Coming up' });
+    expect(later).toHaveTextContent('Friendsgiving');
+    expect(later).toHaveTextContent('Thursday 19 November, 6:30');
+    expect(within(later).getByRole('link', { name: 'Sign up' })).toHaveAttribute(
+      'href',
+      `/group/signups/${gids.friendsgiving}`,
     );
     expect(within(thursday).getByRole('link', { name: 'Edit the sheet' })).toHaveAttribute(
       'href',
@@ -158,6 +165,32 @@ describe('the group home for the admin', () => {
     expect(page.textContent).not.toMatch(/Good morning|overdue|urgent/i);
   });
 
+  it('names the night by its event when the calendar has one for that Thursday', async () => {
+    pinClock(evening);
+    mockGroup('/api', {
+      docs: [
+        guideDoc,
+        liturgyDoc,
+        signupDoc,
+        {
+          ...eventDoc,
+          version: {
+            ...eventDoc.version,
+            frontmatter: { ...eventDoc.version.frontmatter, date: today, place: 'The Bergs’' },
+          },
+        },
+      ],
+    });
+    render(<App />, { route: '/group' });
+    const page = await screen.findByRole('article', { name: 'Group' });
+    const tonight = within(page).getByRole('region', { name: 'Tonight' });
+    expect(tonight).toHaveTextContent('6:30 at The Bergs’ · Friendsgiving · members');
+    expect(within(tonight).getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'href',
+      `/group/calendar/${gids.event}/edit`,
+    );
+  });
+
   it('turns at 5:00 on meeting day: Tonight in a line, the guide first with its eyebrow brass, the sheet gone', async () => {
     pinClock(evening);
     mockGroup('/api');
@@ -172,7 +205,7 @@ describe('the group home for the admin', () => {
       'members-heading',
     ]);
     const tonight = within(page).getByRole('region', { name: 'Tonight' });
-    expect(tonight).toHaveTextContent('6:30 at Tyler and Kelly’s · 12 Hanover Ave · members');
+    expect(tonight).toHaveTextContent('6:30 at Tyler and Kelly’s · members');
     expect(within(tonight).getByRole('link', { name: 'members' })).toHaveAttribute(
       'href',
       '/group/members',
