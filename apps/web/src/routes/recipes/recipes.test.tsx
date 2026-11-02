@@ -261,11 +261,26 @@ describe('RecipeDetail', () => {
     expect(screen.queryByRole('list', { name: 'Facets' })).toBeNull();
   });
 
-  it('shares the recipe as text: copy, email, print or save as PDF, and the phone’s share sheet when the browser has one', async () => {
+  it('shares the recipe: a PDF or the text through the share sheet, copy, email, and a PDF download', async () => {
     const user = userEvent.setup();
     const share = vi.fn().mockResolvedValue(undefined);
+    const canShare = vi.fn((data?: ShareData) => Array.isArray(data?.files));
     Object.defineProperty(navigator, 'share', { value: share, configurable: true, writable: true });
-    const print = vi.spyOn(window, 'print').mockImplementation(() => {});
+    Object.defineProperty(navigator, 'canShare', {
+      value: canShare,
+      configurable: true,
+      writable: true,
+    });
+    const objectUrl = vi.fn(() => 'blob:chili');
+    const revoke = vi.fn();
+    Object.defineProperty(URL, 'createObjectURL', { value: objectUrl, configurable: true });
+    Object.defineProperty(URL, 'revokeObjectURL', { value: revoke, configurable: true });
+    const clicks: string[] = [];
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      clicks.push(`${this.download}@${this.href}`);
+    });
     server.use(
       http.get(`/api/documents/${ids.doc}`, () =>
         HttpResponse.json(recipeDoc(version2, chiliTags)),
@@ -282,46 +297,91 @@ describe('RecipeDetail', () => {
       const menu = () => screen.getByRole('menu', { name: 'Share' });
 
       await open();
+      expect(
+        within(menu())
+          .getAllByRole('menuitem')
+          .map((item) => item.textContent),
+      ).toEqual([
+        'Send PDF…Messages, Messenger, Mail',
+        'Send as text…',
+        'Copy as text',
+        'Emailopens your mail app',
+        'Download PDF',
+      ]);
       expect(within(menu()).getByRole('menuitem', { name: /^Email/ })).toHaveAttribute(
         'href',
         `mailto:?subject=Chili&body=${encodeURIComponent(text.replace(/\n/g, '\r\n'))}`,
       );
-      await user.click(within(menu()).getByRole('menuitem', { name: 'Copy as text' }));
+
+      await user.click(within(menu()).getByRole('menuitem', { name: /^Send PDF/ }));
       expect(screen.queryByRole('menu', { name: 'Share' })).toBeNull();
+      await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
+      const shared = share.mock.calls[0]![0] as { title: string; files: File[] };
+      expect(shared.title).toBe('Chili');
+      expect(shared.files).toHaveLength(1);
+      expect(shared.files[0]!.name).toBe('chili.pdf');
+      expect(shared.files[0]!.type).toBe('application/pdf');
+      expect(
+        Buffer.from(await shared.files[0]!.arrayBuffer())
+          .subarray(0, 5)
+          .toString(),
+      ).toBe('%PDF-');
+      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(''));
+
+      await open();
+      await user.click(within(menu()).getByRole('menuitem', { name: 'Send as text…' }));
+      expect(share).toHaveBeenLastCalledWith({ title: 'Chili', text });
+
+      await open();
+      await user.click(within(menu()).getByRole('menuitem', { name: 'Copy as text' }));
       expect(await screen.findByRole('status')).toHaveTextContent('Copied');
       expect(await navigator.clipboard.readText()).toBe(text);
 
       await open();
-      await user.click(within(menu()).getByRole('menuitem', { name: /^Send…/ }));
-      expect(share).toHaveBeenCalledWith({ title: 'Chili', text });
-
-      await open();
-      await user.click(within(menu()).getByRole('menuitem', { name: 'Print or save as PDF' }));
-      expect(print).toHaveBeenCalledTimes(1);
-      expect(screen.queryByRole('menu', { name: 'Share' })).toBeNull();
+      await user.click(within(menu()).getByRole('menuitem', { name: 'Download PDF' }));
+      await waitFor(() => expect(clicks).toEqual(['chili.pdf@blob:chili']));
+      expect(objectUrl).toHaveBeenCalledTimes(1);
 
       // Escape closes the menu too.
       await open();
       await user.keyboard('{Escape}');
       expect(screen.queryByRole('menu', { name: 'Share' })).toBeNull();
     } finally {
-      print.mockRestore();
+      click.mockRestore();
       Reflect.deleteProperty(navigator, 'share');
+      Reflect.deleteProperty(navigator, 'canShare');
+      Reflect.deleteProperty(URL, 'createObjectURL');
+      Reflect.deleteProperty(URL, 'revokeObjectURL');
     }
   });
 
-  it('offers no Send… where the browser has no share sheet', async () => {
+  it('offers neither Send where the browser has no share sheet, and only the text one where the sheet takes no files', async () => {
     const user = userEvent.setup();
     server.use(http.get(`/api/documents/${ids.doc}`, () => HttpResponse.json(recipeDoc(version1))));
     render(<App />, { route: `/recipes/${ids.doc}` });
     await screen.findByRole('heading', { name: 'Chili', level: 1 });
     await user.click(screen.getByRole('button', { name: 'Share' }));
-    const items = within(screen.getByRole('menu', { name: 'Share' })).getAllByRole('menuitem');
-    expect(items.map((item) => item.textContent)).toEqual([
-      'Copy as text',
-      'Emailopens your mail app',
-      'Print or save as PDF',
-    ]);
+    const items = () =>
+      within(screen.getByRole('menu', { name: 'Share' }))
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent);
+    expect(items()).toEqual(['Copy as text', 'Emailopens your mail app', 'Download PDF']);
+    await user.keyboard('{Escape}');
+
+    Object.defineProperty(navigator, 'share', { value: vi.fn(), configurable: true });
+    Object.defineProperty(navigator, 'canShare', { value: () => false, configurable: true });
+    try {
+      await user.click(screen.getByRole('button', { name: 'Share' }));
+      expect(items()).toEqual([
+        'Send as text…',
+        'Copy as text',
+        'Emailopens your mail app',
+        'Download PDF',
+      ]);
+    } finally {
+      Reflect.deleteProperty(navigator, 'share');
+      Reflect.deleteProperty(navigator, 'canShare');
+    }
   });
 
   it('shows the API error for a missing recipe', async () => {
