@@ -45,11 +45,25 @@ behalf, which is what the API records.
 A slot's label is its identity. If a label needs fixing after names are on it, add a slot
 with the new label and move the names, rather than renaming.
 
-## 4. Add the next meeting and this week's questions
+## 4. Add the next meeting, the fixed liturgy, and this week's guide
 
 **Group → Calendar → Add a meeting**: the Thursday, 6:30, the place, one line of notes.
-**Group → Questions → Write this week's**: the Thursday it is for and the questions in
-markdown. Both can be kept through MCP from here on (`docs/runbooks/group-calendar.md`).
+The home turns at 5:00 on that date: before it the sheet is first, after it the guide.
+
+**Group → Guide → The fixed liturgy → Set it up** (once, ever): the form comes filled
+with Redeemer's words as the group has used them (the collect before the reading, the
+songbook line, the Lord's Prayer, the final collect) and the King James for the readings.
+Save it as it is, or change a line first. Nothing shows under "Before the reading" or
+after the closing prayer until this is saved.
+
+**Group → Guide → Write this week's**: the seven fields from the printed guide. Series
+and week ("Sanctuary", 4), the Thursday, the title; the opening prayer as a paragraph
+per voice starting "Leader:" or "People:"; the readings one per line as the guide prints
+them ("Ephesians 1:15–23"), which the page turns into text; the reflection sentence; the
+questions one per line; the closing prayer the same way as the opening, a collect being
+one Leader paragraph; the credit line. The meeting and the guide can both be kept through
+MCP from here on (`docs/runbooks/group-calendar.md`): Duet reads the week's PDF and posts
+it.
 
 ## 5. Make the co-leads
 
@@ -75,7 +89,7 @@ want to take slots from the sheet as themselves.
 ## 7. Paste the link into the thread
 
 Send the URL from step 1 to the group text thread with a line like: "Our sign-up and
-questions live here now. Open it, tap your name, and it remembers your phone." A phone
+the week's guide live here now. Open it, tap your name, and it remembers your phone." A phone
 that opens it sees "You're in the group", then Continue, then "Who are you?". Names
 already on another phone sit under "Already on another device"; tapping one asks once.
 

@@ -19,31 +19,31 @@ The renders win on layout, the contract on values.
   `recipe-light-desktop.png`
 - `tokens.png`: the palette, type scale, radii and the accent rule, both modes side by side
 
-## Present (Oct 31, 2026): the group
+## Present (Nov 2, 2026): the group, refreshed
 
-From `group.pdf`, the Design session for Phase 4 (`docs/phases/04-group.md`), rasterized
-at 150 dpi and stitched the same way:
+From `group.pdf`, Design's second pass at Phase 4 after the first week on real phones
+(`group-directive.pdf` is the spec that came with it; `docs/phases/04-group.md` "The
+refresh" records what was built from it), rasterized at 150 dpi and stitched the same way.
+The Oct 31 renders are replaced: the home is organized around the week's guide now.
 
 - `group-home-dark-phone.png`, `group-home-light-phone.png`, `group-home-dark-desktop.png`,
-  `group-home-light-desktop.png`: the group home as a member who has claimed a name
-  (Taylor) sees it: this week's questions, the sign-up with the one accent on the viewer's
-  own "Release", the next meeting, the directory with "you" and "Edit your details"
-- `group-home-guest-dark-phone.png`: the same page for a phone that holds the link but no
-  name: "Tap your name first" carries the accent and the slot buttons repeat it in outline
-- `claim-dark-phone.png`: "Who are you?", unclaimed names first, the claimed ones under
-  "Already on another device" with a phone count, and the one confirmation
-- `link-dark-phone.png`, `link-dead-dark-phone.png`: `/g/<token>` live ("You're in the
-  group", Continue) and dead ("This link is no longer the group's")
+  `group-home-light-desktop.png`: the home on Thursday afternoon as a member who has
+  claimed a name (Taylor) sees it: the meeting under its weekday, the sheet titled
+  "Table" with the one accent on the viewer's own "Release", then the whole guide for
+  the evening (opening prayer in two voices, Table, the collect before the reading, each
+  reading with three verses and "Continue the reading", the reflection and numbered
+  questions, the closing prayers), then the directory
+- `group-home-guest-dark-phone.png`: the same afternoon for a phone that holds the link
+  but no name: "Tap your name first" carries the accent and the slot buttons repeat it
+- `group-tonight-dark-phone.png`: the same phone at 7:00 that evening: "Tonight" in one
+  line, the guide first with its eyebrow as the page's one accent and who brought what at
+  the Table, no sheet
+- `claim-dark-phone.png`, `link-dark-phone.png`, `link-dead-dark-phone.png`: as before
 
 The desktop artboards came through the PDF at page width (1275 px), narrower than the
-morning page's; the layout is the reference, not the pixel size. The names, numbers and
-addresses are sample content.
-
-The morning renders were stitched from the canvas's PDF export, whose pages sliced each
-artboard; the later four came as PDFs (`nav.pdf`, `recipes.pdf`, `recipe.pdf`,
-`tokens.pdf`, kept here as the source) and were rasterized at 150 dpi and stitched the
-same way, page margins trimmed at the joins. The content is sample content; the layout,
-type, spacing and the one accented element are the reference.
+morning page's; the layout is the reference, not the pixel size. The names, numbers,
+addresses and the "Leading" row are sample content: the row was left out of the build
+(the leaders never change, Tyler, Nov 2).
 
 ## The mark
 
@@ -57,7 +57,7 @@ type, spacing and the one accented element are the reference.
 ## Not rendered
 
 The History and diff screens, Tokens, Activity, Stack and sign-in have no render; the Face
-phase restyles them with the primitives and the idiom above. The group's Questions,
-Sign-up, Calendar and Members pages, the edit forms behind the co-leads' controls, the
-link panel and the co-lead sign-in have none either; the Group phase builds them from the
-home's idiom.
+phase restyles them with the primitives and the idiom above. The group's Guide, Sign-up,
+Calendar and Members pages, the edit forms behind the co-leads' controls (the week's
+guide, the fixed liturgy, a sheet, a meeting), the link panel and the co-lead sign-in have
+none either; the Group phase builds them from the home's idiom.

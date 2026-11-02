@@ -148,7 +148,8 @@ Each is one PR, in this order.
       guest can only read and claim.
 - [x] **Types.** `questions`, `signup`, `event` schemas and guides; the claim API
       (`POST`/`DELETE /api/group/documents/{id}/claims`); scopes; MCP tests that the
-      `claude` token can post an event and this week's questions. Tests.
+      `claude` token can post an event and this week's questions. Tests. (`questions`
+      became `guide`, with `liturgy` beside it, in the Nov 2 refresh below.)
 - [x] **Group home render.** Tyler, in a Design session: `group-home-<mode>-<width>.png`
       in `docs/design/`, plus the sign-up and the claim screen if the session has room.
       Not a PR; the next two wait on it. **Delivered Oct 31** as `group.pdf`: the home in
@@ -159,6 +160,10 @@ Each is one PR, in this order.
       Group place for Tyler and co-leads; the admin controls. MSW tests for each caller.
 - [x] **Runbooks.** `docs/runbooks/bring-the-group-in.md` and
       `docs/runbooks/group-calendar.md`.
+- [x] **The refresh (Nov 2, 2026).** Design's second pass after the first week on real
+      phones: the home around the week's guide, the evening order from 5:00, readings
+      resolved to text. `docs/design/group-directive.pdf` is the spec; the section below
+      records what was built from it.
 - [ ] **Gate check.** A real Thursday. Record the date here.
 
 ## Ask versus decide
@@ -167,7 +172,7 @@ Each is one PR, in this order.
 
 - Any change to the `member` shape or the three tables after `0007_group` ships.
 - The link's path (`/g/`) once it has been sent to the group.
-- A new scope beyond `write:events` and `write:questions`.
+- A new scope beyond `write:events` and `write:guides` (`write:questions` until Nov 2).
 - Anything the group-home render and the contract disagree on.
 
 **Decide and flag in the PR description:** device-token format and storage key, how
@@ -331,6 +336,69 @@ device token in `localStorage` under `keep.device`; the group shell has no nav o
 Keep's, only its own places (Home, Questions, Sign-up, Calendar, Members); Tyler and
 co-leads see the same slice from the Group place with the controls added.
 
+## The refresh (Nov 2, 2026)
+
+After the first week on real phones Tyler took the usability notes back to Design, which
+sent a second pass: `docs/design/group-directive.pdf` and the renders `docs/design/
+group-*.png` (README there). It supersedes the earlier spec in one respect: the group
+home is organized around the week's guide, not a list of questions. Tyler's one
+amendment on handing it over: no "Leading" row, the leaders never change. Built the same
+day on the Phase 4 branch; migration `0008_guide`.
+
+**Types.** `questions` is gone. `guide` is what changes week to week in Redeemer's
+printed guide: `title`, `weekOf` (the Thursday; "this week's" is picked as before, the
+newest within six days ahead), `series` and `week` for the eyebrow ("Sanctuary · Week
+four"), `opening` and `closing` as lists of `{ voice, text }` with the voice `leader` or
+`people` (a collect is one leader line), `readings` as references, `reflection`,
+`questions` as plain strings, `source` for the credit line. `liturgy` is what repeats
+every week, stored once: the line under Table, the collect before the reading, the
+songbook line, the Lord's Prayer, the final collect, and `translation`. The page
+assembles the evening from the two in the directive's order. A new week is the seven
+fields; the fixed liturgy is never re-entered. Scope `write:questions` became
+`write:guides`; the liturgy has no agent scope.
+
+**Scripture.** Readings resolve server-side: `GET /api/passages?ref=…&translation=…`
+(and `/api/group/passages` for devices) asks bible-api.com, which carries only
+public-domain texts, so the King James is the default and the liturgy's `translation`
+picks among eight. The Lambda keeps what it has fetched; the browser keeps a passage a
+day. Three verses inline, the rest behind "Continue the reading · N verses". A reference
+the source does not know shows a line saying so rather than an error color.
+
+**The home.** The order turns at 5:00 on meeting day, Richmond time. Before: Thursday
+(the weekday as eyebrow, the date and time in Literata, Where and Notes, Add to
+calendar, then the sheet with the close alone under its title, "Tap your name first" for
+a guest), the guide with a muted eyebrow, the members. From 5:00 until midnight: Tonight
+in one line (time, place, a link to members), the guide first with its eyebrow as the
+page's one accent and one muted line of who brought what at the Table, the members.
+Meeting day is the date of the next event; with no event the sheet stands alone under
+"Thursday". Nav says Guide where it said Questions; the Guide page carries the other
+weeks and, for the admin and co-leads, the way to the fixed liturgy.
+
+**Decided and flagged.**
+
+- The liturgy is a document type, not a settings table: it versions like everything
+  else, needs no new table or handler, and the co-leads edit it from the Guide page. The
+  form offers Redeemer's words the first time (`DEFAULT_LITURGY` in shared); nothing is
+  stored until a person saves. Data, not a migration.
+- The group's clock is Richmond's wherever the phone is (`inRichmond` in
+  `lib/dates.ts`), for the day's turn and the sheet's close line alike; the viewer's own
+  zone would show a traveling member a different evening.
+- The sheet keeps its own title; the render's "Table" is what a sheet is called this
+  fall, not a fixed heading. The sheet's own date line is dropped when the meeting above
+  says the same day.
+- Migration 0008 retires the one `questions` document posted before the refresh (its
+  versions stay) and renames the scope on any token carrying it, so the `claude` token
+  keeps posting the week without a visit to Tokens.
+- The guide form reads its lists out of textareas: a paragraph per voice starting
+  "Leader:" or "People:", one reading or question per line, numbering dropped. Through
+  MCP the lists are JSON; the type guide says so.
+- The reading's fold is a button styled as the quiet link, so it works without a
+  navigation and the leader reads on without leaving the page.
+
+**Not done.** The Leading row (Tyler). A maps link on the address (the render underlines
+it; nothing in the spec says where it goes). An ESV or NIV: no public-domain source
+carries them, and the brief has no API key to spend on one.
+
 ## Handoff (Oct 31, 2026)
 
 What a fresh session should know that the files alone do not say.
@@ -346,7 +414,8 @@ What a fresh session should know that the files alone do not say.
   gives: mint the link from Members (and rotate it, ever); enter the seventeen names and
   port the sheet's slots; make Kelly, Cam and Meg co-leads (which creates their Cognito
   users) and verify their addresses in SES; add `write:events` and `write:questions` to
-  the `claude` token; paste the link into the group thread; the gate.
+  the `claude` token (`write:guides` since Nov 2); paste the link into the group thread;
+  save the fixed liturgy once from Group → Guide (Nov 2); the gate.
 - **Loose ends worth knowing.** Member emails are stored lowercased and compared
   lowercased. `write:signups` does not exist, by the directive. No route demotes a
   co-lead or deletes a member; both are conversations first. The runbooks deliverable is
