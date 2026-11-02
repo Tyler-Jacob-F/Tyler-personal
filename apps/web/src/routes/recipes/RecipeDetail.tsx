@@ -1,11 +1,12 @@
 import { recipeFacetNames, recipeTagsOf, valueLabel } from '@the-keep/shared';
+import { useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useDeleteDocument, useDocument } from '@/api/documents';
 import { ConfirmButton } from '@/components/ConfirmDialog';
 import { CheckIcon } from '@/components/icons';
 import { Loading, QueryError } from '@/components/QueryState';
 import { Markdown } from '@/components/Markdown';
-import { ShareMenu } from '@/components/ShareMenu';
+import { type PdfSource, ShareMenu } from '@/components/ShareMenu';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { focusRing } from '@/components/ui/styles';
@@ -21,6 +22,9 @@ import {
   withoutMethodHeading,
 } from '@/routes/recipes/format';
 
+/** The PDF is made on demand; pdf-lib and the composer load only when the menu opens. */
+const loadPdf = () => import('@/routes/recipes/recipe-pdf');
+
 /**
  * The recipe screen of docs/DESIGN-VALUES.md and docs/design/recipe-*.png: title, headnote
  * in italic, provenance, facets as quiet chips, the times in tabular figures with Proven
@@ -33,11 +37,21 @@ export function RecipeDetail() {
   const navigate = useNavigate();
   const recipe = useDocument(id);
   const remove = useDeleteDocument();
+  const data = recipe.data;
+  const pdf = useMemo<PdfSource | undefined>(
+    () =>
+      data && {
+        filename: `${data.document.slug}.pdf`,
+        make: async () => (await loadPdf()).recipePdf(data.version),
+        warm: () => void loadPdf(),
+      },
+    [data],
+  );
 
   if (recipe.isError) return <QueryError queries={[recipe]} />;
-  if (recipe.isPending) return <Loading />;
+  if (recipe.isPending || !data) return <Loading />;
 
-  const { document, version } = recipe.data;
+  const { document, version } = data;
   const r = recipeOf(version.frontmatter);
   const { headnote, method } = splitHeadnote(version.body);
   const { facets, flags } = recipeTagsOf(document.tags);
@@ -66,7 +80,7 @@ export function RecipeDetail() {
             <span aria-hidden="true">‹</span> Recipes
           </Link>
           <div className="flex items-center gap-2">
-            <ShareMenu title={title} text={recipeText(version)} />
+            <ShareMenu title={title} text={recipeText(version)} pdf={pdf} />
             <Button asChild size="sm">
               <Link to={`/recipes/${document.id}/edit`}>Edit</Link>
             </Button>

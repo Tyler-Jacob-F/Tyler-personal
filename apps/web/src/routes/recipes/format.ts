@@ -57,7 +57,7 @@ export function withoutMethodHeading(method: string): string {
 }
 
 /** A body whose method opens by repeating the recipe's title would say it twice in a message. */
-function withoutTitleHeading(method: string, title: string): string {
+export function withoutTitleHeading(method: string, title: string): string {
   const lines = method.split('\n');
   const first = lines.findIndex((line) => line.trim() !== '');
   if (first < 0) return method;
