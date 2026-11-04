@@ -128,3 +128,25 @@ export function morningParts(brief: BriefFrontmatter | null): MorningParts {
   parts.items = [...parts.items, ...overflow].slice(0, BRIEF_ITEM_CAP);
   return parts;
 }
+
+/**
+ * The Office folded (docs/DESIGN-VALUES.md "The morning page"): one row per `####` label,
+ * the part's name and the reference it names, "First Lesson · Ecclesiasticus 44:1–15"
+ * becoming { label: "First Lesson", text: "Ecclesiasticus 44:1–15" }. A label with no
+ * reference ("The Collect") is a row with an empty text. Null when the body carries no
+ * labels: there is nothing to fold to, and the page shows it whole.
+ */
+export function officeOutline(markdown: string): ShapeRow[] | null {
+  const rows: ShapeRow[] = [];
+  for (const line of markdown.split('\n')) {
+    const label = /^\s*####\s+(.+?)\s*$/.exec(line);
+    if (!label) continue;
+    const dot = label[1]!.indexOf(' · ');
+    rows.push(
+      dot > 0
+        ? { label: label[1]!.slice(0, dot).trim(), text: label[1]!.slice(dot + 3).trim() }
+        : { label: label[1]!.trim(), text: '' },
+    );
+  }
+  return rows.length > 0 ? rows : null;
+}

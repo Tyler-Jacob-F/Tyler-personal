@@ -138,7 +138,7 @@ export const briefFrontmatter = {
     { heading: 'The day', body: 'Feria · Season after Pentecost · Sunrise 7:35 · 48° and clear' },
     {
       heading: 'Office',
-      body: '*The Lord is in his holy temple.*\n\n#### Venite · Psalm 95\n\nO come, let us sing unto the Lord.',
+      body: '*The Lord is in his holy temple.*\n\n#### Venite · Psalm 95\n\nO come, let us sing unto the Lord.\n\n#### The Collect\n\nAlmighty God, who hast knit together thine elect. Amen.',
     },
     {
       heading: 'The brief',

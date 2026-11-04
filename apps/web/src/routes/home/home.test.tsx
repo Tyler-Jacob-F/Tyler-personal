@@ -3,8 +3,8 @@ import { App } from '@/App';
 import { briefDoc, recipeDoc } from '@/test/fixtures';
 import { dayHeading, todayIso } from '@/lib/dates';
 import { pickBrief } from '@/routes/home/home';
-import { blocksOf, morningParts, parseShapeRow } from '@/routes/home/morning';
-import { render, screen, within } from '@/test/render';
+import { blocksOf, morningParts, officeOutline, parseShapeRow } from '@/routes/home/morning';
+import { render, screen, userEvent, within } from '@/test/render';
 import { server } from '@/test/server';
 
 const today = todayIso();
@@ -23,16 +23,30 @@ describe('the morning page', () => {
     expect(within(page).getByRole('heading', { name: date, level: 1 })).toBeInTheDocument();
     expect(within(page).getByText(/Season after Pentecost · Sunrise 7:35/)).toBeInTheDocument();
 
+    // The Office opens folded: its parts and their references, the text behind "Read it here".
     const office = within(page).getByRole('region', { name: 'Morning Prayer' });
     expect(within(office).getByRole('heading', { name: 'Morning Prayer' })).toHaveClass(
       'text-accent',
     );
+    const folded = within(office).getAllByRole('row');
+    expect(folded.map((r) => r.textContent)).toEqual(['VenitePsalm 95', 'The Collect']);
+    expect(within(office).queryByText('O come, let us sing unto the Lord.')).toBeNull();
+    expect(within(office).queryByText(/holy temple/)).toBeNull();
+    // The accent appears exactly once on the page.
+    expect(page.querySelectorAll('.text-accent, .bg-accent, .border-accent')).toHaveLength(1);
+
+    const read = within(office).getByRole('button', { name: 'Read it here' });
+    expect(read).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(read);
     expect(
       within(office).getByRole('heading', { name: 'Venite · Psalm 95', level: 4 }),
     ).toHaveClass('eyebrow');
     expect(within(office).getByText('O come, let us sing unto the Lord.')).toBeInTheDocument();
-    // The accent appears exactly once on the page.
-    expect(page.querySelectorAll('.text-accent, .bg-accent, .border-accent')).toHaveLength(1);
+    expect(within(office).getByText(/holy temple/)).toBeInTheDocument();
+    expect(within(office).getByRole('button', { name: 'Just the readings' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
 
     const brief = within(page).getByRole('region', { name: 'The brief' });
     const items = within(brief).getAllByRole('listitem');
@@ -149,6 +163,32 @@ describe('morningParts', () => {
       office: '#### Venite · Psalm 95\n\nO come.',
     });
     expect(at('Office: midday prayer', 'Blessed be God.').officeTitle).toBe('Midday Prayer');
+  });
+
+  it('outlines the Office by its labels, and shows it whole when there are none', () => {
+    expect(
+      officeOutline(
+        '*The Lord is in his holy temple.*\n\n#### Venite · Psalm 95\n\nO come.\n\n####   First Lesson · Ecclesiasticus 44:1–15  \n\nLet us now praise.\n\n#### The Collect\n\nAlmighty God.',
+      ),
+    ).toEqual([
+      { label: 'Venite', text: 'Psalm 95' },
+      { label: 'First Lesson', text: 'Ecclesiasticus 44:1–15' },
+      { label: 'The Collect', text: '' },
+    ]);
+    expect(officeOutline('O Lord, open thou our lips;')).toBeNull();
+  });
+
+  it('shows an Office with no labels whole, with nothing to fold', async () => {
+    const doc = briefDoc(today);
+    doc.version.frontmatter = {
+      ...doc.version.frontmatter,
+      sections: [{ heading: 'Office', body: 'O Lord, open thou our lips;' }],
+    };
+    mockBriefs([doc]);
+    render(<App />, { route: '/' });
+    const office = await screen.findByRole('region', { name: 'Morning Prayer' });
+    expect(within(office).getByText('O Lord, open thou our lips;')).toBeInTheDocument();
+    expect(within(office).queryByRole('button')).toBeNull();
   });
 
   it('splits markdown into blocks and reads a row’s label', () => {

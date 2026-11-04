@@ -46,8 +46,12 @@ const registry: Record<DocumentType, TypeDefinition> = {
       '(YYYY-MM-DD, local to Tyler in America/New_York); `sections` is a list of ' +
       '{ heading, body } with the body in markdown. The morning page reads four of them by ' +
       'heading: "The day" (one line: liturgical day and season, sunrise, weather), "Office" ' +
-      '(the office inline with the readings, markdown with #### labels such as ' +
-      '"Venite · Psalm 95"; name the office in the heading, "Office · Evening Prayer", when ' +
+      '(the office with its readings, in markdown; every part under its own "#### Name · ' +
+      'Reference" label, "#### Venite · Psalm 95", "#### First Lesson · Ecclesiasticus ' +
+      '44:1–15", "#### The Collect", with the full text under each. The page opens the ' +
+      'Office folded to those labels, so each reading’s reference must be in its label as ' +
+      'a Bible gives it, and the text must still be there to unfold; name the office in the ' +
+      'heading, "Office · Evening Prayer", when ' +
       'a later version of the day carries a later office), "The brief" (at most three short ' +
       'paragraphs), and "Today" (a ' +
       'list, one line each, "9:00 · Pancakes with the kids"; a day name or "Dinner" may stand ' +

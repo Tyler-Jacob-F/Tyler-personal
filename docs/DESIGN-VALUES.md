@@ -142,7 +142,9 @@ A page, not a dashboard: one column, reading measure, read top to bottom.
 
 1. **The day:** date, liturgical day and season, sunrise, weather, in one line.
 2. **The Office:** Morning Prayer inline, readings included; the only accented element on
-   the page.
+   the page. It opens folded: one row per part, its name and the reference, the glance
+   before the book on the shelf is opened. "Read it here" unfolds the text for a morning
+   at a desk; the fold returns on the next visit.
 3. **The brief:** at most three items.
 4. **The day's shape:** calendar, who hosts Thursday, dinner.
 
