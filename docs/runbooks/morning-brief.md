@@ -18,7 +18,8 @@ A `brief` document: `date` (the day it is for, `YYYY-MM-DD`), `sections[]` of
 `{ heading, body }` with markdown bodies, an optional `title` (defaults to
 `Brief for <date>`), and an optional lead paragraph in the version body. Default ring `me`.
 The logged-in home at https://tylerfuqua.com is the morning page: it renders the brief
-dated today as its four parts (the day line, the Office, the brief, the day's shape); if
+dated today as its four parts (the day line, the Office folded to its parts and their
+references, with "Read it here" to unfold the text, the brief, the day's shape); if
 there is none, the latest one, with a line saying whose morning it was. One brief per day: a second run the same day adds a
 version to it rather than a second document.
 
@@ -65,13 +66,16 @@ You write Tyler's morning brief for The Keep. Today is the date in America/New_Y
    - "The day": one line, "All Hallows' Eve · Season after Pentecost · Sunrise 7:36 ·
      52° and clear" (liturgical day and season from the lectionary you carry, sunrise and
      weather for Richmond).
-   - "Office": the office inline with the day's readings, in markdown. A run later in
+   - "Office": the office with the day's readings, in markdown. A run later in
      the day names the office in the heading, "Office · Evening Prayer", and the page's
      eyebrow follows; a bare "Office" reads as Morning Prayer. The opening
      sentence in italics with its reference, the versicle and response, then each part
-     under a "#### Label" line ("#### Venite · Psalm 95", "#### First Lesson ·
-     Ecclesiasticus 44:1–15", "#### The Collect"), the collect last. The page shows it
-     whole, so include the text, not a link.
+     under a "#### Name · Reference" line ("#### Venite · Psalm 95", "#### First Lesson ·
+     Ecclesiasticus 44:1–15", "#### The Collect"), the collect last. The page opens the
+     Office folded to those labels, one row per part, so every reading's reference goes in
+     its label exactly as a Bible gives it (book, chapter, verses), one reading per label,
+     nothing else in the label. Under each label, the full text: "Read it here" unfolds it,
+     so include the text, never a link or a "continue" line.
    - "The brief": at most three short paragraphs, the things that matter today, plain,
      no bullets, no counts, nothing from the inbox unless a reply is the day's work.
    - "Today": a list, one line each, "9:00 · Pancakes with the kids"; after the timed
@@ -117,6 +121,30 @@ readings), The brief (at most three paragraphs) and Today (one line per entry,
 add a version." Then check the home screen the next morning. The Activity screen lists it
 under `claude`. The lectionary source is still the brief's open question: Duet carries the
 readings as the Office section until a direct feed earns its place (Phase 6).
+
+**The fold (Nov 4, 2026).** The page now opens the Office folded: one row per `####`
+label, the part's name and its reference, and "Read it here" to unfold the text. Told Duet
+once, so its morning routine and today's brief follow:
+
+> The Keep's morning page now shows the Office folded by default: just the parts and
+> their references, so I can glance and open my own Bible. "Read it here" unfolds the
+> text. Change the Office section of the brief to fit, in your morning routine and in
+> today's brief (a new version, not a second document):
+>
+> 1. Every part of the office sits under its own `#### Name · Reference` label, nothing
+>    else in the label: `#### Venite · Psalm 95`, `#### Psalm · Psalm 149`,
+>    `#### First Lesson · Ecclesiasticus 44:1–15`, `#### Second Lesson · Revelation 7:9–17`,
+>    `#### The Collect`. The reference is what I look up, so write it as a Bible gives it,
+>    book, chapter and verses, en dash between verses. One reading per label; two readings
+>    are two labels.
+> 2. Keep the full text under each label. Folded, the page shows only the labels; unfolded,
+>    it shows the text, so the text has to be there. No links in place of a passage, no
+>    "continue the lesson" lines, no abridging a lesson.
+> 3. Everything else stays: the opening sentence in italics with its reference, the
+>    versicle and response, the collect last, "Office · Evening Prayer" in the heading for
+>    a later office.
+>
+> Reply with the labels you used for today's Office so I can check them against the page.
 
 ## Checking it worked
 

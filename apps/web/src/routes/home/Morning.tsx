@@ -1,7 +1,10 @@
 import type { BriefFrontmatter, Version } from '@the-keep/shared';
+import { useState } from 'react';
 import { Markdown } from '@/components/Markdown';
+import { Button } from '@/components/ui/button';
 import { dayHeading, when } from '@/lib/dates';
-import { morningParts } from '@/routes/home/morning';
+import { cn } from '@/lib/utils';
+import { morningParts, officeOutline, type ShapeRow } from '@/routes/home/morning';
 
 export interface MorningProps {
   /** The calendar date the page is for. */
@@ -17,10 +20,17 @@ export interface MorningProps {
  * reading measure, read top to bottom. The day; the Office, the only accented element; the
  * brief, at most three items; the day's shape. Never counts, badges, an inbox, streaks,
  * progress, red, a greeting, or urgency.
+ *
+ * The Office opens folded: its parts and their references, enough to glance at and open the
+ * book on the shelf. "Read it here" unfolds the text for a morning at a desk or a phone on
+ * a train; the fold comes back on the next visit, since the glance is the default.
  */
 export function Morning({ date, brief, version, note }: MorningProps) {
   const heading = dayHeading(date);
   const parts = morningParts(brief);
+  const outline = parts.office ? officeOutline(parts.office) : null;
+  const [unfolded, setUnfolded] = useState(false);
+  const showText = unfolded || !outline;
   return (
     <article className="mx-auto grid max-w-[42rem] gap-10" aria-label="Morning">
       <header>
@@ -40,9 +50,27 @@ export function Morning({ date, brief, version, note }: MorningProps) {
           <h2 id="office-heading" className="eyebrow text-accent">
             {parts.officeTitle}
           </h2>
-          <Markdown variant="reading" className="mt-5">
-            {parts.office}
-          </Markdown>
+          <div id="office-body">
+            {showText ? (
+              <Markdown variant="reading" className="mt-5">
+                {parts.office}
+              </Markdown>
+            ) : (
+              <Rows rows={outline!} className="mt-4" />
+            )}
+          </div>
+          {outline && (
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-expanded={unfolded}
+              aria-controls="office-body"
+              onClick={() => setUnfolded((u) => !u)}
+              className="-mb-2 -ml-3 mt-4 text-muted"
+            >
+              {unfolded ? 'Just the readings' : 'Read it here'}
+            </Button>
+          )}
         </section>
       )}
 
@@ -66,23 +94,7 @@ export function Morning({ date, brief, version, note }: MorningProps) {
           <h2 id="shape-heading" className="eyebrow">
             Today
           </h2>
-          <table className="mt-3 w-full border-collapse text-[15px]">
-            <tbody>
-              {parts.shape.map((row, i) => (
-                <tr key={i} className="border-b border-border last:border-0">
-                  <th
-                    scope="row"
-                    className="w-20 py-2.5 pr-4 text-left align-baseline font-normal text-muted tabular-nums"
-                  >
-                    {row.label}
-                  </th>
-                  <td className="py-2.5 align-baseline leading-relaxed">
-                    <Markdown variant="inline">{row.text}</Markdown>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Rows rows={parts.shape} className="mt-3" />
         </section>
       )}
 
@@ -93,5 +105,28 @@ export function Morning({ date, brief, version, note }: MorningProps) {
         </footer>
       )}
     </article>
+  );
+}
+
+/** Label and line, as the day's shape and the folded Office are both laid out. */
+function Rows({ rows, className }: { rows: ShapeRow[]; className?: string }) {
+  return (
+    <table className={cn('w-full border-collapse text-[15px]', className)}>
+      <tbody>
+        {rows.map((row, i) => (
+          <tr key={i} className="border-b border-border last:border-0">
+            <th
+              scope="row"
+              className="w-px py-2.5 pr-4 text-left align-baseline font-normal whitespace-nowrap text-muted tabular-nums"
+            >
+              {row.label}
+            </th>
+            <td className="py-2.5 align-baseline leading-relaxed">
+              <Markdown variant="inline">{row.text}</Markdown>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
