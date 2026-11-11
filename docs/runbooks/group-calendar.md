@@ -29,7 +29,9 @@ reflection?, questions, closing, source? }`: what changes week to week in Redeem
   printed guide and nothing that repeats. `weekOf` is the Thursday; `opening` and
   `closing` are lists of `{ voice, text }` with `voice` "leader" or "people", in the order
   said, a collect being one leader line ending "Amen."; `readings` are references as the
-  guide prints them ("Ephesians 1:15–23"), which the page resolves to text; `questions`
+  guide prints them ("Ephesians 1:15–23"), which the page resolves to text in the
+  translation each reader picks (the liturgy's until they do; `docs/runbooks/scripture-keys.md`
+  for the ESV and the NIV); `questions`
   are plain strings without numbers; `source` is the credit line. The body is unused.
   One document per week; the home shows the newest whose `weekOf` is within six days
   ahead, so next week's can be posted early without taking the screen until the week
@@ -81,5 +83,6 @@ frontmatter before you post it, then what you created.
 ## Checking
 
 The group's home at https://tylerfuqua.com/group shows the next meeting and this week's
-guide as the group sees them, each reading resolved to text; Admin → Activity lists what
-the token wrote, with a version row each.
+guide as the group sees them, each reading resolved to text under "Read in" (and the
+wheel, for the night someone wants another voice); Admin → Activity lists what the token
+wrote, with a version row each.

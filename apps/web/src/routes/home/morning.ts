@@ -129,24 +129,56 @@ export function morningParts(brief: BriefFrontmatter | null): MorningParts {
   return parts;
 }
 
+/** One part of the Office: its label, the reference the label names, and what the writer put under it. */
+export interface OfficePart {
+  /** "First Lesson", "Venite", "The Collect". */
+  label: string;
+  /** "Ecclesiasticus 44:1–15"; empty for a part that is not a reading. */
+  reference: string;
+  /** Markdown under the label: the text the writer carried, or nothing now the page fetches it. */
+  body: string;
+}
+
+export interface OfficeParts {
+  /** What comes before the first label: the opening sentence, the versicle and response. */
+  preamble: string;
+  parts: OfficePart[];
+}
+
 /**
- * The Office folded (docs/DESIGN-VALUES.md "The morning page"): one row per `####` label,
- * the part's name and the reference it names, "First Lesson · Ecclesiasticus 44:1–15"
- * becoming { label: "First Lesson", text: "Ecclesiasticus 44:1–15" }. A label with no
- * reference ("The Collect") is a row with an empty text. Null when the body carries no
- * labels: there is nothing to fold to, and the page shows it whole.
+ * The Office by its parts (docs/DESIGN-VALUES.md "The morning page"): one per `####`
+ * label, "First Lesson · Ecclesiasticus 44:1–15" becoming { label: "First Lesson",
+ * reference: "Ecclesiasticus 44:1–15" } with whatever sits under it as its body. The page
+ * fetches a reading from its reference and falls back to the body when it cannot. Null
+ * when the body carries no labels: there is nothing to fold to, and the page shows it whole.
  */
-export function officeOutline(markdown: string): ShapeRow[] | null {
-  const rows: ShapeRow[] = [];
+export function officeParts(markdown: string): OfficeParts | null {
+  const parts: OfficePart[] = [];
+  const preamble: string[] = [];
+  let current: OfficePart | null = null;
   for (const line of markdown.split('\n')) {
     const label = /^\s*####\s+(.+?)\s*$/.exec(line);
-    if (!label) continue;
-    const dot = label[1]!.indexOf(' · ');
-    rows.push(
-      dot > 0
-        ? { label: label[1]!.slice(0, dot).trim(), text: label[1]!.slice(dot + 3).trim() }
-        : { label: label[1]!.trim(), text: '' },
-    );
+    if (label) {
+      const dot = label[1]!.indexOf(' · ');
+      current =
+        dot > 0
+          ? {
+              label: label[1]!.slice(0, dot).trim(),
+              reference: label[1]!.slice(dot + 3).trim(),
+              body: '',
+            }
+          : { label: label[1]!.trim(), reference: '', body: '' };
+      parts.push(current);
+    } else if (current) current.body += (current.body ? '\n' : '') + line;
+    else preamble.push(line);
   }
-  return rows.length > 0 ? rows : null;
+  if (parts.length === 0) return null;
+  for (const part of parts) part.body = part.body.trim();
+  return { preamble: preamble.join('\n').trim(), parts };
+}
+
+/** The fold: label and reference per part, laid out as the day's shape is. */
+export function officeOutline(markdown: string): ShapeRow[] | null {
+  const office = officeParts(markdown);
+  return office ? office.parts.map((p) => ({ label: p.label, text: p.reference })) : null;
 }

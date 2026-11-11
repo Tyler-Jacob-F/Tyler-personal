@@ -8,7 +8,7 @@ import {
 } from './document.js';
 import { memberRoleSchema } from './member.js';
 import { agentScopeSchema } from './scopes.js';
-import { translationSchema } from './types/liturgy.js';
+import { translationSchema } from './types/translation.js';
 
 /**
  * The brief's normalized caller, in the four kinds docs/phases/04-group.md decided: a
@@ -204,10 +204,23 @@ export const verseSchema = z.object({
 });
 export type Verse = z.infer<typeof verseSchema>;
 
-/** A reading resolved to text: the reference as the source names it, and its verses in order. */
+/** Who to credit under a passage: what the source's terms ask the page to show. */
+export const attributionSchema = z.object({
+  text: z.string(),
+  url: z.url().optional(),
+});
+export type Attribution = z.infer<typeof attributionSchema>;
+
+/**
+ * A reading resolved to text: the reference as the source names it, the translation it is
+ * in (the Douay-Rheims when the one asked for has no Apocrypha), its verses in order, the
+ * credit its licence asks for, and API.Bible's fair-use token when the text is theirs.
+ */
 export const passageSchema = z.object({
   reference: z.string(),
   translation: translationSchema,
   verses: z.array(verseSchema).min(1),
+  attribution: attributionSchema.optional(),
+  fums: z.string().optional(),
 });
 export type Passage = z.infer<typeof passageSchema>;

@@ -346,7 +346,7 @@ function LiturgyForm({ id }: { id: string | undefined }) {
             control={form.control}
             name="translation"
             label="Translation"
-            hint="The readings are served in this; only public-domain texts are on offer."
+            hint="What the readings open in until a reader picks another on the page."
           >
             {(field) => (
               <select

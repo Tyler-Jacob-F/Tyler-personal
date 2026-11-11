@@ -1,15 +1,21 @@
-import type {
-  GuideFrontmatter,
-  LiturgyFrontmatter,
-  Translation,
-  VoiceLine,
+import {
+  DEFAULT_TRANSLATION,
+  type GuideFrontmatter,
+  type LiturgyFrontmatter,
+  rouletteFor,
+  type Translation,
+  type VoiceLine,
 } from '@the-keep/shared';
 import { type ReactNode, useState } from 'react';
 import { Link } from 'react-router';
 import { usePassage } from '@/api/group';
+import { passageProblem } from '@/api/passages';
 import { numberedItem, numberedList } from '@/components/Markdown';
+import { PassageCredit } from '@/components/PassageText';
+import { TranslationSelect } from '@/components/TranslationSelect';
 import { quietLink } from '@/group/styles';
 import type { Typed } from '@/group/format';
+import { useTranslation } from '@/lib/translation';
 import { cn } from '@/lib/utils';
 
 /**
@@ -17,7 +23,9 @@ import { cn } from '@/lib/utils';
  * docs/phases/04-group.md "The refresh"): the title and the line for whoever leads, then
  * the evening in order under small-caps headings. What changes week to week comes from
  * the guide; what repeats, from the liturgy document. Responsive prayers use the morning
- * page's two-voice grid; readings resolve to text with the first three verses inline.
+ * page's two-voice grid; readings resolve to text with the first three verses inline, in
+ * the translation the reader picked (the liturgy's until they do), with the wheel beside
+ * the select for the night someone wants to hear it in another voice.
  */
 
 /** Verses shown before "Continue the reading". */
@@ -37,6 +45,8 @@ export function GuideBlock({
 }) {
   const { frontmatter: g } = guide;
   const Heading = heading;
+  const [translation, setTranslation] = useTranslation(liturgy?.translation ?? DEFAULT_TRANSLATION);
+  const spin = () => setTranslation(rouletteFor(`${g.weekOf}:${translation}`));
   return (
     <div>
       <Heading className="page-title mt-1">{g.title}</Heading>
@@ -63,9 +73,17 @@ export function GuideBlock({
         </Part>
       )}
 
+      {g.readings.length > 0 && (
+        <TranslationSelect
+          value={translation}
+          onChange={setTranslation}
+          spin={spin}
+          className="mt-8"
+        />
+      )}
       {g.readings.map((reference) => (
         <Part key={reference} label={`Scripture · ${reference}`}>
-          <Reading reference={reference} translation={liturgy?.translation ?? 'kjv'} />
+          <Reading reference={reference} translation={translation} />
         </Part>
       ))}
 
@@ -179,11 +197,7 @@ export function Reading({
   const [open, setOpen] = useState(false);
   if (passage.isPending) return <p className="reading text-muted italic">Finding the passage…</p>;
   if (passage.isError)
-    return (
-      <p className="reading text-muted italic">
-        {reference} could not be found; read it from a Bible.
-      </p>
-    );
+    return <p className="reading text-muted italic">{passageProblem(passage.error, reference)}</p>;
   const verses = passage.data.verses;
   const shown = open ? verses : verses.slice(0, VERSES_INLINE);
   const rest = verses.length - VERSES_INLINE;
@@ -199,6 +213,7 @@ export function Reading({
           Continue the reading · {rest} {rest === 1 ? 'verse' : 'verses'}
         </button>
       )}
+      <PassageCredit passage={passage.data} asked={translation} />
     </>
   );
 }

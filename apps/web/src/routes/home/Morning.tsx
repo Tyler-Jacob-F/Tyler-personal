@@ -1,10 +1,20 @@
-import type { BriefFrontmatter, Version } from '@the-keep/shared';
+import {
+  type BriefFrontmatter,
+  DEFAULT_TRANSLATION,
+  type Translation,
+  type Version,
+} from '@the-keep/shared';
 import { useState } from 'react';
+import { useApi } from '@/api/context';
+import { passageProblem, usePassageThrough } from '@/api/passages';
 import { Markdown } from '@/components/Markdown';
+import { PassageCredit, PassageParagraphs } from '@/components/PassageText';
+import { TranslationSelect } from '@/components/TranslationSelect';
 import { Button } from '@/components/ui/button';
 import { dayHeading, when } from '@/lib/dates';
+import { useTranslation } from '@/lib/translation';
 import { cn } from '@/lib/utils';
-import { morningParts, officeOutline, type ShapeRow } from '@/routes/home/morning';
+import { morningParts, type OfficePart, officeParts, type ShapeRow } from '@/routes/home/morning';
 
 export interface MorningProps {
   /** The calendar date the page is for. */
@@ -23,14 +33,17 @@ export interface MorningProps {
  *
  * The Office opens folded: its parts and their references, enough to glance at and open the
  * book on the shelf. "Read it here" unfolds the text for a morning at a desk or a phone on
- * a train; the fold comes back on the next visit, since the glance is the default.
+ * a train; the fold comes back on the next visit, since the glance is the default. The
+ * text of each reading is fetched from its reference in the translation the device has
+ * chosen; what the writer put under the label is the fallback when a reading cannot be
+ * fetched (a book no source carries), and the whole of a part that is not a reading.
  */
 export function Morning({ date, brief, version, note }: MorningProps) {
   const heading = dayHeading(date);
   const parts = morningParts(brief);
-  const outline = parts.office ? officeOutline(parts.office) : null;
+  const office = parts.office ? officeParts(parts.office) : null;
   const [unfolded, setUnfolded] = useState(false);
-  const showText = unfolded || !outline;
+  const [translation, setTranslation] = useTranslation(DEFAULT_TRANSLATION);
   return (
     <article className="mx-auto grid max-w-[42rem] gap-10" aria-label="Morning">
       <header>
@@ -51,25 +64,44 @@ export function Morning({ date, brief, version, note }: MorningProps) {
             {parts.officeTitle}
           </h2>
           <div id="office-body">
-            {showText ? (
+            {!office ? (
               <Markdown variant="reading" className="mt-5">
                 {parts.office}
               </Markdown>
+            ) : unfolded ? (
+              <div className="mt-5">
+                {office.preamble && <Markdown variant="reading">{office.preamble}</Markdown>}
+                {office.parts.map((part, i) => (
+                  <OfficeSection key={i} part={part} translation={translation} />
+                ))}
+              </div>
             ) : (
-              <Rows rows={outline!} className="mt-4" />
+              <Rows
+                rows={office.parts.map((p) => ({ label: p.label, text: p.reference }))}
+                className="mt-4"
+              />
             )}
           </div>
-          {outline && (
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-expanded={unfolded}
-              aria-controls="office-body"
-              onClick={() => setUnfolded((u) => !u)}
-              className="-mb-2 -ml-3 mt-4 text-muted"
-            >
-              {unfolded ? 'Just the readings' : 'Read it here'}
-            </Button>
+          {office && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-expanded={unfolded}
+                aria-controls="office-body"
+                onClick={() => setUnfolded((u) => !u)}
+                className="-mb-2 -ml-3 text-muted"
+              >
+                {unfolded ? 'Just the readings' : 'Read it here'}
+              </Button>
+              {unfolded && office.parts.some((p) => p.reference) && (
+                <TranslationSelect
+                  value={translation}
+                  onChange={setTranslation}
+                  className="-mb-2"
+                />
+              )}
+            </div>
           )}
         </section>
       )}
@@ -105,6 +137,47 @@ export function Morning({ date, brief, version, note }: MorningProps) {
         </footer>
       )}
     </article>
+  );
+}
+
+/** One part of the unfolded Office: its label as an eyebrow, then the reading or the writer's text. */
+function OfficeSection({ part, translation }: { part: OfficePart; translation: Translation }) {
+  return (
+    <section aria-label={part.label}>
+      <h4 className="eyebrow mt-5 mb-1.5 first:mt-0">
+        {part.reference ? `${part.label} · ${part.reference}` : part.label}
+      </h4>
+      {part.reference ? (
+        <OfficeReading reference={part.reference} translation={translation} fallback={part.body} />
+      ) : (
+        part.body && <Markdown variant="reading">{part.body}</Markdown>
+      )}
+    </section>
+  );
+}
+
+/** A reading fetched whole; the writer's text under the label when it cannot be. */
+function OfficeReading({
+  reference,
+  translation,
+  fallback,
+}: {
+  reference: string;
+  translation: Translation;
+  fallback: string;
+}) {
+  const api = useApi();
+  const passage = usePassageThrough(api, '/api', reference, translation);
+  if (passage.isPending) return <p className="reading text-muted italic">Finding the passage…</p>;
+  if (passage.isError) {
+    if (fallback) return <Markdown variant="reading">{fallback}</Markdown>;
+    return <p className="reading text-muted italic">{passageProblem(passage.error, reference)}</p>;
+  }
+  return (
+    <>
+      <PassageParagraphs verses={passage.data.verses} className="mt-4 first:mt-0" />
+      <PassageCredit passage={passage.data} asked={translation} />
+    </>
   );
 }
 

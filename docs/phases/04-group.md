@@ -409,7 +409,61 @@ too. The evening's "Tonight" line names the event when there is one.
 
 **Not done.** The Leading row (Tyler). A maps link on the address (the render underlines
 it; nothing in the spec says where it goes). An ESV or NIV: no public-domain source
-carries them, and the brief has no API key to spend on one.
+carries them, and the brief has no API key to spend on one (done Nov 11; "Translations"
+below).
+
+## Translations (Nov 11, 2026)
+
+After the first live Thursday (Nov 5) the room asked for the readings in the NIV and the
+ESV, and one friend asked for a wheel. Tyler, Nov 8: a selector for the NIV, the ESV and
+the King James is the real feature; the wheel is a for-fun garnish on the group's weekly
+readings, not the Daily Office. Built on `claude/magical-babbage-w76mim`.
+
+**Sources.** `/api/passages` now dispatches by translation: the eight public-domain texts
+from bible-api.com as before; the ESV from Crossway's API; the NIV from API.Bible. Each
+licensed source needs a key, a SecureString in SSM under `/the-keep/scripture/` that only
+the passages Lambda may read, put there by hand (`docs/runbooks/scripture-keys.md`). A
+translation whose key is missing answers 503 `translation_unavailable` and the page says
+"The ESV is not set up yet" where the reading would be. The answer carries the credit the
+licence asks for (`attribution`) and API.Bible's fair-use token (`fums`), which the page
+shows and reports. Passages are kept in Lambda memory only, never the database:
+Crossway caps local storage at 500 verses.
+
+**References.** A parser in `services/sources/reference.ts` reads a reference into its
+book and spans, so API.Bible can be asked by passage id and the standard spelling goes
+to the others. It knows the Apocrypha as the Daily Office names them; a reading from
+those books in a translation that lacks them is served from the Douay-Rheims instead, the
+answer's `translation` says so, and the page notes it under the reading.
+
+**The choice.** "Read in", the browser's own select, on the guide above the readings and
+on the morning page beside "Read it here" once unfolded. The device remembers it
+(`keep.translation`), one choice for both pages; the guide opens in the liturgy's
+translation and the morning page in the King James until someone picks. "Spin the wheel"
+on the guide sets the select to a translation decided by the week and where the phone
+started, so phones that start together land together.
+
+**The brief.** The brief now carries references, not Scripture: nothing under a
+reading's `####` label, the writer's words under a label that is not a reading, and the
+full text only for a reading from the Apocrypha, which the page falls back to when the
+fetch fails. The type guide and `docs/runbooks/morning-brief.md` say so, with the message
+sent to the brief's writer.
+
+**Decided and flagged.** A device remembers the choice, not a member row: one phone each,
+nothing to audit, and a column is the reversible step from here. The wheel is seeded by
+`weekOf` and the current translation, not random: a room that starts in the King James
+all lands in the same place, and a second spin moves. A reading renders as one paragraph
+per chapter without verse numbers, as the guide already did; the Psalms lose their lines,
+which the renders never showed either. API.Bible's NIV id is in `infra/lib/config.ts`
+and reaches the Lambda as an environment variable; the runbook says how to check it
+against the key's `/bibles` list, since it could not be checked from here. None of the
+three sources could be called from the build session (network policy), so the adapters
+are tested against each source's documented response shape with fake fetches; the first
+live reading in each is the test.
+
+**Not done.** The Message and the other licensed texts: API.Bible's Starter plan grants
+three, the NIV is one, and Peterson merges verses, which `verseSchema` (one text per
+integer verse) does not allow. A verse span in the schema is Tyler's call before any of
+those go on the wheel.
 
 ## Handoff (Oct 31, 2026)
 

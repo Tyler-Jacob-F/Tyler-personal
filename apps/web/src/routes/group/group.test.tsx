@@ -2,6 +2,7 @@ import type { SignupFrontmatter } from '@the-keep/shared';
 import { http, HttpResponse } from 'msw/http';
 import { App } from '@/App';
 import { device } from '@/group/device';
+import { rememberTranslation } from '@/lib/translation';
 import { currentSignup, upcomingEvents } from '@/group/format';
 import { clock, closesLine, inRichmond, longDay, whenLine } from '@/lib/dates';
 import {
@@ -467,7 +468,8 @@ describe('the group for a phone that claimed a name', () => {
     expect(screen.getByRole('navigation', { name: 'Group places' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
     expect(within(page).queryByRole('link', { name: 'Edit' })).toBeNull();
-    expect(within(page).queryByRole('combobox')).toBeNull();
+    // No co-lead control; the translation select is every reader's.
+    expect(within(page).queryByRole('combobox', { name: /Add a name/ })).toBeNull();
 
     const slots = within(page).getByRole('list', { name: 'Slots' });
     const dessert = slotRow(slots, 'Dessert');
@@ -499,7 +501,7 @@ describe('the group for a phone that claimed a name', () => {
     const page = await screen.findByRole('article', { name: 'Group' });
     expect(within(page).getByRole('region', { name: 'Tonight' })).toBeInTheDocument();
     expect(within(page).queryByRole('list', { name: 'Slots' })).toBeNull();
-    expect(within(page).queryByRole('button')).toBeNull();
+    expect(within(page).queryByRole('button', { name: /Release|Take/ })).toBeNull();
     expect(page.querySelectorAll('.bg-accent, .text-accent')).toHaveLength(1);
     expect(
       within(page).getByRole('heading', { level: 2, name: 'Sanctuary · Week four' }),
@@ -753,5 +755,106 @@ describe('the group’s dates and picks', () => {
     expect(
       upcomingEvents([later, past, sheet] as never, today).map((e) => e.frontmatter.date),
     ).toEqual([today, '2099-01-01']);
+  });
+});
+
+describe('the readings’ translation', () => {
+  it('opens in the liturgy’s, follows the select, remembers the choice, and credits a licensed text', async () => {
+    const user = userEvent.setup();
+    const asked: string[] = [];
+    mockGroup('/api');
+    server.use(
+      http.get('/api/passages', ({ request }) => {
+        const url = new URL(request.url);
+        const translation = url.searchParams.get('translation') ?? 'kjv';
+        asked.push(translation);
+        return HttpResponse.json({
+          reference: url.searchParams.get('ref'),
+          translation,
+          verses: [{ chapter: 1, verse: 1, text: `A verse in the ${translation}.` }],
+          ...(translation === 'esv'
+            ? { attribution: { text: 'ESV', url: 'https://www.esv.org' } }
+            : {}),
+        });
+      }),
+    );
+    render(<App />, { route: '/group/guide' });
+    const page = await screen.findByRole('article', { name: 'Guide' });
+    const select = within(page).getByRole('combobox', { name: 'Translation' });
+    expect(select).toHaveValue('kjv');
+    await waitFor(() => expect(within(page).getAllByText('A verse in the kjv.')).toHaveLength(2));
+    expect(within(page).queryByRole('link', { name: 'ESV' })).toBeNull();
+
+    await user.selectOptions(select, 'esv');
+    await waitFor(() => expect(within(page).getAllByText('A verse in the esv.')).toHaveLength(2));
+    expect(within(page).getAllByRole('link', { name: 'ESV' })[0]).toHaveAttribute(
+      'href',
+      'https://www.esv.org',
+    );
+    expect(asked.filter((t) => t === 'esv')).toHaveLength(2);
+    expect(window.localStorage.getItem('keep.translation')).toBe('esv');
+  });
+
+  it('spins the wheel to a translation the week decides, the same on every phone', async () => {
+    const user = userEvent.setup();
+    mockDevice('member');
+    render(<App />, { route: '/group/guide', auth: { signedIn: false } });
+    const page = await screen.findByRole('article', { name: 'Guide' });
+    const select = within(page).getByRole('combobox', { name: 'Translation' });
+    expect(select).toHaveValue('kjv');
+    await user.click(within(page).getByRole('button', { name: 'Spin the wheel' }));
+    const spun = (select as HTMLSelectElement).value;
+    expect(spun).not.toBe('kjv');
+    expect(window.localStorage.getItem('keep.translation')).toBe(spun);
+    // A second phone, starting where the first did, lands on the same one.
+    window.localStorage.removeItem('keep.translation');
+    rememberTranslation(null);
+    await user.click(within(page).getByRole('button', { name: 'Spin the wheel' }));
+    expect(select).toHaveValue(spun);
+  });
+
+  it('says when a reading came from the Douay-Rheims because the translation asked has no such book, and when a translation is not set up', async () => {
+    mockGroup('/api', {
+      docs: [
+        {
+          ...guideDoc,
+          version: {
+            ...guideDoc.version,
+            frontmatter: {
+              ...guideDoc.version.frontmatter,
+              readings: ['Ecclesiasticus 44:1–15', 'Matthew 5:1–12'],
+            },
+          },
+        },
+        liturgyDoc,
+        signupDoc,
+        eventDoc,
+      ],
+    });
+    window.localStorage.setItem('keep.translation', 'niv');
+    server.use(
+      http.get('/api/passages', ({ request }) => {
+        const url = new URL(request.url);
+        const ref = url.searchParams.get('ref') ?? '';
+        if (/Ecclesiasticus/.test(ref)) {
+          return HttpResponse.json({
+            reference: 'Ecclesiasticus 44:1-15',
+            translation: 'dra',
+            verses: [{ chapter: 44, verse: 1, text: 'Let us now praise men of renown.' }],
+          });
+        }
+        return HttpResponse.json(
+          { error: 'translation_unavailable', message: 'the NIV is not set up yet' },
+          { status: 503 },
+        );
+      }),
+    );
+    render(<App />, { route: '/group/guide' });
+    const page = await screen.findByRole('article', { name: 'Guide' });
+    const sirach = within(page).getByRole('region', { name: 'Scripture · Ecclesiasticus 44:1–15' });
+    expect(await within(sirach).findByText(/Let us now praise/)).toBeInTheDocument();
+    expect(sirach).toHaveTextContent('From the Douay-Rheims; the NIV has no Ecclesiasticus.');
+    const matthew = within(page).getByRole('region', { name: 'Scripture · Matthew 5:1–12' });
+    expect(await within(matthew).findByText('The NIV is not set up yet.')).toBeInTheDocument();
   });
 });

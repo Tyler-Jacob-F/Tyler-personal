@@ -355,6 +355,24 @@ describe('ApiStack', () => {
     expect(JSON.stringify(verifiers[0])).toContain(':identity/*');
   });
 
+  it('lets only the passages function read the scripture keys, and names them in its environment', () => {
+    const fns = Object.values(template.findResources('AWS::Lambda::Function'));
+    const passages = fns.find((f) =>
+      String(f.Properties.Description).includes('a reading as text'),
+    )!;
+    expect(passages.Properties.Environment.Variables).toMatchObject({
+      ESV_KEY_PARAMETER: '/the-keep/scripture/esv-key',
+      API_BIBLE_KEY_PARAMETER: '/the-keep/scripture/api-bible-key',
+      API_BIBLE_NIV_ID: expect.any(String),
+    });
+    const policies = Object.values(template.findResources('AWS::IAM::Policy'));
+    const readers = policies.filter((p) => JSON.stringify(p).includes('ssm:GetParameters'));
+    expect(readers).toHaveLength(1);
+    expect(JSON.stringify(readers[0])).toContain('PassagesFunction');
+    expect(JSON.stringify(readers[0])).toContain(':parameter/the-keep/scripture/*');
+    expect(JSON.stringify(readers[0])).not.toContain('kms:');
+  });
+
   it('keeps token, activity and link management under the Cognito authorizer, never an agent or group route', () => {
     const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
     const admin = routes.filter((r) => String(r.Properties.RouteKey).includes('/api/admin/'));

@@ -144,7 +144,8 @@ A page, not a dashboard: one column, reading measure, read top to bottom.
 2. **The Office:** Morning Prayer inline, readings included; the only accented element on
    the page. It opens folded: one row per part, its name and the reference, the glance
    before the book on the shelf is opened. "Read it here" unfolds the text for a morning
-   at a desk; the fold returns on the next visit.
+   at a desk, each reading fetched from its reference in the translation the device has
+   chosen ("Read in", remembered); the fold returns on the next visit.
 3. **The brief:** at most three items.
 4. **The day's shape:** calendar, who hosts Thursday, dinner.
 
@@ -152,8 +153,9 @@ Never: counts or badges, an inbox, news, streaks, Ishar operational data, the re
 progress bars, red, a greeting by name, more than one accented element, urgency.
 
 The lectionary source for the Office is the brief's open question. Until a direct source
-earns its place, Duet carries the readings as a section of the brief, and the page's Office
-slot renders that section.
+earns its place, Duet carries the readings' references as a section of the brief, the
+page's Office slot renders that section, and the text of each reading comes from
+`/api/passages` (docs/phases/04-group.md "Translations").
 
 ## Screens
 

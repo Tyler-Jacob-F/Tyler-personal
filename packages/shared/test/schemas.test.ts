@@ -47,6 +47,11 @@ import {
   DEFAULT_LITURGY,
   currentWeek,
   passageSchema,
+  translations,
+  translationInfo,
+  translationNames,
+  APOCRYPHA_FALLBACK,
+  rouletteFor,
   signupFrontmatterSchema,
   signupOpen,
   eventFrontmatterSchema,
@@ -577,7 +582,8 @@ describe('the group’s types', () => {
     expect(parsed.title).toBe('The fixed liturgy');
     expect(parsed.translation).toBe('kjv');
     expect(parsed.lordsPrayer.split('\n')).toHaveLength(6);
-    expect(liturgyFrontmatterSchema.safeParse({ ...rest, translation: 'esv' }).success).toBe(false);
+    expect(liturgyFrontmatterSchema.safeParse({ ...rest, translation: 'esv' }).success).toBe(true);
+    expect(liturgyFrontmatterSchema.safeParse({ ...rest, translation: 'msg' }).success).toBe(false);
     expect(liturgyFrontmatterSchema.safeParse({ ...rest, table: '' }).success).toBe(false);
   });
 
@@ -589,6 +595,38 @@ describe('the group’s types', () => {
     };
     expect(passageSchema.parse(passage)).toEqual(passage);
     expect(passageSchema.safeParse({ ...passage, verses: [] }).success).toBe(false);
+    const credited = {
+      ...passage,
+      translation: 'esv',
+      attribution: { text: 'ESV', url: 'https://www.esv.org' },
+      fums: 'abc',
+    };
+    expect(passageSchema.parse(credited)).toEqual(credited);
+  });
+
+  it('translations: every code names its source, the Douay-Rheims alone carries the Apocrypha, and the wheel is steady', () => {
+    expect(translations).toContain('esv');
+    expect(translations).toContain('niv');
+    for (const code of translations) {
+      expect(translationInfo[code].name).toBe(translationNames[code]);
+      expect(['bible-api', 'esv', 'api-bible']).toContain(translationInfo[code].source);
+    }
+    expect(translations.filter((code) => translationInfo[code].apocrypha)).toEqual(['dra']);
+    expect(APOCRYPHA_FALLBACK).toBe('dra');
+    const spun = rouletteFor('2026-11-12');
+    expect(translations).toContain(spun);
+    expect(rouletteFor('2026-11-12')).toBe(spun);
+    expect(rouletteFor('x', ['esv'])).toBe('esv');
+    // Different weeks land in different places often enough to be a wheel.
+    const weeks = [
+      '2026-11-12',
+      '2026-11-19',
+      '2026-11-26',
+      '2026-12-03',
+      '2026-12-10',
+      '2026-12-17',
+    ];
+    expect(new Set(weeks.map((w) => rouletteFor(w))).size).toBeGreaterThan(2);
   });
 
   it('signup: slots with distinct labels and a capacity, an optional close, and knows when it is open', () => {
