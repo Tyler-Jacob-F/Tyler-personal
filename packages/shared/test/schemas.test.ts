@@ -51,7 +51,6 @@ import {
   translationInfo,
   translationNames,
   APOCRYPHA_FALLBACK,
-  rouletteFor,
   signupFrontmatterSchema,
   signupOpen,
   eventFrontmatterSchema,
@@ -604,7 +603,7 @@ describe('the group’s types', () => {
     expect(passageSchema.parse(credited)).toEqual(credited);
   });
 
-  it('translations: every code names its source, the Douay-Rheims alone carries the Apocrypha, and the wheel is steady', () => {
+  it('translations: every code names its source, and the Douay-Rheims alone carries the Apocrypha', () => {
     expect(translations).toContain('esv');
     expect(translations).toContain('niv');
     for (const code of translations) {
@@ -613,20 +612,6 @@ describe('the group’s types', () => {
     }
     expect(translations.filter((code) => translationInfo[code].apocrypha)).toEqual(['dra']);
     expect(APOCRYPHA_FALLBACK).toBe('dra');
-    const spun = rouletteFor('2026-11-12');
-    expect(translations).toContain(spun);
-    expect(rouletteFor('2026-11-12')).toBe(spun);
-    expect(rouletteFor('x', ['esv'])).toBe('esv');
-    // Different weeks land in different places often enough to be a wheel.
-    const weeks = [
-      '2026-11-12',
-      '2026-11-19',
-      '2026-11-26',
-      '2026-12-03',
-      '2026-12-10',
-      '2026-12-17',
-    ];
-    expect(new Set(weeks.map((w) => rouletteFor(w))).size).toBeGreaterThan(2);
   });
 
   it('signup: slots with distinct labels and a capacity, an optional close, and knows when it is open', () => {

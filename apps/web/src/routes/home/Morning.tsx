@@ -1,9 +1,4 @@
-import {
-  type BriefFrontmatter,
-  DEFAULT_TRANSLATION,
-  type Translation,
-  type Version,
-} from '@the-keep/shared';
+import type { BriefFrontmatter, Translation, Version } from '@the-keep/shared';
 import { useState } from 'react';
 import { useApi } from '@/api/context';
 import { passageProblem, usePassageThrough } from '@/api/passages';
@@ -15,6 +10,13 @@ import { dayHeading, when } from '@/lib/dates';
 import { useTranslation } from '@/lib/translation';
 import { cn } from '@/lib/utils';
 import { morningParts, type OfficePart, officeParts, type ShapeRow } from '@/routes/home/morning';
+
+/**
+ * What the morning page's readings open in until the device chooses: the ESV, which the
+ * 2019 Prayer Book prints and the brief's writer has used since Nov 4. Decided and flagged:
+ * the group's guide keeps the liturgy's default; this is Tyler's page.
+ */
+export const MORNING_TRANSLATION: Translation = 'esv';
 
 export interface MorningProps {
   /** The calendar date the page is for. */
@@ -35,15 +37,16 @@ export interface MorningProps {
  * book on the shelf. "Read it here" unfolds the text for a morning at a desk or a phone on
  * a train; the fold comes back on the next visit, since the glance is the default. The
  * text of each reading is fetched from its reference in the translation the device has
- * chosen; what the writer put under the label is the fallback when a reading cannot be
- * fetched (a book no source carries), and the whole of a part that is not a reading.
+ * chosen ("Read in", shown folded or not so the choice is in sight); what the writer put
+ * under the label is the fallback when a reading cannot be fetched (a book no source
+ * carries), and the whole of a part that is not a reading.
  */
 export function Morning({ date, brief, version, note }: MorningProps) {
   const heading = dayHeading(date);
   const parts = morningParts(brief);
   const office = parts.office ? officeParts(parts.office) : null;
   const [unfolded, setUnfolded] = useState(false);
-  const [translation, setTranslation] = useTranslation(DEFAULT_TRANSLATION);
+  const [translation, setTranslation] = useTranslation(MORNING_TRANSLATION);
   return (
     <article className="mx-auto grid max-w-[42rem] gap-10" aria-label="Morning">
       <header>
@@ -94,7 +97,7 @@ export function Morning({ date, brief, version, note }: MorningProps) {
               >
                 {unfolded ? 'Just the readings' : 'Read it here'}
               </Button>
-              {unfolded && office.parts.some((p) => p.reference) && (
+              {office.parts.some((p) => p.reference) && (
                 <TranslationSelect
                   value={translation}
                   onChange={setTranslation}

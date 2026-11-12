@@ -2,7 +2,6 @@ import {
   DEFAULT_TRANSLATION,
   type GuideFrontmatter,
   type LiturgyFrontmatter,
-  rouletteFor,
   type Translation,
   type VoiceLine,
 } from '@the-keep/shared';
@@ -46,7 +45,6 @@ export function GuideBlock({
   const { frontmatter: g } = guide;
   const Heading = heading;
   const [translation, setTranslation] = useTranslation(liturgy?.translation ?? DEFAULT_TRANSLATION);
-  const spin = () => setTranslation(rouletteFor(`${g.weekOf}:${translation}`));
   return (
     <div>
       <Heading className="page-title mt-1">{g.title}</Heading>
@@ -74,12 +72,7 @@ export function GuideBlock({
       )}
 
       {g.readings.length > 0 && (
-        <TranslationSelect
-          value={translation}
-          onChange={setTranslation}
-          spin={spin}
-          className="mt-8"
-        />
+        <TranslationSelect value={translation} onChange={setTranslation} wheel className="mt-8" />
       )}
       {g.readings.map((reference) => (
         <Part key={reference} label={`Scripture · ${reference}`}>

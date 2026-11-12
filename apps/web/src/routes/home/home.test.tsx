@@ -50,7 +50,9 @@ describe('the morning page', () => {
 
     const read = within(office).getByRole('button', { name: 'Read it here' });
     expect(read).toHaveAttribute('aria-expanded', 'false');
-    expect(within(office).queryByRole('combobox', { name: 'Translation' })).toBeNull();
+    // The choice is in sight even folded, and opens in the ESV, the Prayer Book's.
+    expect(within(office).getByRole('combobox', { name: 'Translation' })).toHaveValue('esv');
+    expect(within(office).queryByRole('button', { name: /wheel/ })).toBeNull();
     await userEvent.click(read);
     expect(
       within(office).getByRole('heading', { name: 'Venite · Psalm 95', level: 4 }),
@@ -60,7 +62,6 @@ describe('the morning page', () => {
       await within(office).findByText('O come, let us sing unto the Lord.'),
     ).toBeInTheDocument();
     expect(within(office).getByText(/holy temple/)).toBeInTheDocument();
-    expect(within(office).getByRole('combobox', { name: 'Translation' })).toHaveValue('kjv');
     expect(within(office).getByRole('button', { name: 'Just the readings' })).toHaveAttribute(
       'aria-expanded',
       'true',

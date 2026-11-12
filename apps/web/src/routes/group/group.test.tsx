@@ -2,7 +2,6 @@ import type { SignupFrontmatter } from '@the-keep/shared';
 import { http, HttpResponse } from 'msw/http';
 import { App } from '@/App';
 import { device } from '@/group/device';
-import { rememberTranslation } from '@/lib/translation';
 import { currentSignup, upcomingEvents } from '@/group/format';
 import { clock, closesLine, inRichmond, longDay, whenLine } from '@/lib/dates';
 import {
@@ -795,22 +794,34 @@ describe('the readings’ translation', () => {
     expect(window.localStorage.getItem('keep.translation')).toBe('esv');
   });
 
-  it('spins the wheel to a translation the week decides, the same on every phone', async () => {
+  it('spins the wheel: the names run past, it lands anywhere but where it was, and remembers', async () => {
     const user = userEvent.setup();
     mockDevice('member');
     render(<App />, { route: '/group/guide', auth: { signedIn: false } });
     const page = await screen.findByRole('article', { name: 'Guide' });
-    const select = within(page).getByRole('combobox', { name: 'Translation' });
-    expect(select).toHaveValue('kjv');
+    expect(within(page).getByRole('combobox', { name: 'Translation' })).toHaveValue('kjv');
+    const wheel = within(page).getByRole('button', { name: 'Spin the wheel' });
+    await user.click(wheel);
+    // While it spins, the select gives way to the drum and the button waits.
+    expect(within(page).getByRole('status')).toBeInTheDocument();
+    expect(within(page).getByRole('button', { name: 'Spinning…' })).toBeDisabled();
+    const select = await within(page).findByRole(
+      'combobox',
+      { name: 'Translation' },
+      { timeout: 4000 },
+    );
+    const first = (select as HTMLSelectElement).value;
+    expect(first).not.toBe('kjv');
+    expect(window.localStorage.getItem('keep.translation')).toBe(first);
+    expect(within(page).getByRole('button', { name: 'Spin the wheel' })).toBeEnabled();
+    // Spinning again never lands where it is.
     await user.click(within(page).getByRole('button', { name: 'Spin the wheel' }));
-    const spun = (select as HTMLSelectElement).value;
-    expect(spun).not.toBe('kjv');
-    expect(window.localStorage.getItem('keep.translation')).toBe(spun);
-    // A second phone, starting where the first did, lands on the same one.
-    window.localStorage.removeItem('keep.translation');
-    rememberTranslation(null);
-    await user.click(within(page).getByRole('button', { name: 'Spin the wheel' }));
-    expect(select).toHaveValue(spun);
+    const again = await within(page).findByRole(
+      'combobox',
+      { name: 'Translation' },
+      { timeout: 4000 },
+    );
+    expect((again as HTMLSelectElement).value).not.toBe(first);
   });
 
   it('says when a reading came from the Douay-Rheims because the translation asked has no such book, and when a translation is not set up', async () => {

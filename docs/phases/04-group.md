@@ -436,11 +436,11 @@ those books in a translation that lacks them is served from the Douay-Rheims ins
 answer's `translation` says so, and the page notes it under the reading.
 
 **The choice.** "Read in", the browser's own select, on the guide above the readings and
-on the morning page beside "Read it here" once unfolded. The device remembers it
+on the morning page beside "Read it here", folded or not. The device remembers it
 (`keep.translation`), one choice for both pages; the guide opens in the liturgy's
-translation and the morning page in the King James until someone picks. "Spin the wheel"
-on the guide sets the select to a translation decided by the week and where the phone
-started, so phones that start together land together.
+translation and the morning page in the ESV (the Prayer Book's, and the brief writer's
+standing rule) until someone picks. "Spin the wheel" on the guide runs the names past like
+a drum and lands on any translation but the one showing, at random.
 
 **The brief.** The brief now carries references, not Scripture: nothing under a
 reading's `####` label, the writer's words under a label that is not a reading, and the
@@ -449,9 +449,11 @@ fetch fails. The type guide and `docs/runbooks/morning-brief.md` say so, with th
 sent to the brief's writer.
 
 **Decided and flagged.** A device remembers the choice, not a member row: one phone each,
-nothing to audit, and a column is the reversible step from here. The wheel is seeded by
-`weekOf` and the current translation, not random: a room that starts in the King James
-all lands in the same place, and a second spin moves. A reading renders as one paragraph
+nothing to audit, and a column is the reversible step from here. The wheel is random. It
+was first seeded by the week and the translation showing, so that a room would land
+together; from the room's one starting point that made a two-cycle, A to B to A, and Tyler
+called it on the night (Nov 12). A wheel that can be predicted is not one.
+A reading renders as one paragraph
 per chapter without verse numbers, as the guide already did; the Psalms lose their lines,
 which the renders never showed either. API.Bible's NIV id is in `infra/lib/config.ts`
 and reaches the Lambda as an environment variable; the runbook says how to check it
