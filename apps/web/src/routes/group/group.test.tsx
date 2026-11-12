@@ -794,34 +794,53 @@ describe('the readings’ translation', () => {
     expect(window.localStorage.getItem('keep.translation')).toBe('esv');
   });
 
-  it('spins the wheel: the names run past, it lands anywhere but where it was, and remembers', async () => {
+  it('opens the wheel, spins to a new translation, and reads it when the room says so', async () => {
     const user = userEvent.setup();
     mockDevice('member');
     render(<App />, { route: '/group/guide', auth: { signedIn: false } });
     const page = await screen.findByRole('article', { name: 'Guide' });
     expect(within(page).getByRole('combobox', { name: 'Translation' })).toHaveValue('kjv');
-    const wheel = within(page).getByRole('button', { name: 'Spin the wheel' });
-    await user.click(wheel);
-    // While it spins, the select gives way to the drum and the button waits.
-    expect(within(page).getByRole('status')).toBeInTheDocument();
-    expect(within(page).getByRole('button', { name: 'Spinning…' })).toBeDisabled();
-    const select = await within(page).findByRole(
-      'combobox',
-      { name: 'Translation' },
-      { timeout: 4000 },
-    );
-    const first = (select as HTMLSelectElement).value;
-    expect(first).not.toBe('kjv');
-    expect(window.localStorage.getItem('keep.translation')).toBe(first);
-    expect(within(page).getByRole('button', { name: 'Spin the wheel' })).toBeEnabled();
-    // Spinning again never lands where it is.
     await user.click(within(page).getByRole('button', { name: 'Spin the wheel' }));
-    const again = await within(page).findByRole(
-      'combobox',
-      { name: 'Translation' },
-      { timeout: 4000 },
-    );
-    expect((again as HTMLSelectElement).value).not.toBe(first);
+
+    // The overlay opens and starts turning on its own; nothing can be read until it lands.
+    const wheel = await screen.findByRole('dialog', { name: 'The wheel' });
+    expect(wheel).toHaveFocus();
+    expect(within(wheel).getByRole('button', { name: 'Read it' })).toBeDisabled();
+    expect(await within(wheel).findByText('Round she goes…')).toBeInTheDocument();
+    expect(within(wheel).getByRole('img', { name: 'The wheel is spinning' })).toBeInTheDocument();
+
+    // It lands: the name in Literata, the line under it, and Read it comes alive.
+    const read = await within(wheel).findByRole('button', { name: 'Read it' }, { timeout: 7000 });
+    await waitFor(() => expect(read).toBeEnabled(), { timeout: 7000 });
+    const landedName = within(wheel).getByRole('heading', { level: 2 }).nextElementSibling;
+    expect(landedName).not.toBeNull();
+    const nameLine = wheel.querySelector('p.font-serif')!;
+    expect(nameLine.textContent).not.toBe('King James Version');
+    expect(within(wheel).getByText(/./, { selector: 'p.italic' })).toBeInTheDocument();
+
+    await user.click(read);
+    expect(screen.queryByRole('dialog', { name: 'The wheel' })).toBeNull();
+    const select = within(page).getByRole('combobox', { name: 'Translation' }) as HTMLSelectElement;
+    expect(select.value).not.toBe('kjv');
+    expect(window.localStorage.getItem('keep.translation')).toBe(select.value);
+  });
+
+  it('closes the wheel with Never mind or Escape and keeps the translation it had', async () => {
+    const user = userEvent.setup();
+    mockDevice('member');
+    render(<App />, { route: '/group/guide', auth: { signedIn: false } });
+    const page = await screen.findByRole('article', { name: 'Guide' });
+    await user.click(within(page).getByRole('button', { name: 'Spin the wheel' }));
+    const wheel = await screen.findByRole('dialog', { name: 'The wheel' });
+    await user.click(within(wheel).getByRole('button', { name: 'Never mind' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(within(page).getByRole('combobox', { name: 'Translation' })).toHaveValue('kjv');
+    expect(window.localStorage.getItem('keep.translation')).toBeNull();
+
+    await user.click(within(page).getByRole('button', { name: 'Spin the wheel' }));
+    await screen.findByRole('dialog', { name: 'The wheel' });
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('says when a reading came from the Douay-Rheims because the translation asked has no such book, and when a translation is not set up', async () => {
