@@ -439,8 +439,26 @@ answer's `translation` says so, and the page notes it under the reading.
 on the morning page beside "Read it here", folded or not. The device remembers it
 (`keep.translation`), one choice for both pages; the guide opens in the liturgy's
 translation and the morning page in the ESV (the Prayer Book's, and the brief writer's
-standing rule) until someone picks. "Spin the wheel" on the guide runs the names past like
-a drum and lands on any translation but the one showing, at random.
+standing rule) until someone picks. "Spin the wheel" on the guide opens the Wheel.
+
+**The Wheel (Nov 12, evening).** Tyler, after the first night with the drum: random now,
+but "not the exciting fun feature that was envisioned"; the point is levity for the room.
+So: a full-screen overlay with a wheel of fortune drawn in SVG, ten wedges in the two
+surface tones with the short names on them, the pointer at the top in the accent. It
+starts turning as it opens, five to seven turns in four seconds with a hard ease-out so
+the last wedges crawl past, lands a little off centre so no two landings look alike, buzzes
+where the phone allows, fills the winning wedge with the accent, drops a second of confetti
+in the theme's colours, and says one line about where it landed ("Young’s Literal. Hold
+on tight."; the lines are in `lib/wheel.ts`, Tyler's to edit). "Read it" takes the
+translation; "Spin again" is the coward's button; "Never mind" and Escape close it. No
+sound, no weighting, no live sync: the leader spins and holds the phone up. Reduced motion
+lands at once with no confetti.
+
+_Decided and flagged:_ this breaks the letter of `docs/DESIGN-VALUES.md` on purpose (one
+accent per page, nothing that moves for its own sake). The break is confined to the
+overlay, which exists only while the wheel is up; the page under it keeps its one accent
+and its calm, and nothing of the wheel's styling leaks into a page. The confetti's
+keyframes live in the `@theme` block with the tokens, so it still only ever uses them.
 
 **The brief.** The brief now carries references, not Scripture: nothing under a
 reading's `####` label, the writer's words under a label that is not a reading, and the

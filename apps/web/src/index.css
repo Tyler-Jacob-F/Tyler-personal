@@ -126,6 +126,20 @@
   --radius-sm: 2px;
   --radius-md: 4px;
   --radius-lg: 8px;
+
+  /* The wheel's confetti (components/Wheel.tsx): a piece falls the height of the overlay,
+     drifting by its own --drift and tumbling, in a little over a second. */
+  --animate-confetti: confetti 1.3s cubic-bezier(0.3, 0.1, 0.6, 1) forwards;
+  @keyframes confetti {
+    from {
+      transform: translate3d(0, 0, 0) rotate(0deg);
+      opacity: 1;
+    }
+    to {
+      transform: translate3d(var(--drift, 0px), 100vh, 0) rotate(720deg);
+      opacity: 0.6;
+    }
+  }
 }
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
