@@ -1,24 +1,6 @@
 import { z } from 'zod';
 import { frontmatterBaseSchema } from './base.js';
-
-/**
- * Translations the passage service can serve: the public-domain texts bible-api.com
- * carries, by its codes. The group reads the one the liturgy names.
- */
-export const translations = ['kjv', 'web', 'webbe', 'asv', 'bbe', 'darby', 'dra', 'ylt'] as const;
-export const translationSchema = z.enum(translations);
-export type Translation = z.infer<typeof translationSchema>;
-
-export const translationNames: Record<Translation, string> = {
-  kjv: 'King James Version',
-  web: 'World English Bible',
-  webbe: 'World English Bible, British Edition',
-  asv: 'American Standard Version',
-  bbe: 'Bible in Basic English',
-  darby: 'Darby Translation',
-  dra: 'Douay-Rheims',
-  ylt: 'Young’s Literal Translation',
-};
+import { translationSchema } from './translation.js';
 
 /**
  * The group's settings (docs/phases/04-group.md "The refresh"): the fixed liturgy that

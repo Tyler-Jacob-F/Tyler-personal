@@ -77,7 +77,7 @@ export function GuidePage() {
           </SectionHead>
           <p className="mt-3 text-[15px] text-muted">
             {fixed
-              ? `What repeats every week: the collect before the reading, the songbook line, the Lord’s Prayer, the final collect. Readings in the ${translationNames[fixed.frontmatter.translation]}.`
+              ? `What repeats every week: the collect before the reading, the songbook line, the Lord’s Prayer, the final collect. Readings open in the ${translationNames[fixed.frontmatter.translation]} until a reader picks another.`
               : 'Not set yet: the guide shows only what the week brings until it is.'}
           </p>
         </section>

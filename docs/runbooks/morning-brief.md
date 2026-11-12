@@ -21,7 +21,10 @@ The logged-in home at https://tylerfuqua.com is the morning page: it renders the
 dated today as its four parts (the day line, the Office folded to its parts and their
 references, with "Read it here" to unfold the text, the brief, the day's shape); if
 there is none, the latest one, with a line saying whose morning it was. One brief per day: a second run the same day adds a
-version to it rather than a second document.
+version to it rather than a second document. The page fetches each reading's text from
+its reference, in the translation the device has chosen (`docs/runbooks/scripture-keys.md`),
+so the brief carries references, not Scripture; the one exception is a reading from the
+Apocrypha, whose text the brief still carries in case no source has it.
 
 ## One-time setup (Tyler)
 
@@ -74,8 +77,11 @@ You write Tyler's morning brief for The Keep. Today is the date in America/New_Y
      Ecclesiasticus 44:1–15", "#### The Collect"), the collect last. The page opens the
      Office folded to those labels, one row per part, so every reading's reference goes in
      its label exactly as a Bible gives it (book, chapter, verses), one reading per label,
-     nothing else in the label. Under each label, the full text: "Read it here" unfolds it,
-     so include the text, never a link or a "continue" line.
+     nothing else in the label. The page fetches a reading's text from its reference, so
+     put nothing under a reading's label; under a label that is not a reading ("#### The
+     Collect", "#### Versicle and Response") write the text. The one exception: a reading
+     from the Apocrypha (Ecclesiasticus, Wisdom, Tobit, Judith, Baruch, the Maccabees)
+     keeps its full text under the label, since not every source has those books.
    - "The brief": at most three short paragraphs, the things that matter today, plain,
      no bullets, no counts, nothing from the inbox unless a reply is the day's work.
    - "Today": a list, one line each, "9:00 · Pancakes with the kids"; after the timed
@@ -143,6 +149,32 @@ once, so its morning routine and today's brief follow:
 > 3. Everything else stays: the opening sentence in italics with its reference, the
 >    versicle and response, the collect last, "Office · Evening Prayer" in the heading for
 >    a later office.
+>
+> Reply with the labels you used for today's Office so I can check them against the page.
+
+**The fetch (Nov 11, 2026).** The page now fetches each reading from its label through
+`/api/passages`, in the translation the device chose (`docs/runbooks/scripture-keys.md`),
+and keeps the writer's words only for what is not a reading. Told the brief's writer
+once (Duet today; whoever takes the morning routine over, Muse or another, gets the same
+message, since the directive is the type guide and this runbook, not the agent):
+
+> The Keep's morning page now fetches the text of each reading itself, from the
+> reference in its `#### Name · Reference` label, in whichever translation I pick on the
+> page. Change the Office section of the brief to fit, in your morning routine and in
+> today's brief (a new version, not a second document):
+>
+> 1. Under a reading's label, write nothing. The label is the whole of it: `#### Psalm ·
+Psalm 149`, `#### First Lesson · Isaiah 40:1–11`, `#### Second Lesson · Revelation
+7:9–17`. Write the reference as a Bible gives it, book, chapter and verses, en dash
+>    between verses, one reading per label; a reading with two spans is "Psalm 119:1–8,
+>    33–40" in one label.
+> 2. Under a label that is not a reading, keep writing the text: `#### The Collect`, and
+>    the opening sentence and the versicle and response above the first label as before.
+> 3. The one exception: a reading from the Apocrypha (Ecclesiasticus, Wisdom, Tobit,
+>    Judith, Baruch, 1 and 2 Maccabees) keeps its full text under its label, because not
+>    every source carries those books and the page falls back to your words.
+> 4. Everything else stays: "Office · Evening Prayer" in the heading for a later office,
+>    the collect last.
 >
 > Reply with the labels you used for today's Office so I can check them against the page.
 

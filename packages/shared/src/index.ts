@@ -13,3 +13,4 @@ export * from './types/liturgy.js';
 export * from './types/recipe-taxonomy.js';
 export * from './types/recipe.js';
 export * from './types/signup.js';
+export * from './types/translation.js';

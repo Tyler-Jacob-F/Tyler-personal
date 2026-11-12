@@ -9,7 +9,6 @@ import {
   type MakeColeadRequest,
   memberSchema,
   meResponseSchema,
-  passageSchema,
   type Translation,
   type RotateGroupLinkRequest,
   rotateGroupLinkResponseSchema,
@@ -20,6 +19,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import type { ApiFetch } from '@/api/client';
 import { useInvalidateAll } from '@/api/context';
+import { usePassageThrough } from '@/api/passages';
 import { useGroup } from '@/group/context';
 
 /**
@@ -38,8 +38,6 @@ export const groupKeys = {
   claims: (prefix: string, id: string) => [...groupKeys.all, prefix, 'claims', id] as const,
   members: (prefix: string) => [...groupKeys.all, prefix, 'members'] as const,
   link: () => [...groupKeys.all, 'link'] as const,
-  passage: (prefix: string, translation: string, ref: string) =>
-    [...groupKeys.all, prefix, 'passage', translation, ref] as const,
 };
 
 /** `GET /api/group/me` with a device token: which member the device holds, if any. */
@@ -78,16 +76,10 @@ export function useClaims(id: string | null) {
   });
 }
 
-/** A reading as text, in the liturgy's translation; a passage never changes, so it is kept for the session. */
+/** A reading as text, through the viewer's door (api/passages.ts). */
 export function usePassage(ref: string, translation: Translation) {
   const { api, prefix } = useGroup();
-  return useQuery({
-    queryKey: groupKeys.passage(prefix, translation, ref),
-    queryFn: () =>
-      api(`${prefix}/passages`, { schema: passageSchema, query: { ref, translation } }),
-    staleTime: Infinity,
-    retry: false,
-  });
+  return usePassageThrough(api, prefix, ref, translation);
 }
 
 export function useMembers() {

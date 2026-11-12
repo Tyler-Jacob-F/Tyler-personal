@@ -149,10 +149,26 @@ export class ApiStack extends cdk.Stack {
     );
     const passages = apiFunction(this, 'PassagesFunction', {
       entry: 'handlers/passages.ts',
-      description: `${config.siteName}: a reading as text, from bible-api.com`,
-      environment,
+      description: `${config.siteName}: a reading as text, from bible-api.com, Crossway or API.Bible`,
+      environment: {
+        ...environment,
+        ESV_KEY_PARAMETER: config.scripture.esvKeyParameter,
+        API_BIBLE_KEY_PARAMETER: config.scripture.apiBibleKeyParameter,
+        API_BIBLE_NIV_ID: config.scripture.apiBibleIds.niv,
+      },
       timeout,
     });
+    // The licensed translations' keys are SecureStrings Tyler puts under the prefix by hand
+    // (docs/runbooks/scripture-keys.md); the Lambda reads them once per life. Reading a
+    // SecureString encrypted with the account's default SSM key needs no KMS grant.
+    passages.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ssm:GetParameters', 'ssm:GetParameter'],
+        resources: [
+          `arn:aws:ssm:${this.region}:${this.account}:parameter${config.scripture.ssmPrefix}/*`,
+        ],
+      }),
+    );
     const claims = apiFunction(this, 'ClaimsFunction', {
       entry: 'handlers/claims.ts',
       description: `${config.siteName}: /api/documents/{id}/claims, slots taken on a sign-up`,

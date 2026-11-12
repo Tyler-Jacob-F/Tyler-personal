@@ -3,14 +3,27 @@ import { App } from '@/App';
 import { briefDoc, recipeDoc } from '@/test/fixtures';
 import { dayHeading, todayIso } from '@/lib/dates';
 import { pickBrief } from '@/routes/home/home';
-import { blocksOf, morningParts, officeOutline, parseShapeRow } from '@/routes/home/morning';
+import {
+  blocksOf,
+  morningParts,
+  officeOutline,
+  officeParts,
+  parseShapeRow,
+} from '@/routes/home/morning';
 import { render, screen, userEvent, within } from '@/test/render';
 import { server } from '@/test/server';
 
 const today = todayIso();
 
+beforeEach(() => window.localStorage.clear());
+
 function mockBriefs(briefs: unknown[]) {
-  server.use(http.get('/api/documents', () => HttpResponse.json({ items: briefs })));
+  server.use(
+    http.get('/api/documents', () => HttpResponse.json({ items: briefs })),
+    http.get('/api/passages', () =>
+      HttpResponse.json({ error: 'not_found', message: 'passage not found' }, { status: 404 }),
+    ),
+  );
 }
 
 describe('the morning page', () => {
@@ -37,12 +50,17 @@ describe('the morning page', () => {
 
     const read = within(office).getByRole('button', { name: 'Read it here' });
     expect(read).toHaveAttribute('aria-expanded', 'false');
+    expect(within(office).queryByRole('combobox', { name: 'Translation' })).toBeNull();
     await userEvent.click(read);
     expect(
       within(office).getByRole('heading', { name: 'Venite · Psalm 95', level: 4 }),
     ).toHaveClass('eyebrow');
-    expect(within(office).getByText('O come, let us sing unto the Lord.')).toBeInTheDocument();
+    // No source knows the reading: the text the writer carried under the label stands in.
+    expect(
+      await within(office).findByText('O come, let us sing unto the Lord.'),
+    ).toBeInTheDocument();
     expect(within(office).getByText(/holy temple/)).toBeInTheDocument();
+    expect(within(office).getByRole('combobox', { name: 'Translation' })).toHaveValue('kjv');
     expect(within(office).getByRole('button', { name: 'Just the readings' })).toHaveAttribute(
       'aria-expanded',
       'true',
@@ -72,6 +90,83 @@ describe('the morning page', () => {
     expect(within(page).getByText(/brief-writer/)).toBeInTheDocument();
     // Never: a greeting by name, counts, urgency.
     expect(page.textContent).not.toMatch(/Good morning|Tyler,|overdue|urgent/i);
+  });
+
+  it('fetches each reading from its label in the device’s translation, keeps the writer’s words for the rest, and credits the text', async () => {
+    const asked: Array<{ ref: string | null; translation: string | null }> = [];
+    mockBriefs([briefDoc(today)]);
+    window.localStorage.setItem('keep.translation', 'esv');
+    server.use(
+      http.get('/api/passages', ({ request }) => {
+        const url = new URL(request.url);
+        asked.push({
+          ref: url.searchParams.get('ref'),
+          translation: url.searchParams.get('translation'),
+        });
+        return HttpResponse.json({
+          reference: 'Psalm 95',
+          translation: 'esv',
+          verses: [
+            { chapter: 95, verse: 1, text: 'Oh come, let us sing to the Lord;' },
+            { chapter: 95, verse: 2, text: 'let us come into his presence with thanksgiving.' },
+          ],
+          attribution: { text: 'ESV', url: 'https://www.esv.org' },
+        });
+      }),
+    );
+    render(<App />, { route: '/' });
+    const page = await screen.findByRole('article', { name: 'Morning' });
+    const office = within(page).getByRole('region', { name: 'Morning Prayer' });
+    expect(asked).toEqual([]);
+    await userEvent.click(within(office).getByRole('button', { name: 'Read it here' }));
+    const venite = within(office).getByRole('region', { name: 'Venite' });
+    expect(
+      await within(venite).findByText(
+        'Oh come, let us sing to the Lord; let us come into his presence with thanksgiving.',
+      ),
+    ).toBeInTheDocument();
+    expect(within(venite).queryByText('O come, let us sing unto the Lord.')).toBeNull();
+    expect(within(venite).getByRole('link', { name: 'ESV' })).toHaveAttribute(
+      'href',
+      'https://www.esv.org',
+    );
+    expect(asked).toEqual([{ ref: 'Psalm 95', translation: 'esv' }]);
+    // The collect has no reference: the writer's words, as they were.
+    const collect = within(office).getByRole('region', { name: 'The Collect' });
+    expect(collect).toHaveTextContent('Almighty God, who hast knit together thine elect. Amen.');
+    // The opening sentence before the first label stays.
+    expect(within(office).getByText(/holy temple/)).toBeInTheDocument();
+    expect(within(office).getByRole('combobox', { name: 'Translation' })).toHaveValue('esv');
+    // The accent is still the Office's alone.
+    expect(page.querySelectorAll('.text-accent, .bg-accent, .border-accent')).toHaveLength(1);
+  });
+
+  it('says when a translation is not set up and nothing was carried under the label', async () => {
+    const brief = briefDoc(today);
+    brief.version.frontmatter = {
+      ...brief.version.frontmatter,
+      sections: [
+        {
+          heading: 'Office',
+          body: '#### First Lesson · Isaiah 40:1–11\n\n#### The Collect\n\nAmen.',
+        },
+      ],
+    };
+    mockBriefs([brief]);
+    window.localStorage.setItem('keep.translation', 'niv');
+    server.use(
+      http.get('/api/passages', () =>
+        HttpResponse.json(
+          { error: 'translation_unavailable', message: 'the NIV is not set up yet' },
+          { status: 503 },
+        ),
+      ),
+    );
+    render(<App />, { route: '/' });
+    const page = await screen.findByRole('article', { name: 'Morning' });
+    const office = within(page).getByRole('region', { name: 'Morning Prayer' });
+    await userEvent.click(within(office).getByRole('button', { name: 'Read it here' }));
+    expect(await within(office).findByText('The NIV is not set up yet.')).toBeInTheDocument();
   });
 
   it('shows the latest brief, saying whose morning it was, when today’s is not in yet', async () => {
@@ -176,6 +271,22 @@ describe('morningParts', () => {
       { label: 'The Collect', text: '' },
     ]);
     expect(officeOutline('O Lord, open thou our lips;')).toBeNull();
+    expect(
+      officeParts(
+        '*The Lord is in his holy temple.*\n\n#### Venite · Psalm 95\n\n#### First Lesson · Ecclesiasticus 44:1–15\n\nLet us now praise.\n\nFamous men.\n\n#### The Collect\n\nAlmighty God.',
+      ),
+    ).toEqual({
+      preamble: '*The Lord is in his holy temple.*',
+      parts: [
+        { label: 'Venite', reference: 'Psalm 95', body: '' },
+        {
+          label: 'First Lesson',
+          reference: 'Ecclesiasticus 44:1–15',
+          body: 'Let us now praise.\n\nFamous men.',
+        },
+        { label: 'The Collect', reference: '', body: 'Almighty God.' },
+      ],
+    });
   });
 
   it('shows an Office with no labels whole, with nothing to fold', async () => {

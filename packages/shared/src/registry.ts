@@ -46,11 +46,15 @@ const registry: Record<DocumentType, TypeDefinition> = {
       '(YYYY-MM-DD, local to Tyler in America/New_York); `sections` is a list of ' +
       '{ heading, body } with the body in markdown. The morning page reads four of them by ' +
       'heading: "The day" (one line: liturgical day and season, sunrise, weather), "Office" ' +
-      '(the office with its readings, in markdown; every part under its own "#### Name · ' +
-      'Reference" label, "#### Venite · Psalm 95", "#### First Lesson · Ecclesiasticus ' +
-      '44:1–15", "#### The Collect", with the full text under each. The page opens the ' +
-      'Office folded to those labels, so each reading’s reference must be in its label as ' +
-      'a Bible gives it, and the text must still be there to unfold; name the office in the ' +
+      '(the office in markdown; every part under its own "#### Name · Reference" label, ' +
+      '"#### Venite · Psalm 95", "#### First Lesson · Isaiah 40:1–11", "#### The Collect". ' +
+      'The page fetches each reading’s text from the reference in its label, in the ' +
+      'reader’s translation, so write the reference as a Bible gives it (book, chapter, ' +
+      'verses, en dash between) and nothing under a reading’s label; write the text under ' +
+      'a label that is not a reading, such as the collect, and above the first label for ' +
+      'the opening sentence and versicle. One exception: a reading from the Apocrypha ' +
+      '(Ecclesiasticus, Wisdom, Tobit, Judith, Baruch, Maccabees) keeps its full text ' +
+      'under its label, since not every source carries those books. Name the office in the ' +
       'heading, "Office · Evening Prayer", when ' +
       'a later version of the day carries a later office), "The brief" (at most three short ' +
       'paragraphs), and "Today" (a ' +
@@ -87,7 +91,8 @@ const registry: Record<DocumentType, TypeDefinition> = {
     defaultRing: 'group',
     guide:
       'liturgy: the group’s one settings document, the fixed liturgy that repeats every ' +
-      'week, the translation the readings are served in, and the standing meeting (meetsAt ' +
+      'week, the translation the readings open in until a reader picks another, and the ' +
+      'standing meeting (meetsAt ' +
       'HH:MM, place). frontmatter is { title?, translation, table, beforeReading, songbook, ' +
       'lordsPrayer, closing, meetsAt?, place? }. One document, kept by the admin and co-leads ' +
       'in the group UI; no agent scope writes it. The calendar’s events are the nights that ' +

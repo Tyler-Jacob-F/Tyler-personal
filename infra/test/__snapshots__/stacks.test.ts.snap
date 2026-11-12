@@ -5905,9 +5905,11 @@ exports[`ApiStack > matches the snapshot 1`] = `
           "S3Bucket": "cdk-hnb659fds-assets-697941679713-us-east-1",
           "S3Key": "<asset-hash>.zip",
         },
-        "Description": "The Keep: a reading as text, from bible-api.com",
+        "Description": "The Keep: a reading as text, from bible-api.com, Crossway or API.Bible",
         "Environment": {
           "Variables": {
+            "API_BIBLE_KEY_PARAMETER": "/the-keep/scripture/api-bible-key",
+            "API_BIBLE_NIV_ID": "78a9f6124f344018-01",
             "DB_CLUSTER_ARN": {
               "Fn::Join": [
                 "",
@@ -5927,6 +5929,7 @@ exports[`ApiStack > matches the snapshot 1`] = `
             "DB_SECRET_ARN": {
               "Fn::ImportValue": "Data:ExportsOutputRefClusterSecretAttachment769E62587134F379",
             },
+            "ESV_KEY_PARAMETER": "/the-keep/scripture/esv-key",
             "NODE_OPTIONS": "--enable-source-maps",
           },
         },
@@ -5991,6 +5994,14 @@ exports[`ApiStack > matches the snapshot 1`] = `
       "Properties": {
         "PolicyDocument": {
           "Statement": [
+            {
+              "Action": [
+                "ssm:GetParameters",
+                "ssm:GetParameter",
+              ],
+              "Effect": "Allow",
+              "Resource": "arn:aws:ssm:us-east-1:697941679713:parameter/the-keep/scripture/*",
+            },
             {
               "Action": [
                 "rds-data:BatchExecuteStatement",
