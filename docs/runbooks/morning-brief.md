@@ -1,16 +1,18 @@
 # Runbook · the morning brief
 
-**Duet writes the brief** (checked Oct 30): it reaches the MCP server through the account's
-custom connector, the same one Cowork uses, with the `claude` token, which carries
-`write:briefs`. Ask Duet for the brief as part of its morning routine; the type guide in
-the `create_document` tool description tells it the shape, and the server's instructions
-tell it to add a version to today's brief rather than a second document. Nothing below is
-needed while that works.
+**Muse writes the brief** (since Nov 10; the Activity screen lists its versions under
+`muse`, several a day as the office turns from Morning Prayer to Noonday to Compline).
+It reaches the MCP server through the account's custom connector with the `muse` token,
+which carries `write:briefs`; the type guide in the `create_document` tool description
+tells it the shape, and the server's instructions tell it to add a version to today's
+brief rather than a second document. Duet wrote it from Oct 30 to Nov 9 the same way,
+with the `claude` token; the messages below were sent to whichever held the routine on
+the day, and the next one goes to Muse. Nothing below is needed while that works.
 
 The rest of this runbook is the fallback: a scheduled Claude Code task holding a
-`brief-writer` token (`write:briefs`), for the day Duet cannot run or the connector is
-down. Nothing in it is code: the prompt below is the whole program, and the schedule is a
-setting on claude.ai.
+`brief-writer` token (`write:briefs`), for the day the writer cannot run or the connector
+is down. Nothing in it is code: the prompt below is the whole program, and the schedule is
+a setting on claude.ai.
 
 ## What a brief is
 
@@ -118,15 +120,16 @@ always have paused, so the first call of every run is the slow one: it may succe
 or fail with a 500 when the authorizer's 25 seconds run out, and the retry in step 4 is
 what makes the run reliable.
 
-## Asking Duet
+## Asking the writer
 
-Once, in Duet: "Each morning, post my brief to The Keep as a `brief` document with the
+Once, in Duet (Oct 30), the same words for Muse: "Each morning, post my brief to The Keep as a `brief` document with the
 sections the create_document guide names: The day, Office (Morning Prayer with the
 readings), The brief (at most three paragraphs) and Today (one line per entry,
 `time · what`), with a one-sentence lead as the body. One brief per day: if today's exists,
 add a version." Then check the home screen the next morning. The Activity screen lists it
-under `claude`. The lectionary source is still the brief's open question: Duet carries the
-readings as the Office section until a direct feed earns its place (Phase 6).
+under the token's name. The lectionary source is still the brief's open question: the
+writer carries the readings as the Office section until a direct feed earns its place
+(Phase 6).
 
 **The fold (Nov 4, 2026).** The page now opens the Office folded: one row per `####`
 label, the part's name and its reference, and "Read it here" to unfold the text. Told Duet
@@ -154,9 +157,11 @@ once, so its morning routine and today's brief follow:
 
 **The fetch (Nov 11, 2026).** The page now fetches each reading from its label through
 `/api/passages`, in the translation the device chose (`docs/runbooks/scripture-keys.md`),
-and keeps the writer's words only for what is not a reading. Told the brief's writer
-once (Duet today; whoever takes the morning routine over, Muse or another, gets the same
-message, since the directive is the type guide and this runbook, not the agent):
+and keeps the writer's words only for what is not a reading. The morning page opens the
+readings in the ESV, which is the writer's own standing rule since Nov 4, so a brief
+posted before this message reads the same; after it, the page fetches what the brief no
+longer carries. Tell Muse once (the directive is the type guide and this runbook, not the
+agent, so whoever holds the routine gets the same words):
 
 > The Keep's morning page now fetches the text of each reading itself, from the
 > reference in its `#### Name · Reference` label, in whichever translation I pick on the

@@ -1,4 +1,4 @@
-import { type Translation, translationSchema } from '@the-keep/shared';
+import { type Translation, translations, translationSchema } from '@the-keep/shared';
 import { useCallback, useSyncExternalStore } from 'react';
 
 /**
@@ -46,4 +46,14 @@ export function useTranslation(fallback: Translation): [Translation, (next: Tran
   const stored = useSyncExternalStore(subscribe, storedTranslation, () => null);
   const choose = useCallback((next: Translation) => rememberTranslation(next), []);
   return [stored ?? fallback, choose];
+}
+
+/**
+ * The wheel: any translation but the one showing, at random. Nothing is seeded; a wheel
+ * that could be predicted from where it started landed the room on the same two
+ * translations in turn (Nov 12), which is not a wheel.
+ */
+export function spinWheel(current: Translation): Translation {
+  const others = translations.filter((code) => code !== current);
+  return others[Math.floor(Math.random() * others.length)]!;
 }

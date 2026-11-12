@@ -64,20 +64,3 @@ export const translationNames: Record<Translation, string> = Object.fromEntries(
  * Douay-Rheims is the one public-domain text on offer that carries it.
  */
 export const APOCRYPHA_FALLBACK: Translation = 'dra';
-
-/**
- * The wheel (docs/phases/04-group.md "Translations"): a translation picked from the list
- * by a seed, so every phone that spins on the same Thursday lands on the same one and the
- * leader can read it aloud. Deterministic; nothing clever.
- */
-export function rouletteFor(
-  seed: string,
-  among: readonly Translation[] = translations,
-): Translation {
-  let hash = 2166136261;
-  for (const char of seed) {
-    hash ^= char.charCodeAt(0);
-    hash = Math.imul(hash, 16777619) >>> 0;
-  }
-  return among[hash % among.length]!;
-}
