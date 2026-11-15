@@ -485,6 +485,29 @@ three, the NIV is one, and Peterson merges verses, which `verseSchema` (one text
 integer verse) does not allow. A verse span in the schema is Tyler's call before any of
 those go on the wheel.
 
+## What a claim brings (Nov 15, 2026)
+
+A member asked, before Friendsgiving, to say the exact dish. Decided with Tyler that day:
+
+- **The slot says what it asks.** `slots[].kind` is optional: `food` asks what is being
+  brought and what it contains, `item` asks what (drinks), and a slot with no kind takes a
+  name and nothing more, as every sheet before this did (and as a wrapped book should).
+  Per slot, not per sheet: the cookie and book exchange wants both. No templates; the
+  form's default slots carry kinds.
+- **The detail lives on the claim**, migration 0009: `note` (80 characters) and `contains`,
+  text because the Data API returns no arrays. It is said after the slot is taken, through
+  `PATCH .../claims/{claimId}`, by the member or a co-lead; no agent edits a claim. The
+  close does not stop it. Still one claim per member per slot: two sides are one note.
+- **"Contains", from the group's own allergies:** gluten, dairy, nuts, soy, fish, poultry.
+  Never "free of", which a home kitchen cannot promise. Null is "not said" and shows
+  nothing; an empty list is "none", said, and the sheet spells the six out.
+- **One form, both ways in.** "Take this" on a slot with a kind opens it; someone already
+  on a slot finds "Say what you’re bringing" under their name, which holds the accent
+  until they have, with Release in outline beside it. This departs from the render, where
+  Release holds the accent; on a slot with no kind it still does.
+- **Not done:** nothing tells existing claimants (the site reaches no one); the evening's
+  "brought" line still lists names only; `claim_slot` carries no note.
+
 ## Handoff (Oct 31, 2026)
 
 What a fresh session should know that the files alone do not say.

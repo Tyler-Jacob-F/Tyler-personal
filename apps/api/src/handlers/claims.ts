@@ -1,7 +1,12 @@
 import { type Db, getDb } from '../db/client.js';
 import { type ApiHandler, createApi, json, noContent } from '../lib/http.js';
 import { agentIdentity, cognitoIdentity, groupIdentity } from '../middleware/identity.js';
-import { createClaimFor, deleteClaimFor, listClaimsFor } from '../services/claims.js';
+import {
+  createClaimFor,
+  deleteClaimFor,
+  listClaimsFor,
+  updateClaimFor,
+} from '../services/claims.js';
 
 export interface ClaimsOptions {
   /** Injected by tests; production uses the clock. */
@@ -24,6 +29,9 @@ export function build(db: Db, options: ClaimsOptions = {}): ApiHandler {
 
       'POST /api/documents/{id}/claims': async ({ identity, params, body, log }) =>
         json(201, await createClaimFor(db, identity, params.id, body, log, options)),
+
+      'PATCH /api/documents/{id}/claims/{claimId}': async ({ identity, params, body, log }) =>
+        json(200, await updateClaimFor(db, identity, params.id, params.claimId, body, log)),
 
       'DELETE /api/documents/{id}/claims/{claimId}': async ({ identity, params, log }) => {
         await deleteClaimFor(db, identity, params.id, params.claimId, log, options);

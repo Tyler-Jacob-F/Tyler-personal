@@ -14,10 +14,11 @@ import { Markdown } from '@/components/Markdown';
 import { Button } from '@/components/ui/button';
 import { focusRing } from '@/components/ui/styles';
 import { canEdit, type GroupViewer, memberIdOf, useGroup } from '@/group/context';
-import { capacityLine, icsUrl, telHref, type Typed } from '@/group/format';
+import { capacityLine, containsLine, icsUrl, telHref, type Typed } from '@/group/format';
 import { closesLine, dayLine, whenLine } from '@/lib/dates';
 import { quietLink } from '@/group/styles';
 import { cn } from '@/lib/utils';
+import { ClaimDetailForm } from '@/routes/group/ClaimDetail';
 
 /**
  * An eyebrow with, for the admin and co-leads, the one control the section has, in the
@@ -132,6 +133,12 @@ export interface SheetProps {
  * strong, and under them "Full", or a hairline and the viewer's one action. The accent
  * appears on "Release" alone, the viewer's standing action; a guest reads the sheet and is
  * pointed at the claim screen.
+ *
+ * A slot with a kind asks what is being brought. Each name then carries its dish under it,
+ * and what the dish contains; on such a slot the viewer's standing action is to say so, so
+ * the accent moves to "Say what you’re bringing" until they have, and "Release" goes
+ * quiet. Taking the slot opens the same form at once, which is also how someone who took
+ * theirs before the sheet could ask adds it afterwards.
  */
 export function SignupSheet({
   signup,
@@ -153,6 +160,8 @@ export function SignupSheet({
   const [now] = useState(() => new Date());
   const closed = !signupOpen(frontmatter, now);
   const others = members.filter((m) => m.id !== mine);
+  /** The claim whose detail form is open under its row, if any. */
+  const [editing, setEditing] = useState<string | null>(null);
 
   const closes = frontmatter.closesAt && closesLine(frontmatter.closesAt, frontmatter.date);
   const subline = dated
@@ -191,10 +200,11 @@ export function SignupSheet({
           const full = taken.length >= slot.capacity;
           const busy = take.isPending || release.isPending;
           let action: ReactNode = null;
+          const unsaid = own && slot.kind && !own.note && own.contains === null;
           if (own) {
             action = (
               <Button
-                variant="accent"
+                variant={slot.kind ? 'outline' : 'accent'}
                 size="sm"
                 disabled={busy || (closed && !editor)}
                 onClick={() => release.mutate(own.id)}
@@ -217,7 +227,10 @@ export function SignupSheet({
                 size="sm"
                 disabled={busy}
                 onClick={() =>
-                  take.mutate({ slot: slot.label, ...(editor ? { memberId: mine } : {}) })
+                  take.mutate(
+                    { slot: slot.label, ...(editor ? { memberId: mine } : {}) },
+                    { onSuccess: (claim) => slot.kind && setEditing(claim.id) },
+                  )
                 }
                 aria-label={`Take ${slot.label}`}
               >
@@ -225,60 +238,115 @@ export function SignupSheet({
               </Button>
             );
           }
+          const open = taken.find((c) => c.id === editing);
           return (
-            <li key={slot.label} className="flex items-start justify-between gap-6 py-4">
-              <div className="shrink-0">
-                <p className="text-[17px] font-semibold text-text-strong">{slot.label}</p>
-                <p className="mt-0.5 text-[15px] text-muted">{capacityLine(slot.capacity)}</p>
-              </div>
-              <div className="flex min-w-0 flex-col items-end gap-1.5 text-right">
-                {taken.map((claim) => (
-                  <span
-                    key={claim.id}
-                    className={cn(
-                      'inline-flex items-center gap-2 text-[17px]',
-                      claim.memberId === mine ? 'font-semibold text-text-strong' : 'text-text',
-                    )}
-                  >
-                    <span>{claim.memberName}</span>
-                    {editor && claim.memberId !== mine && (
-                      <button
-                        type="button"
-                        aria-label={`Release ${claim.memberName} from ${slot.label}`}
-                        className={cn(
-                          'inline-flex size-7 items-center justify-center rounded-sm text-muted hover:text-text',
-                          focusRing,
+            <li key={slot.label} className="py-4">
+              <div className="flex items-start justify-between gap-6">
+                <div className="shrink-0">
+                  <p className="text-[17px] font-semibold text-text-strong">{slot.label}</p>
+                  <p className="mt-0.5 text-[15px] text-muted">{capacityLine(slot.capacity)}</p>
+                </div>
+                <div className="flex min-w-0 flex-col items-end gap-1.5 text-right">
+                  {taken.map((claim) => {
+                    const contains = containsLine(claim.contains);
+                    const said = Boolean(claim.note) || contains !== null;
+                    const theirs = claim.memberId === mine && viewer.kind !== 'signedIn';
+                    return (
+                      <span key={claim.id} className="flex flex-col items-end">
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-2 text-[17px]',
+                            claim.memberId === mine
+                              ? 'font-semibold text-text-strong'
+                              : 'text-text',
+                          )}
+                        >
+                          <span>{claim.memberName}</span>
+                          {editor && claim.memberId !== mine && (
+                            <button
+                              type="button"
+                              aria-label={`Release ${claim.memberName} from ${slot.label}`}
+                              className={cn(
+                                'inline-flex size-7 items-center justify-center rounded-sm text-muted hover:text-text',
+                                focusRing,
+                              )}
+                              disabled={busy}
+                              onClick={() => release.mutate(claim.id)}
+                            >
+                              ×
+                            </button>
+                          )}
+                        </span>
+                        {claim.note && (
+                          <span className="font-serif text-[15px] text-muted italic">
+                            {claim.note}
+                          </span>
                         )}
-                        disabled={busy}
-                        onClick={() => release.mutate(claim.id)}
-                      >
-                        ×
-                      </button>
-                    )}
-                  </span>
-                ))}
-                {action && (
-                  <div
-                    className={cn(
-                      'mt-1 flex flex-col items-end gap-2',
-                      (taken.length > 0 || !full) && 'w-full',
-                    )}
-                  >
-                    {!full && (
-                      <span className="block h-px w-48 max-w-full bg-border" aria-hidden="true" />
-                    )}
-                    {action}
-                  </div>
-                )}
-                {editor && !full && others.length > 0 && (
-                  <AddName
-                    slot={slot.label}
-                    members={others}
-                    busy={busy}
-                    onPick={(memberId) => take.mutate({ slot: slot.label, memberId })}
-                  />
-                )}
+                        {contains && (
+                          <span
+                            className={cn(
+                              'text-[13px]',
+                              claim.contains!.length > 0 ? 'text-text' : 'text-muted',
+                            )}
+                          >
+                            {contains}
+                          </span>
+                        )}
+                        {slot.kind && editing !== claim.id && (theirs ? said : editor) && (
+                          <button
+                            type="button"
+                            className={cn(quietLink, 'text-[13px] text-muted')}
+                            aria-label={
+                              theirs
+                                ? 'Change what you’re bringing'
+                                : `Say what ${claim.memberName} is bringing`
+                            }
+                            onClick={() => setEditing(claim.id)}
+                          >
+                            {said ? 'Change' : 'Add their dish'}
+                          </button>
+                        )}
+                      </span>
+                    );
+                  })}
+                  {unsaid && editing !== own.id && (
+                    <Button variant="accent" size="sm" onClick={() => setEditing(own.id)}>
+                      Say what you’re bringing
+                    </Button>
+                  )}
+                  {action && (
+                    <div
+                      className={cn(
+                        'mt-1 flex flex-col items-end gap-2',
+                        (taken.length > 0 || !full) && 'w-full',
+                      )}
+                    >
+                      {!full && (
+                        <span className="block h-px w-48 max-w-full bg-border" aria-hidden="true" />
+                      )}
+                      {action}
+                    </div>
+                  )}
+                  {editor && !full && others.length > 0 && (
+                    <AddName
+                      slot={slot.label}
+                      members={others}
+                      busy={busy}
+                      onPick={(memberId) => take.mutate({ slot: slot.label, memberId })}
+                    />
+                  )}
+                </div>
               </div>
+              {open && slot.kind && (
+                <ClaimDetailForm
+                  key={open.id}
+                  documentId={item.document.id}
+                  claim={open}
+                  kind={slot.kind}
+                  own={open.memberId === mine}
+                  onDone={() => setEditing(null)}
+                />
+              )}
             </li>
           );
         })}

@@ -6,6 +6,7 @@ import {
   liturgyFrontmatterSchema,
   memberFieldsSchema,
   signupFrontmatterSchema,
+  slotKinds,
   translationNames,
   translations,
 } from '@the-keep/shared';
@@ -29,6 +30,7 @@ import { Button } from '@/components/ui/button';
 import { Form } from '@/components/ui/form';
 import { FormRow, SaveBar, SummaryField } from '@/components/ui/form-row';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { focusRing } from '@/components/ui/styles';
 import { Textarea } from '@/components/ui/textarea';
 import { canEdit, memberIdOf, useGroup } from '@/group/context';
@@ -431,6 +433,8 @@ const signupForm = z.object({
       z.object({
         label: z.string().trim().min(1, 'A label.').max(80),
         capacity: z.number().int().min(1, 'At least one.').max(50),
+        /** '' is a slot that takes a name and nothing more. */
+        kind: z.enum(['', ...slotKinds]),
       }),
     )
     .min(1, 'At least one slot.'),
@@ -439,12 +443,15 @@ const signupForm = z.object({
 });
 
 const defaultSlots = [
-  { label: 'Main', capacity: 1 },
-  { label: 'Salad', capacity: 1 },
-  { label: 'Bread', capacity: 1 },
-  { label: 'Dessert', capacity: 2 },
-  { label: 'Drinks', capacity: 2 },
+  { label: 'Main', capacity: 1, kind: 'food' as const },
+  { label: 'Salad', capacity: 1, kind: 'food' as const },
+  { label: 'Bread', capacity: 1, kind: 'food' as const },
+  { label: 'Dessert', capacity: 2, kind: 'food' as const },
+  { label: 'Drinks', capacity: 2, kind: 'item' as const },
 ];
+
+/** What a slot asks of whoever takes it, as the form words the choice. */
+const kindLabels = { '': 'Just a name', food: 'A dish', item: 'An item' } as const;
 
 export function SignupEdit() {
   const { viewer, api } = useGroup();
@@ -459,7 +466,7 @@ export function SignupEdit() {
           title: current.frontmatter.title,
           date: current.frontmatter.date,
           closesAt: localDateTimeInput(current.frontmatter.closesAt),
-          slots: current.frontmatter.slots,
+          slots: current.frontmatter.slots.map((s) => ({ ...s, kind: s.kind ?? ('' as const) })),
           body: current.item.version.body,
           summary: '',
         }
@@ -474,7 +481,7 @@ export function SignupEdit() {
     const parsed = signupFrontmatterSchema.safeParse({
       title,
       date,
-      slots,
+      slots: slots.map(({ kind, ...slot }) => ({ ...slot, ...(kind ? { kind } : {}) })),
       closesAt: fromDateTimeInput(closesAt),
     });
     if (!parsed.success) {
@@ -518,6 +525,10 @@ export function SignupEdit() {
           </div>
           <fieldset className="grid gap-3">
             <legend className="text-sm font-medium text-text-strong">Slots</legend>
+            <p className="text-xs text-muted">
+              Label, how many, and what the slot asks of whoever takes it: a dish (what, and what it
+              contains), an item (what), or just a name.
+            </p>
             {slots.fields.map((slot, index) => (
               <div key={slot.id} className="flex items-end gap-2">
                 <FormRow
@@ -547,6 +558,22 @@ export function SignupEdit() {
                     />
                   )}
                 </FormRow>
+                <FormRow
+                  control={form.control}
+                  name={`slots.${index}.kind`}
+                  label={`Slot ${index + 1} asks for`}
+                  className="w-36 [&>label]:sr-only"
+                >
+                  {(field) => (
+                    <Select {...field}>
+                      {(['', ...slotKinds] as const).map((kind) => (
+                        <option key={kind} value={kind}>
+                          {kindLabels[kind]}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                </FormRow>
                 <Button
                   type="button"
                   variant="ghost"
@@ -566,7 +593,7 @@ export function SignupEdit() {
               variant="ghost"
               size="sm"
               className="justify-self-start"
-              onClick={() => slots.append({ label: '', capacity: 1 })}
+              onClick={() => slots.append({ label: '', capacity: 1, kind: '' })}
             >
               Add a slot
             </Button>

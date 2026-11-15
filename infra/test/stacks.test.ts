@@ -228,13 +228,13 @@ describe('ApiStack', () => {
       JwtConfiguration: { Audience: [Match.anyValue(), Match.anyValue()] },
     });
     const routes = Object.values(template.findResources('AWS::ApiGatewayV2::Route'));
-    expect(routes).toHaveLength(54);
+    expect(routes).toHaveLength(56);
     const members = routes.filter(
       (r) =>
         /\/api\//.test(String(r.Properties.RouteKey)) &&
         !/\/api\/(agent|group)\//.test(String(r.Properties.RouteKey)),
     );
-    expect(members).toHaveLength(28);
+    expect(members).toHaveLength(29);
     for (const route of members) {
       expect(route.Properties.AuthorizationType).toBe('JWT');
       expect(route.Properties.RouteKey).toMatch(/^(GET|POST|PUT|PATCH|DELETE) \/api\//);
@@ -300,6 +300,7 @@ describe('ApiStack', () => {
       'GET /api/group/members',
       'GET /api/group/members/{id}',
       'GET /api/group/passages',
+      'PATCH /api/group/documents/{id}/claims/{claimId}',
       'PATCH /api/group/members/{id}',
       'POST /api/group/documents/{id}/claims',
       'POST /api/group/enter',

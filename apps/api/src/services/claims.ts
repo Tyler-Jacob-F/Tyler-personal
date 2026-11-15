@@ -4,9 +4,17 @@ import {
   type SignupClaim,
   signupFrontmatterSchema,
   signupOpen,
+  updateClaimRequestSchema,
 } from '@the-keep/shared';
 import type { Db } from '../db/client.js';
-import { createClaim, deleteClaim, getClaim, getMember, listClaims } from '../db/group.js';
+import {
+  createClaim,
+  deleteClaim,
+  getClaim,
+  getMember,
+  listClaims,
+  updateClaim,
+} from '../db/group.js';
 import { badRequest, forbidden, HttpError, notFound, parse, parseId } from '../lib/http.js';
 import type { Logger } from '../lib/logger.js';
 import type { Identity } from '../middleware/identity.js';
@@ -18,7 +26,10 @@ import { loadDocumentFor } from './documents.js';
  * and the MCP tools both come here. A device claims for the member it holds; the admin,
  * co-leads and an agent with `write:signups` claim for anyone, which is how a sheet is
  * ported. Capacity counts rows; a full slot is a 409 `slot_full`; after `closesAt` a
- * member can neither take nor release, while everyone else still fixes the sheet.
+ * member can neither take nor release, while everyone else still fixes the sheet. What a
+ * claim brings (its note, what the dish contains) is said afterwards, by the member or a
+ * co-lead, on a slot whose kind asks for it; the close does not stop it, since the dish
+ * is often settled the night before and changes nobody's place.
  */
 async function signupFor(db: Db, identity: Identity, rawId: unknown) {
   const found = await loadDocumentFor(db, identity, rawId, 'read');
@@ -84,6 +95,34 @@ export async function createClaimFor(
   });
   log.info('slot claimed', { documentId: id, slot: slot.label, memberId, claimId: claim.id });
   return claim;
+}
+
+export async function updateClaimFor(
+  db: Db,
+  identity: Identity,
+  rawId: unknown,
+  rawClaimId: unknown,
+  body: unknown,
+  log: Logger,
+): Promise<SignupClaim> {
+  const { id, target, frontmatter } = await signupFor(db, identity, rawId);
+  // As with releasing: what someone is bringing is theirs, or a co-lead's, to say.
+  if (identity.caller.kind === 'agent') throw forbidden('no agent edits a claim');
+  const claimId = parseId(rawClaimId, 'claim id');
+  const claim = await getClaim(db, claimId);
+  if (!claim || claim.documentId !== id) throw notFound('claim');
+  authorizeClaim(identity.caller, target, claim.memberId);
+  const input = parse(updateClaimRequestSchema, body, 'claim');
+  const kind = frontmatter.slots.find((s) => s.label === claim.slot)?.kind;
+  if (!kind) throw badRequest(`"${claim.slot}" takes a name and nothing more`);
+  if (input.contains != null && kind !== 'food')
+    throw badRequest(`"${claim.slot}" is not food`, [
+      { path: 'contains', message: 'only a food slot says what it contains' },
+    ]);
+  const updated = await updateClaim(db, claimId, input);
+  // The note is the group's to read on the sheet, not the log's to keep.
+  log.info('claim detail saved', { documentId: id, slot: claim.slot, claimId });
+  return updated;
 }
 
 export async function deleteClaimFor(

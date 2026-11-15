@@ -2,7 +2,15 @@
  * The group's own tables (migration 0007): members as entities, the link, devices and
  * sign-up claims. Documents stay in repositories.ts; this file never touches a version.
  */
-import type { Device, GroupLink, Member, MemberRole, SignupClaim } from '@the-keep/shared';
+import {
+  type Allergen,
+  allergens,
+  type Device,
+  type GroupLink,
+  type Member,
+  type MemberRole,
+  type SignupClaim,
+} from '@the-keep/shared';
 import { and, count, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { Db } from './client.js';
 import { ConflictError, type MemberRow, NotFoundError } from './repositories.js';
@@ -270,8 +278,18 @@ function toClaim(row: typeof signupClaim.$inferSelect, memberName: string): Sign
     memberId: row.memberId,
     memberName,
     deviceId: row.deviceId,
+    note: row.note,
+    contains: fromContains(row.contains),
     createdAt: toIso(row.createdAt),
   };
+}
+
+/** The `contains` column: null is "not said", '' is "none of these", else comma-joined. */
+function fromContains(stored: string | null): Allergen[] | null {
+  if (stored === null) return null;
+  const given = stored.split(',');
+  // A word the vocabulary has since dropped is not shown; the rest stand.
+  return allergens.filter((a) => given.includes(a));
 }
 
 /** Every claim on a sign-up, in the order they were made. */
@@ -310,6 +328,28 @@ export async function createClaim(db: Db, input: NewClaim): Promise<SignupClaim>
   if (taken[0]) throw new ConflictError(`a claim on "${input.slot}" by this member`);
   const [row] = await db.insert(signupClaim).values(input).returning({ id: signupClaim.id });
   return (await getClaim(db, row!.id))!;
+}
+
+/** What a claim brings. `undefined` leaves a field; `null` (or an empty note) clears it. */
+export interface ClaimDetailInput {
+  note?: string | null;
+  contains?: Allergen[] | null;
+}
+
+export async function updateClaim(
+  db: Db,
+  id: string,
+  input: ClaimDetailInput,
+): Promise<SignupClaim> {
+  const changes: Partial<typeof signupClaim.$inferInsert> = {};
+  if (input.note !== undefined) changes.note = optional(input.note);
+  if (input.contains !== undefined)
+    changes.contains = input.contains === null ? null : input.contains.join(',');
+  if (Object.keys(changes).length > 0)
+    await db.update(signupClaim).set(changes).where(eq(signupClaim.id, id));
+  const found = await getClaim(db, id);
+  if (!found) throw new NotFoundError('claim');
+  return found;
 }
 
 /** Release a slot. Returns false if nothing matched. */
