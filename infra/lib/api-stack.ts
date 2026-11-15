@@ -244,7 +244,7 @@ export class ApiStack extends cdk.Stack {
       ['/api/members/{id}/devices', [DELETE], members],
       ['/api/members/{id}/colead', [POST], members],
       ['/api/documents/{id}/claims', [GET, POST], claims],
-      ['/api/documents/{id}/claims/{claimId}', [DELETE], claims],
+      ['/api/documents/{id}/claims/{claimId}', [PATCH, DELETE], claims],
       ['/api/passages', [GET], passages],
     ];
     // The group's door: what a device may reach. Reads of documents, its own caller, the
@@ -259,7 +259,7 @@ export class ApiStack extends cdk.Stack {
       ['/api/group/members/{id}', [GET, PATCH], members],
       ['/api/group/members/{id}/claim', [POST], members],
       ['/api/group/documents/{id}/claims', [GET, POST], claims],
-      ['/api/group/documents/{id}/claims/{claimId}', [DELETE], claims],
+      ['/api/group/documents/{id}/claims/{claimId}', [PATCH, DELETE], claims],
       ['/api/group/passages', [GET], passages],
     ];
     // The agents' door mirrors the document routes, minus delete: no agent deletes.

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { allergenSchema, containsSchema } from './types/signup.js';
 
 /**
  * Who a member is to the site (docs/phases/04-group.md "Decided"): `admin` is Tyler;
@@ -148,6 +149,13 @@ export const signupClaimSchema = z.object({
   memberName: z.string(),
   /** Null when a co-lead or the admin claimed on the member's behalf. */
   deviceId: z.uuid().nullable(),
+  /** What they are bringing, on a slot with a kind; null until said. */
+  note: z.string().nullable(),
+  /**
+   * What the dish contains, on a `food` slot. Null is "not said"; an empty list is "none
+   * of these", said. The two are different facts to someone with an allergy.
+   */
+  contains: z.array(allergenSchema).nullable(),
   createdAt: z.iso.datetime(),
 });
 export type SignupClaim = z.infer<typeof signupClaimSchema>;
@@ -161,6 +169,16 @@ export const createClaimRequestSchema = z.object({
   memberId: z.uuid().optional(),
 });
 export type CreateClaimRequest = z.input<typeof createClaimRequestSchema>;
+
+/**
+ * `PATCH /api/group/documents/{id}/claims/{claimId}`: say, or change, what a claim brings.
+ * A field left out is left alone; `null` (or an empty note) clears it.
+ */
+export const updateClaimRequestSchema = z.object({
+  note: z.string().trim().max(80).nullable().optional(),
+  contains: containsSchema.nullable().optional(),
+});
+export type UpdateClaimRequest = z.input<typeof updateClaimRequestSchema>;
 
 export const listClaimsResponseSchema = z.object({ items: z.array(signupClaimSchema) });
 export type ListClaimsResponse = z.infer<typeof listClaimsResponseSchema>;

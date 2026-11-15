@@ -6,6 +6,7 @@ import { currentSignup, upcomingEvents } from '@/group/format';
 import { clock, closesLine, inRichmond, longDay, whenLine } from '@/lib/dates';
 import {
   afternoon,
+  claim,
   claims,
   coleadMe,
   evening,
@@ -491,6 +492,104 @@ describe('the group for a phone that claimed a name', () => {
       'href',
       `/group/members/${gids.taylor}/edit`,
     );
+  });
+
+  it('asks what she is bringing once she takes a food slot, and lets someone already on one say it afterwards', async () => {
+    const user = userEvent.setup();
+    const potluck = {
+      ...signupDoc,
+      version: {
+        ...signupDoc.version,
+        frontmatter: {
+          ...signupDoc.version.frontmatter,
+          slots: [
+            { label: 'Sides', capacity: 4, kind: 'food' },
+            { label: 'Drinks', capacity: 2, kind: 'item' },
+            { label: 'Host', capacity: 1 },
+          ],
+        },
+      },
+    };
+    const pie = 'ab2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e51';
+    const sheet = [
+      { ...claim(pie, 'Sides', gids.taylor, 'Taylor') },
+      {
+        ...claim('ab2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e52', 'Sides', gids.peter, 'Peter'),
+        note: 'Stuffing',
+        contains: ['gluten', 'poultry'] as const,
+      },
+      {
+        ...claim('ab2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e53', 'Sides', gids.sarah, 'Sarah'),
+        note: 'Roasted carrots',
+        contains: [],
+      },
+    ];
+    mockDevice('member', { docs: [guideDoc, liturgyDoc, potluck], claims: sheet as never });
+    const patched: Array<{ id: string; body: unknown }> = [];
+    const drinks = 'ab2c6a6e-3b6e-4b2e-9a6e-2c6a6e3b6e54';
+    server.use(
+      http.patch('/api/group/documents/:id/claims/:claimId', async ({ params, request }) => {
+        patched.push({ id: String(params.claimId), body: await request.json() });
+        return HttpResponse.json({ ...sheet[0], note: 'Mashed potatoes', contains: ['dairy'] });
+      }),
+      http.post('/api/group/documents/:id/claims', () => {
+        // The sheet is read again after a take; the new claim has to be on it.
+        sheet.push(claim(drinks, 'Drinks', gids.taylor, 'Taylor'));
+        return HttpResponse.json(sheet.at(-1), { status: 201 });
+      }),
+    );
+    render(<App />, { route: '/group', auth: { signedIn: false } });
+    const page = await screen.findByRole('article', { name: 'Group' });
+    const slots = within(page).getByRole('list', { name: 'Slots' });
+    const sides = slotRow(slots, 'Sides');
+
+    // What the others said reads under their names; "none" spells the list out.
+    expect(within(sides).getByText('Stuffing')).toBeInTheDocument();
+    expect(within(sides).getByText('Contains gluten, poultry')).toBeInTheDocument();
+    expect(
+      within(sides).getByText('No gluten, dairy, nuts, soy, fish or poultry'),
+    ).toBeInTheDocument();
+    // Not hers to change, and she is no co-lead.
+    expect(within(sides).queryByRole('button', { name: /Peter/ })).toBeNull();
+
+    // She took her slot before the sheet could ask: the accent is the asking, Release is quiet.
+    const say = within(sides).getByRole('button', { name: 'Say what you’re bringing' });
+    expect(say).toHaveClass('bg-accent');
+    expect(within(sides).getByRole('button', { name: 'Release Sides' })).not.toHaveClass(
+      'bg-accent',
+    );
+    expect(page.querySelectorAll('.bg-accent, .text-accent')).toHaveLength(1);
+
+    await user.click(say);
+    const form = within(sides).getByRole('form', { name: 'What you’re bringing' });
+    await user.type(within(form).getByLabelText('What are you bringing?'), 'Mashed potatoes');
+    await user.click(within(form).getByRole('button', { name: 'None of these' }));
+    // Naming one takes "none" back.
+    await user.click(within(form).getByRole('button', { name: 'Dairy' }));
+    expect(within(form).getByRole('button', { name: 'None of these' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(patched).toEqual([
+        { id: pie, body: { note: 'Mashed potatoes', contains: ['dairy'] } },
+      ]),
+    );
+    await waitFor(() => expect(within(sides).queryByRole('form')).toBeNull());
+
+    // An item slot asks what, and nothing about allergens; saving it empty says nothing.
+    const drinksRow = slotRow(slots, 'Drinks');
+    await user.click(within(drinksRow).getByRole('button', { name: 'Take Drinks' }));
+    const asked = await within(drinksRow).findByRole('form', { name: 'What you’re bringing' });
+    expect(within(asked).queryByRole('button', { name: 'Dairy' })).toBeNull();
+    await user.click(within(asked).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(patched[1]).toEqual({ id: drinks, body: { note: null } }));
+
+    // A slot with no kind takes a name, as it always has.
+    expect(
+      within(slotRow(slots, 'Host')).getByRole('button', { name: 'Take Host' }),
+    ).toBeInTheDocument();
   });
 
   it('at 7:30 on the night reads the guide first, with nothing to take', async () => {

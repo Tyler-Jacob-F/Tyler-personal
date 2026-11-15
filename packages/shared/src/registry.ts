@@ -105,8 +105,11 @@ const registry: Record<DocumentType, TypeDefinition> = {
     guide:
       'signup: a sheet of slots for a Thursday ("Dinner", "Dessert", "Drinks"). frontmatter ' +
       'is { title, date, slots, closesAt? }: date is the Thursday (YYYY-MM-DD); slots is a ' +
-      'list of { label, capacity } with distinct labels and a whole-number capacity of 1 or ' +
-      'more; closesAt is an ISO timestamp after which members can no longer take or release ' +
+      'list of { label, capacity, kind? } with distinct labels and a whole-number capacity of ' +
+      '1 or more; kind is what the slot asks of whoever takes it: "food" (what they are ' +
+      'bringing, and which of the group’s allergens it contains), "item" (what they are ' +
+      'bringing: drinks, a game) or left out for a slot that takes a name and nothing more; ' +
+      'closesAt is an ISO timestamp after which members can no longer take or release ' +
       'a slot. Claims are rows keyed by the slot’s label, not versions: renaming a slot ' +
       'orphans its claims, so add a slot rather than rename one. The body is optional notes ' +
       'in markdown. Written by the admin and co-leads only; no agent scope writes a signup.',

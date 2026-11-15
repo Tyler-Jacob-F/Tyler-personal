@@ -24,7 +24,8 @@ const thursday = {
     date: '2026-11-05',
     slots: [
       { label: 'Dinner', capacity: 1 },
-      { label: 'Dessert', capacity: 2 },
+      { label: 'Dessert', capacity: 2, kind: 'food' },
+      { label: 'Drinks', capacity: 2, kind: 'item' },
     ],
     closesAt: '2026-11-05T17:00:00.000Z',
   },
@@ -117,12 +118,85 @@ describe('the sign-up claim API', () => {
     expect(again.statusCode).toBe(409);
     expect(bodyOf(again)).toMatchObject({ error: 'conflict' });
 
-    const unknown = await asKelly('POST', { slot: 'Drinks' });
+    const unknown = await asKelly('POST', { slot: 'Salad' });
     expect(unknown.statusCode).toBe(400);
     expect(bodyOf<{ issues: Array<{ message: string }> }>(unknown).issues[0]!.message).toBe(
-      'one of Dinner, Dessert',
+      'one of Dinner, Dessert, Drinks',
     );
     expect((await asKelly('POST', {})).statusCode).toBe(400);
+  });
+
+  it('lets a member say what they are bringing and what it contains, change it past the close, and keeps "not said" apart from "none"', async () => {
+    const asOscar = claims(oscarPhone);
+    const taken = bodyOf<SignupClaim>(await asOscar('POST', { slot: 'Dessert' }));
+    expect(taken).toMatchObject({ note: null, contains: null });
+
+    const said = await asOscar(
+      'PATCH',
+      { note: '  Pecan pie ', contains: ['nuts', 'gluten', 'nuts'] },
+      taken.id,
+    );
+    expect(said.statusCode).toBe(200);
+    // Trimmed, and in the vocabulary's order whatever order they were tapped in.
+    expect(bodyOf<SignupClaim>(said)).toMatchObject({
+      id: taken.id,
+      note: 'Pecan pie',
+      contains: ['gluten', 'nuts'],
+    });
+    expect(bodyOf<ListClaimsResponse>(await claims(guest)('GET')).items[0]).toMatchObject({
+      note: 'Pecan pie',
+      contains: ['gluten', 'nuts'],
+    });
+
+    // A field left out is left alone; an empty list is "none of these", null is "not said".
+    expect(bodyOf<SignupClaim>(await asOscar('PATCH', { contains: [] }, taken.id))).toMatchObject({
+      note: 'Pecan pie',
+      contains: [],
+    });
+    expect(
+      bodyOf<SignupClaim>(await asOscar('PATCH', { note: '', contains: null }, taken.id)),
+    ).toMatchObject({ note: null, contains: null });
+
+    expect((await asOscar('PATCH', { contains: ['shellfish'] }, taken.id)).statusCode).toBe(400);
+    expect((await asOscar('PATCH', { note: 'x'.repeat(81) }, taken.id)).statusCode).toBe(400);
+
+    // The dish is often settled the night before: the close stops taking, not telling.
+    clock = new Date('2026-11-06T00:00:00Z');
+    expect((await asOscar('PATCH', { note: 'Brownies' }, taken.id)).statusCode).toBe(200);
+  });
+
+  it('lets only the member or a co-lead say it, only on a slot that asks, and what it contains only for food', async () => {
+    const asOscar = claims(oscarPhone);
+    const asKelly = claims(undefined, 'kelly@example.com');
+    const dessert = bodyOf<SignupClaim>(await asOscar('POST', { slot: 'Dessert' }));
+    const drinks = bodyOf<SignupClaim>(await asOscar('POST', { slot: 'Drinks' }));
+    const dinner = bodyOf<SignupClaim>(await asOscar('POST', { slot: 'Dinner' }));
+
+    expect((await claims(kellyPhone)('PATCH', { note: 'Pie' }, dessert.id)).statusCode).toBe(403);
+    expect((await claims(guest)('PATCH', { note: 'Pie' }, dessert.id)).statusCode).toBe(403);
+    // Someone texted instead: a co-lead writes it down.
+    expect(bodyOf<SignupClaim>(await asKelly('PATCH', { note: 'Pie' }, dessert.id))).toMatchObject({
+      note: 'Pie',
+      memberId: oscar.id,
+    });
+
+    expect((await asOscar('PATCH', { note: 'Cider' }, drinks.id)).statusCode).toBe(200);
+    expect((await asOscar('PATCH', { contains: ['dairy'] }, drinks.id)).statusCode).toBe(400);
+    expect((await asOscar('PATCH', { note: 'Me' }, dinner.id)).statusCode).toBe(400);
+    expect(
+      (await asOscar('PATCH', { note: 'Pie' }, '00000000-0000-0000-0000-000000000000')).statusCode,
+    ).toBe(404);
+
+    const agent = await api(
+      fakeEvent({
+        method: 'PATCH',
+        route: '/api/agent/documents/{id}/claims/{claimId}',
+        params: { id: sheet.document.id, claimId: dessert.id },
+        body: { note: 'Pie' },
+        agent: { id: oscar.id, name: 'claude', scopes: ['read:documents', 'write:signups'] },
+      }),
+    );
+    expect(agent.statusCode).toBe(403);
   });
 
   it('lets a co-lead and the admin claim and release for anyone, past the close too, with no device on the row', async () => {

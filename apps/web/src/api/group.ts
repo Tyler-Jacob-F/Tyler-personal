@@ -13,6 +13,7 @@ import {
   type RotateGroupLinkRequest,
   rotateGroupLinkResponseSchema,
   signupClaimSchema,
+  type UpdateClaimRequest,
   type UpdateMemberRequest,
 } from '@the-keep/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -97,6 +98,21 @@ export function useTakeSlot(id: string) {
   return useMutation({
     mutationFn: (body: CreateClaimRequest) =>
       api(`${prefix}/documents/${id}/claims`, { method: 'POST', body, schema: signupClaimSchema }),
+    onSuccess: invalidate,
+  });
+}
+
+/** Say, or change, what a claim brings: the member's own, or anyone's from a co-lead. */
+export function useUpdateClaim(id: string) {
+  const { api, prefix } = useGroup();
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({ claimId, ...body }: UpdateClaimRequest & { claimId: string }) =>
+      api(`${prefix}/documents/${id}/claims/${claimId}`, {
+        method: 'PATCH',
+        body,
+        schema: signupClaimSchema,
+      }),
     onSuccess: invalidate,
   });
 }

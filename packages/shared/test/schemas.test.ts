@@ -53,6 +53,8 @@ import {
   APOCRYPHA_FALLBACK,
   signupFrontmatterSchema,
   signupOpen,
+  allergens,
+  updateClaimRequestSchema,
   eventFrontmatterSchema,
 } from '../src/index.js';
 
@@ -632,6 +634,24 @@ describe('the group’s types', () => {
       }).success,
     ).toBe(false);
     expect(signupFrontmatterSchema.safeParse({ ...sheet, slots: [] }).success).toBe(false);
+    // A slot may say what it asks of whoever takes it; one that does not takes a name alone.
+    const potluck = { ...sheet, slots: [{ label: 'Sides', capacity: 12, kind: 'food' }] };
+    expect(signupFrontmatterSchema.parse(potluck)).toEqual(potluck);
+    expect(
+      signupFrontmatterSchema.safeParse({
+        ...sheet,
+        slots: [{ label: 'Sides', capacity: 1, kind: 'potluck' }],
+      }).success,
+    ).toBe(false);
+    expect([...allergens]).toEqual(['gluten', 'dairy', 'nuts', 'soy', 'fish', 'poultry']);
+    expect(
+      updateClaimRequestSchema.parse({ note: ' Rolls ', contains: ['soy', 'gluten'] }),
+    ).toEqual({
+      note: 'Rolls',
+      contains: ['gluten', 'soy'],
+    });
+    expect(updateClaimRequestSchema.parse({ contains: null })).toEqual({ contains: null });
+    expect(updateClaimRequestSchema.safeParse({ contains: ['eggs'] }).success).toBe(false);
     expect(
       signupFrontmatterSchema.safeParse({ ...sheet, slots: [{ label: 'Dinner', capacity: 0 }] })
         .success,

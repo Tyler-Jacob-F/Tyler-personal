@@ -1,4 +1,6 @@
 import {
+  type Allergen,
+  allergens,
   currentWeek,
   type DocumentWithVersion,
   type EventFrontmatter,
@@ -137,6 +139,23 @@ export function broughtLine(slots: SignupSlot[], claims: SignupClaim[]): string 
       return `${slot.label} ${names.length ? names.join(', ') : '—'}`;
     })
     .join(' · ');
+}
+
+/** "Gluten": an allergen as a chip words it. */
+export function allergenLabel(allergen: Allergen): string {
+  return allergen[0]!.toUpperCase() + allergen.slice(1);
+}
+
+/**
+ * What a dish contains, as the sheet says it: "Contains gluten, nuts"; for a cook who said
+ * none, the whole list spelled out, since "none" of an unnamed list tells an allergic reader
+ * nothing; and null when the cook has not said, which the sheet shows as nothing at all.
+ */
+export function containsLine(contains: Allergen[] | null): string | null {
+  if (contains === null) return null;
+  if (contains.length === 0)
+    return `No ${allergens.slice(0, -1).join(', ')} or ${allergens.at(-1)}`;
+  return `Contains ${contains.join(', ')}`;
 }
 
 /** By date, soonest first; ties by newest document. */

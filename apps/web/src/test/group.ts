@@ -223,8 +223,18 @@ export const friendsgivingSheet = doc(gids.friendsgiving, 'signup', 'friendsgivi
   ],
 });
 
-function claim(id: string, slot: string, memberId: string, memberName: string): SignupClaim {
-  return { id, documentId: gids.signup, slot, memberId, memberName, deviceId: null, createdAt: at };
+export function claim(id: string, slot: string, memberId: string, memberName: string): SignupClaim {
+  return {
+    id,
+    documentId: gids.signup,
+    slot,
+    memberId,
+    memberName,
+    deviceId: null,
+    note: null,
+    contains: null,
+    createdAt: at,
+  };
 }
 
 export const claims: SignupClaim[] = [

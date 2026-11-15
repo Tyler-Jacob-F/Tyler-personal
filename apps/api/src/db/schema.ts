@@ -88,6 +88,10 @@ export const signupClaim = pgTable(
       .references(() => member.id),
     /** Null when a co-lead or the admin claimed on the member's behalf. */
     deviceId: uuid('device_id').references(() => device.id),
+    /** What they are bringing (migration 0009). */
+    note: text('note'),
+    /** Allergens comma-joined; null is "not said", '' is "none of these" (migration 0009). */
+    contains: text('contains'),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
   },
   (t) => [
